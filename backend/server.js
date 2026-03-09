@@ -76,7 +76,8 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
       from: process.env.EMAIL_REMETENTE,
       to: email,
       subject: '🚀 Bem-vindo ao Notifica.ai!',
-      text: `Olá!\n\nSeu alerta foi criado com sucesso.\n\nVamos monitorar: "${tituloDoSite}" (${url})\n\nID do seu alerta: ${novoAlerta._id}`
+    // DEPOIS
+text: `Olá!\n\nSeu alerta foi criado com sucesso.\n\nVamos monitorar: "${tituloDoSite}" (${url})\n\nPara cancelar esse alerta a qualquer momento, clique aqui:\nhttp://localhost:3000/api/cancelar-alerta/${novoAlerta._id}\n\nID do seu alerta: ${novoAlerta._id}`
     });
     console.log(`📧 E-mail enviado para ${email}!`);
 
@@ -111,7 +112,7 @@ function gerarHash(texto) {
 }
 
 // 🤖 O VIGIA — roda a cada 6 horas
-cron.schedule('* * * * *', async () => {
+cron.schedule('0 */6 * * *', async () => {
   console.log('\n🤖 Vigia acordou! Checando alertas...');
 
   const alertas = await Alerta.find({ status: 'ativo' });
@@ -159,7 +160,22 @@ cron.schedule('* * * * *', async () => {
 
   console.log('🤖 Vigia voltou a dormir!\n');
 });
-
+// DELETE — Cancelar alerta pelo ID
+app.get('/api/cancelar-alerta/:id', async (req, res) => {
+  try {
+    await Alerta.findByIdAndDelete(req.params.id);
+    res.send(`
+      <html>
+        <body style="font-family: sans-serif; text-align: center; padding: 50px; background: #0f172a; color: white;">
+          <h1 style="color: #34d399;">✅ Alerta cancelado!</h1>
+          <p style="color: #94a3b8;">Você não receberá mais notificações para esse site.</p>
+        </body>
+      </html>
+    `);
+  } catch (erro) {
+    res.status(400).send('Erro ao cancelar alerta.');
+  }
+});
 // Liga o servidor
 app.listen(3000, () => {
   console.log('🚀 Servidor rodando na porta 3000 (Com MongoDB, E-mail e Segurança!)');
