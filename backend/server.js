@@ -12,7 +12,9 @@ const nodemailer = require('nodemailer');
 const mongoose = require('mongoose'); // 🗄️ Nosso conector com o banco
 
 const app = express();
-app.use(cors());
+app.use(cors({
+  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173']
+}));
 app.use(express.json());
 app.get('/teste', (req, res) => {
   res.json({ ok: true });
