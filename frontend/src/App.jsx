@@ -11,7 +11,7 @@ export default function App() {
     
     try {
       // Conectando o React com o nosso Back-end Node.js!
-      const resposta = await fetch('http://localhost:3000/api/cadastrar-alerta', {
+     const resposta = await fetch('https://notifica-ai.onrender.com/api/cadastrar-alerta', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url, email }) // Enviando os dados
