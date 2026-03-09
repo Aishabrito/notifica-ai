@@ -32,6 +32,7 @@ const alertaSchema = new mongoose.Schema({
   url:       { type: String, required: true },
   email:     { type: String, required: true },
   titulo:    { type: String },
+  hashConteudo: { type: String },
   status:    { type: String, default: 'ativo' }, // 'ativo' ou 'pausado'
   criadoEm: { type: Date, default: Date.now }
 });
@@ -100,6 +101,63 @@ app.get('/api/alertas', async (req, res) => {
   } catch (erro) {
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar alertas.' });
   }
+});
+const cron = require('node-cron');
+const crypto = require('crypto'); // já vem no Node, não precisa instalar
+
+// Função que gera uma "impressão digital" do conteúdo do site
+function gerarHash(texto) {
+  return crypto.createHash('md5').update(texto).digest('hex');
+}
+
+// 🤖 O VIGIA — roda a cada 6 horas
+cron.schedule('* * * * *', async () => {
+  console.log('\n🤖 Vigia acordou! Checando alertas...');
+
+  const alertas = await Alerta.find({ status: 'ativo' });
+  console.log(`📋 ${alertas.length} alertas para checar`);
+
+  for (const alerta of alertas) {
+    try {
+      // Lê o site atual
+      const resposta = await axios.get(alerta.url);
+      const $ = cheerio.load(resposta.data);
+      const conteudoAtual = $('body').text().replace(/\s+/g, ' ').trim();
+      const hashAtual = gerarHash(conteudoAtual);
+
+      // Compara com o hash salvo
+      if (!alerta.hashConteudo) {
+        // Primeira vez — só salva o hash, não avisa
+        alerta.hashConteudo = hashAtual;
+        await alerta.save();
+        console.log(`💾 Hash inicial salvo para: ${alerta.url}`);
+
+      } else if (alerta.hashConteudo !== hashAtual) {
+        // MUDOU! Avisa o usuário
+        console.log(`🚨 MUDANÇA DETECTADA em: ${alerta.url}`);
+
+        await transportador.sendMail({
+          from: process.env.EMAIL_REMETENTE,
+          to: alerta.email,
+          subject: '🚨 Notifica.ai — Mudança detectada!',
+          text: `Olá!\n\nDetectamos uma atualização no site que você está monitorando:\n\n🔗 ${alerta.url}\n\nAcesse agora para ver o que mudou!`
+        });
+
+        // Atualiza o hash no banco
+        alerta.hashConteudo = hashAtual;
+        await alerta.save();
+        console.log(`📧 E-mail de alerta enviado para ${alerta.email}!`);
+
+      } else {
+        console.log(`✅ Sem mudanças em: ${alerta.url}`);
+      }
+
+    } catch (erro) {
+      console.error(`❌ Erro ao checar ${alerta.url}:`, erro.message);
+    }
+  }
+
+  console.log('🤖 Vigia voltou a dormir!\n');
 });
 
 // Liga o servidor
