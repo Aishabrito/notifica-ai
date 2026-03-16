@@ -39,13 +39,13 @@ export default function Cadastro() {
 
     try {
       // 🚀 Enviando para o AuthContext (Back-end)
-      // Note que incluímos o telefone como opcional
       const mensagemErro = await cadastrar(nome, email, senha);
 
       if (mensagemErro) {
+        // Se o back-end retornar erro (ex: e-mail já existe), mostra na tela
         setErro(mensagemErro);
       } else {
-        // 🎉 Sucesso! Redireciona para o painel operacional
+        // 🎉 SUCESSO TOTAL! É AQUI QUE ELE REDIRECIONA:
         navigate("/home"); 
       }
     } catch (err) {

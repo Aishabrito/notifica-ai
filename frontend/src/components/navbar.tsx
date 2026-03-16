@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 
 interface NavbarProps {
@@ -7,6 +7,12 @@ interface NavbarProps {
 
 export const Navbar = ({ logado = false }: NavbarProps) => {
   const { usuario, logout } = useAuth();
+  const navigate = useNavigate();
+
+  const handleLogout = async () => {
+    await logout();
+    navigate("/");
+  };
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex justify-between items-center px-16 py-6 bg-neutral-950/95 backdrop-blur border-b border-neutral-900">
@@ -21,7 +27,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               {usuario?.email}
             </span>
             <button
-              onClick={logout}
+              onClick={handleLogout}
               className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors border border-neutral-800 hover:border-neutral-600 px-4 py-2 rounded-lg"
             >
               Sair →
