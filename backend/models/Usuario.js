@@ -9,11 +9,13 @@ const usuarioSchema = new mongoose.Schema({
   criadoEm: { type: Date, default: Date.now },
 });
 
-// Hash da senha antes de salvar
-usuarioSchema.pre('save', async function (proximoMiddleware) {
-  if (!this.isModified('senha')) return proximoMiddleware();
+// Hash da senha antes de salvar (CORRIGIDO)
+usuarioSchema.pre('save', async function () {
+  // Se a senha não foi modificada, apenas sai da função (sem chamar nada)
+  if (!this.isModified('senha')) return; 
+  
+  // Encripta a senha e o Mongoose segue a vida automaticamente!
   this.senha = await bcrypt.hash(this.senha, 12);
-  proximoMiddleware();
 });
 
 // Método para comparar senha no login
