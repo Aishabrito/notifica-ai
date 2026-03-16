@@ -18,14 +18,7 @@ export default function App() {
             <Route path="/como-funciona" element={<ComoFunciona />} />
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />
-
-            {/* Protegida — só acessa se logado */}
-            <Route path="/dashboard" element={
-              <PrivateRoute>
-                <Home />
-              </PrivateRoute>
-            } />
-
+<Route path="/dashboard" element={<Home />} />
             {/* 404 */}
             <Route path="*" element={
               <div className="flex items-center justify-center h-screen text-white font-mono text-sm uppercase tracking-widest">

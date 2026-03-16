@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser');
 const cron         = require('node-cron');
 const crypto       = require('crypto');
 
+// Importação das rotas de autenticação que você já configurou
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
@@ -19,33 +20,33 @@ const app = express();
 // ============================================
 app.use(cors({
   origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'],
-  credentials: true, // necessário para enviar/receber cookies
+  credentials: true, // Essencial para o sistema de login com cookies
 }));
 app.use(express.json());
 app.use(cookieParser());
 
 // ============================================
-// 🗄️ CONECTAR AO MONGODB ATLAS
+// 🗄️ CONEXÃO MONGODB
 // ============================================
 mongoose.connect(process.env.MONGODB_URI)
-  .then(() => console.log('✅ MongoDB conectado!'))
-  .catch((err) => console.error('❌ Erro MongoDB:', err));
+  .then(() => console.log('✅ MongoDB conectado com sucesso!'))
+  .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
 
 // ============================================
-// 📋 MODELOS
+// 📋 MODELOS (Schema)
 // ============================================
 const alertaSchema = new mongoose.Schema({
-  url:          { type: String, required: true },
-  email:        { type: String, required: true },
-  titulo:       { type: String },
-  hashConteudo: { type: String },
-  status:       { type: String, default: 'ativo' },
-  criadoEm:     { type: Date, default: Date.now },
+  url:           { type: String, required: true },
+  email:         { type: String, required: true },
+  titulo:        { type: String },
+  hashConteudo:  { type: String },
+  status:        { type: String, default: 'ativo' },
+  criadoEm:      { type: Date, default: Date.now },
 });
 const Alerta = mongoose.model('Alerta', alertaSchema);
 
 // ============================================
-// 📬 NODEMAILER
+// 📬 CONFIGURAÇÃO DE E-MAIL
 // ============================================
 const transportador = nodemailer.createTransport({
   service: 'gmail',
@@ -56,15 +57,18 @@ const transportador = nodemailer.createTransport({
 });
 
 // ============================================
-// 🛣️ ROTAS
+// 🛣️ ROTAS DA API
 // ============================================
 
-app.get('/teste', (_req, res) => res.json({ ok: true }));
-
-// Auth (cadastro, login, logout, /me)
+// Rotas de Autenticação
 app.use('/api/auth', authRoutes);
 
-// POST — Cadastrar novo alerta
+// Rota de Teste
+app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
+
+/**
+ * POST: Cadastrar novo alerta e enviar e-mail de boas-vindas
+ */
 app.post('/api/cadastrar-alerta', async (req, res) => {
   const { url, email } = req.body;
   try {
@@ -75,6 +79,7 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
     const $ = cheerio.load(resposta.data);
     const tituloDoSite = $('title').text().trim() || url;
 
+    // Salva no Banco de Dados
     const novoAlerta = await Alerta.create({ url, email, titulo: tituloDoSite });
 
     const urlCancelamento = `${process.env.BASE_URL || 'https://notifica-ai.onrender.com'}/api/cancelar-alerta/${novoAlerta._id}`;
@@ -82,53 +87,71 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
     await transportador.sendMail({
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
-      subject: '🚀 Alerta criado — Notifica.ai',
-      text: `Olá!\n\nSeu alerta foi criado com sucesso.\n\nMonitorando: "${tituloDoSite}"\n${url}\n\nPara cancelar: ${urlCancelamento}`,
+      subject: '🚀 Monitoramento Iniciado — Notifica.ai',
+      text: `Olá!\n\nSeu alerta para "${tituloDoSite}" foi criado.\n\nLink: ${url}\n\nPara parar de receber notificações, clique aqui: ${urlCancelamento}`,
     });
 
     res.json({ sucesso: true, titulo: tituloDoSite, id: novoAlerta._id });
   } catch (err) {
-    console.error('[cadastrar-alerta]', err.message);
-    res.status(400).json({ sucesso: false, mensagem: 'Não foi possível ler o site. Verifique o link.' });
+    console.error('Erro ao cadastrar:', err.message);
+    res.status(400).json({ sucesso: false, mensagem: 'Não foi possível acessar o site.' });
   }
 });
 
-// GET — Listar alertas
+/**
+ * GET: Listar todos os alertas (usado pelo Dashboard do React)
+ */
 app.get('/api/alertas', async (_req, res) => {
   try {
     const alertas = await Alerta.find().sort({ criadoEm: -1 });
     res.json({ sucesso: true, alertas });
-  } catch {
-    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar alertas.' });
+  } catch (err) {
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
 });
 
-// GET — Cancelar alerta
+/**
+ * DELETE: Remover alerta via Dashboard
+ */
+app.delete('/api/cancelar-alerta/:id', async (req, res) => {
+  try {
+    await Alerta.findByIdAndDelete(req.params.id);
+    res.json({ sucesso: true, mensagem: 'Alerta removido!' });
+  } catch (err) {
+    res.status(400).json({ sucesso: false, mensagem: 'Erro ao remover.' });
+  }
+});
+
+/**
+ * GET: Cancelar alerta via Link do E-mail (Retorna HTML)
+ */
 app.get('/api/cancelar-alerta/:id', async (req, res) => {
   try {
     await Alerta.findByIdAndDelete(req.params.id);
     res.send(`
       <html>
-        <body style="font-family:sans-serif;text-align:center;padding:50px;background:#0f172a;color:white;">
-          <h1 style="color:#34d399;">✅ Alerta cancelado!</h1>
-          <p style="color:#94a3b8;">Você não receberá mais notificações para esse site.</p>
+        <body style="font-family:sans-serif;text-align:center;padding:50px;background:#0a0a0a;color:white;">
+          <h1 style="color:#10b981;">✅ Alerta removido com sucesso!</h1>
+          <p style="color:#737373;">O Notifica.ai parou de monitorar este link para você.</p>
+          <a href="https://notifica-ai.vercel.app" style="color:#10b981;text-decoration:none;">Voltar para o site</a>
         </body>
       </html>
     `);
-  } catch {
-    res.status(400).send('Erro ao cancelar alerta.');
+  } catch (err) {
+    res.status(400).send('Erro ao processar o cancelamento.');
   }
 });
 
 // ============================================
-// 🤖 VIGIA — cron a cada 6 horas
+// 🤖 O VIGIA (Monitoramento Automático)
 // ============================================
 function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
 }
 
+// Roda a cada 6 horas (0 */6 * * *)
 cron.schedule('0 */6 * * *', async () => {
-  console.log('\n🤖 Vigia acordou!');
+  console.log('🤖 Vigia: Iniciando verificação de rotina...');
   const alertas = await Alerta.find({ status: 'ativo' });
 
   for (const alerta of alertas) {
@@ -138,32 +161,41 @@ cron.schedule('0 */6 * * *', async () => {
         timeout: 10000,
       });
       const $ = cheerio.load(resposta.data);
+      // Focamos no texto do body para detectar mudanças reais de conteúdo
       const conteudo = $('body').text().replace(/\s+/g, ' ').trim();
       const hashAtual = gerarHash(conteudo);
 
       if (!alerta.hashConteudo) {
+        // Primeira vez monitorando: salva o hash inicial
         alerta.hashConteudo = hashAtual;
         await alerta.save();
       } else if (alerta.hashConteudo !== hashAtual) {
-        console.log(`🚨 Mudança em: ${alerta.url}`);
+        // Mudança detectada!
+        console.log(`🚨 MUDANÇA DETECTADA: ${alerta.url}`);
+        
         await transportador.sendMail({
           from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
           to: alerta.email,
-          subject: '🚨 Notifica.ai — Mudança detectada!',
-          text: `Detectamos uma atualização em:\n\n🔗 ${alerta.url}\n\nAcesse agora para ver o que mudou!`,
+          subject: '🚨 ATUALIZAÇÃO DETECTADA - Notifica.ai',
+          text: `Atenção!\n\nIdentificamos uma mudança no site que você está monitorando:\n\n🔗 ${alerta.url}\n\nVerifique agora mesmo para não perder o prazo!`,
         });
+
+        // Atualiza o hash para não repetir o alerta sem nova mudança
         alerta.hashConteudo = hashAtual;
         await alerta.save();
       }
     } catch (err) {
-      console.error(`❌ Erro ao checar ${alerta.url}:`, err.message);
+      console.error(`❌ Falha ao vigiar ${alerta.url}:`, err.message);
     }
   }
-  console.log('🤖 Vigia dormiu.\n');
+  console.log('🤖 Vigia: Verificação concluída.');
 });
 
 // ============================================
-// 🚀 INICIAR SERVIDOR
+// 🚀 LANÇAMENTO
 // ============================================
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`🚀 Servidor na porta ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🚀 Servidor voando na porta ${PORT}`);
+  console.log(`⚙️  Vigia programado para rodar a cada 6 horas.`);
+});
