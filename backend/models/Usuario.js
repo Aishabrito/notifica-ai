@@ -10,10 +10,10 @@ const usuarioSchema = new mongoose.Schema({
 });
 
 // Hash da senha antes de salvar
-usuarioSchema.pre('save', async function (next) {
-  if (!this.isModified('senha')) return next();
+usuarioSchema.pre('save', async function (proximoMiddleware) {
+  if (!this.isModified('senha')) return proximoMiddleware();
   this.senha = await bcrypt.hash(this.senha, 12);
-  next();
+  proximoMiddleware();
 });
 
 // Método para comparar senha no login
