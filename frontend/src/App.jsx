@@ -13,13 +13,23 @@ export default function App() {
       <Router>
         <div className="min-h-screen bg-[#0a0a0a] selection:bg-emerald-400 selection:text-black font-sans">
           <Routes>
-            {/* Públicas */}
+            {/* Rotas Públicas  */}
             <Route path="/"              element={<LandingPage />} />
             <Route path="/como-funciona" element={<ComoFunciona />} />
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />
-<Route path="/dashboard" element={<Home />} />
-            {/* 404 */}
+            
+            {/* 🔒 Rota Privada (Painel Operacional Fechado) */}
+            <Route 
+              path="/dashboard" 
+              element={
+                <PrivateRoute>
+                  <Home />
+                </PrivateRoute>
+              } 
+            />
+
+            {/* 404 - Página não encontrada */}
             <Route path="*" element={
               <div className="flex items-center justify-center h-screen text-white font-mono text-sm uppercase tracking-widest">
                 404 | Página não encontrada
