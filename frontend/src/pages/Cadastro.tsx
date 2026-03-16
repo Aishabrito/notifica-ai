@@ -18,6 +18,7 @@ export default function Cadastro() {
   const [erro, setErro]               = useState<string | null>(null);
   const [loading, setLoading]         = useState(false);
 
+  // Lógica de força da senha
   const forcaSenha = (() => {
     if (senha.length === 0) return null;
     if (senha.length < 6) return "fraca";
@@ -28,14 +29,30 @@ export default function Cadastro() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErro(null);
-    if (senha.length < 8)         return setErro("Senha deve ter no mínimo 8 caracteres.");
-    if (senha !== confirmarSenha)  return setErro("As senhas não coincidem.");
-    if (!aceito)                   return setErro("Você precisa aceitar os termos para continuar.");
+
+    // Validações de UI
+    if (senha.length < 8) return setErro("Senha deve ter no mínimo 8 caracteres.");
+    if (senha !== confirmarSenha) return setErro("As senhas não coincidem.");
+    if (!aceito) return setErro("Você precisa aceitar os termos para continuar.");
+
     setLoading(true);
-    const mensagemErro = await cadastrar(nome, email, senha);
-    setLoading(false);
-    if (mensagemErro) return setErro(mensagemErro);
-    navigate("/dashboard");
+
+    try {
+      // 🚀 Enviando para o AuthContext (Back-end)
+      // Note que incluímos o telefone como opcional
+      const mensagemErro = await cadastrar(nome, email, senha);
+
+      if (mensagemErro) {
+        setErro(mensagemErro);
+      } else {
+        // 🎉 Sucesso! Redireciona para o painel operacional
+        navigate("/home"); 
+      }
+    } catch (err) {
+      setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -43,29 +60,32 @@ export default function Cadastro() {
       <Navbar />
       <div
         className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white flex items-center justify-center px-4 py-24"
-        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.1) 0%, transparent 70%), #0a0a0a' }}
+        style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a' }}
       >
-        <div className="w-full max-w-lg">
+        <div className="w-full max-w-lg relative">
+          
+          {/* Brilho decorativo Roxo no fundo */}
+          <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl -z-10" />
 
           {/* HEADER */}
           <div className="text-center mb-8">
             <Link to="/" className="font-display font-extrabold text-2xl tracking-tighter text-white">
               Notifica<span className="text-emerald-400">.ai</span>
             </Link>
-            <h1 className="text-2xl font-bold tracking-tight mt-4 mb-1">Crie sua conta</h1>
-            <p className="text-neutral-500 text-sm">Comece a monitorar em 20 segundos. É grátis.</p>
+            <h1 className="text-3xl font-black tracking-tighter mt-4 mb-1 text-white">Crie sua conta.</h1>
+            <p className="text-neutral-500 text-sm font-light">Comece a monitorar em 20 segundos. É grátis.</p>
           </div>
 
-          {/* CARD */}
+          {/* CARD OPERACIONAL */}
           <div
-            className="rounded-2xl border border-purple-500/10 p-8 text-[#f5f2eb]"
-            style={{ background: 'linear-gradient(145deg, rgba(108,52,131,0.06) 0%, rgba(255,255,255,0.02) 100%)' }}
+            className="rounded-2xl border border-white/[0.05] p-8 text-[#f5f2eb] shadow-2xl"
+            style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(108,52,131,0.02) 100%)' }}
           >
             <form onSubmit={handleSubmit} className="space-y-4">
 
               <Input
                 label="Nome completo"
-                placeholder="Aisha Brito"
+                placeholder="Ex: Aisha Brito"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -88,8 +108,8 @@ export default function Cadastro() {
                 onChange={(e) => setTelefone(e.target.value)}
               />
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
                   <Input
                     type="password"
                     label="Senha"
@@ -98,24 +118,20 @@ export default function Cadastro() {
                     onChange={(e) => setSenha(e.target.value)}
                     required
                   />
-                  {/* Força da senha */}
+                  {/* Força da senha com paleta atualizada */}
                   {forcaSenha && (
                     <div className="mt-2 flex items-center gap-2">
                       <div className="flex gap-1 flex-1">
                         {["fraca", "média", "forte"].map((nivel) => (
-                          <div key={nivel} className={`h-1 flex-1 rounded-full transition-colors duration-300 ${
-                            forcaSenha === "fraca"  && nivel === "fraca"  ? "bg-red-400" :
-                            forcaSenha === "média"  && (nivel === "fraca" || nivel === "média") ? "bg-yellow-400" :
-                            forcaSenha === "forte"  ? "bg-emerald-400" :
+                          <div key={nivel} className={`h-1 flex-1 rounded-full transition-all duration-500 ${
+                            forcaSenha === "fraca"  && nivel === "fraca"  ? "bg-red-400 shadow-[0_0_8px_rgba(248,113,113,0.4)]" :
+                            forcaSenha === "média"  && (nivel === "fraca" || nivel === "média") ? "bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]" :
+                            forcaSenha === "forte"  ? "bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.4)]" :
                             "bg-neutral-800"
                           }`} />
                         ))}
                       </div>
-                      <span className={`font-mono text-[10px] ${
-                        forcaSenha === "fraca" ? "text-red-400" :
-                        forcaSenha === "média" ? "text-yellow-400" :
-                        "text-emerald-400"
-                      }`}>{forcaSenha}</span>
+                      <span className="font-mono text-[9px] uppercase tracking-tighter text-neutral-500">{forcaSenha}</span>
                     </div>
                   )}
                 </div>
@@ -130,53 +146,53 @@ export default function Cadastro() {
                 />
               </div>
 
-              {/* Termos */}
-              <label className="flex items-start gap-3 cursor-pointer group">
+              {/* Checkbox de Termos Estilizado */}
+              <label className="flex items-start gap-3 cursor-pointer group py-2">
                 <div
                   onClick={() => setAceito(!aceito)}
-                  className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all ${
+                  className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all duration-300 ${
                     aceito
-                      ? "bg-emerald-400 border-emerald-400"
+                      ? "bg-emerald-400 border-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.2)]"
                       : "border-neutral-700 group-hover:border-purple-500/60"
                   }`}
                 >
                   {aceito && <span className="text-black text-[10px] font-bold">✓</span>}
                 </div>
-                <span className="text-xs text-neutral-500 leading-relaxed">
+                <span className="text-[11px] text-neutral-500 leading-relaxed font-light">
                   Concordo com os{" "}
-                  <span className="text-purple-400 hover:underline cursor-pointer">Termos de Uso</span>{" "}
+                  <span className="text-purple-400 hover:text-purple-300 transition-colors">Termos de Uso</span>{" "}
                   e{" "}
-                  <span className="text-purple-400 hover:underline cursor-pointer">Política de Privacidade</span>.
-                  Seus dados nunca são compartilhados com terceiros.
+                  <span className="text-purple-400 hover:text-purple-300 transition-colors">Política de Privacidade</span>.
                 </span>
               </label>
 
+              {/* Mensagem de Erro Dinâmica */}
               {erro && (
-                <p className="font-mono text-[10px] text-red-400 bg-red-400/10 border border-red-400/20 px-4 py-3 rounded-lg">
-                  {erro}
-                </p>
+                <div className="font-mono text-[10px] text-purple-400 bg-purple-400/5 border border-purple-400/20 px-4 py-3 rounded-lg animate-shake">
+                  ● {erro}
+                </div>
               )}
 
+              {/* Botão de Ação Principal */}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-emerald-400 text-black font-bold py-4 rounded-xl hover:bg-emerald-300 hover:shadow-[0_8px_30px_rgba(16,185,129,0.3)] transition-all text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full bg-emerald-400 text-black font-bold py-4 rounded-lg hover:bg-emerald-300 hover:shadow-[0_8px_30px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed mt-4"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Criando conta...
+                    Processando...
                   </span>
                 ) : "Criar conta gratuita →"}
               </button>
             </form>
-
           </div>
 
-          <p className="text-center text-sm text-neutral-600 mt-6">
-            Já tem conta?{" "}
-            <Link to="/login" className="text-purple-400 font-medium hover:underline">
-              Fazer login
+          <p className="text-center text-sm text-neutral-600 mt-8 font-light">
+            Já possui uma credencial?{" "}
+            <Link to="/login" className="text-purple-400 font-medium hover:text-purple-300 transition-colors border-b border-purple-500/20 pb-0.5">
+              Acessar conta
             </Link>
           </p>
 

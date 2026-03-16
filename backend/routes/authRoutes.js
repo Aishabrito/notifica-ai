@@ -1,29 +1,26 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
-const Usuario = require('../models/Usuario');
-
+const Usuario = require('../models/Usuario'); // Verifique se o nome do arquivo é Usuario.js
 const router = express.Router();
 
 const COOKIE_OPTS = {
-  httpOnly: true,                              // JS não consegue ler — protege contra XSS
-  secure: process.env.NODE_ENV === 'production', // HTTPS em prod, HTTP em dev
-  sameSite: 'strict',                          // Protege contra CSRF
-  maxAge: 7 * 24 * 60 * 60 * 1000,            // 7 dias
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production',
+  sameSite: 'strict',
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
 };
 
 const gerarToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-// ─── POST /api/auth/cadastro ──────────────────────────────────────────────────
+// ─── CADASTRO ──────────────────────────────────────
 router.post('/cadastro', async (req, res) => {
+  console.log('📬 Recebi tentativa de cadastro:', req.body.email);
   try {
     const { nome, email, senha } = req.body;
 
     if (!nome || !email || !senha)
       return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
-
-    if (senha.length < 8)
-      return res.status(400).json({ sucesso: false, mensagem: 'Senha deve ter no mínimo 8 caracteres.' });
 
     const emailExiste = await Usuario.findOne({ email });
     if (emailExiste)
@@ -33,52 +30,41 @@ router.post('/cadastro', async (req, res) => {
     const token = gerarToken(usuario._id);
 
     res.cookie('token', token, COOKIE_OPTS);
+    console.log('✅ Usuário cadastrado com sucesso!');
+
     res.status(201).json({
       sucesso: true,
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
     });
   } catch (err) {
-    console.error('[CADASTRO]', err);
-    res.status(500).json({ sucesso: false, mensagem: 'Erro interno. Tente novamente.' });
+    console.error('❌ ERRO NO CADASTRO:', err);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro interno no servidor.' });
   }
 });
 
-// ─── POST /api/auth/login ─────────────────────────────────────────────────────
+// ─── LOGIN ─────────────────────────────────────────
 router.post('/login', async (req, res) => {
+  console.log('🔑 Tentativa de login:', req.body.email);
   try {
     const { email, senha } = req.body;
-
-    if (!email || !senha)
-      return res.status(400).json({ sucesso: false, mensagem: 'Preencha e-mail e senha.' });
-
     const usuario = await Usuario.findOne({ email });
-    if (!usuario)
-      return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
 
-    const senhaCorreta = await usuario.verificarSenha(senha);
-    if (!senhaCorreta)
+    if (!usuario || !(await usuario.verificarSenha(senha))) {
       return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
+    }
 
     const token = gerarToken(usuario._id);
-
     res.cookie('token', token, COOKIE_OPTS);
     res.json({
       sucesso: true,
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
     });
   } catch (err) {
-    console.error('[LOGIN]', err);
-    res.status(500).json({ sucesso: false, mensagem: 'Erro interno. Tente novamente.' });
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao entrar.' });
   }
 });
 
-// ─── POST /api/auth/logout ────────────────────────────────────────────────────
-router.post('/logout', (_req, res) => {
-  res.clearCookie('token', COOKIE_OPTS);
-  res.json({ sucesso: true });
-});
-
-// ─── GET /api/auth/me ─────────────────────────────────────────────────────────
+// ─── ME (VERIFICAR SESSÃO) ──────────────────────────
 router.get('/me', async (req, res) => {
   try {
     const token = req.cookies?.token;
@@ -86,8 +72,6 @@ router.get('/me', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const usuario = await Usuario.findById(decoded.id).select('-senha');
-    if (!usuario) return res.status(401).json({ sucesso: false });
-
     res.json({ sucesso: true, usuario });
   } catch {
     res.status(401).json({ sucesso: false });

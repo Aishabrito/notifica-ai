@@ -6,24 +6,26 @@ const axios        = require('axios');
 const cheerio      = require('cheerio');
 const nodemailer   = require('nodemailer');
 const mongoose     = require('mongoose');
-const cookieParser = require('cookie-parser');
+const cookieParser = require('cookie-parser'); // ⬅️ ADICIONADO: Essencial para ler tokens nos cookies
 const cron         = require('node-cron');
 const crypto       = require('crypto');
 
-// Importação das rotas de autenticação que você já configurou
+// Importação das rotas de autenticação
 const authRoutes = require('./routes/authRoutes');
 
 const app = express();
 
 // ============================================
-// ⚙️ MIDDLEWARES
+// ⚙️ MIDDLEWARES (A ordem aqui é vital!)
 // ============================================
-app.use(cors({
-  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'],
-  credentials: true, // Essencial para o sistema de login com cookies
-}));
 app.use(express.json());
-app.use(cookieParser());
+app.use(cookieParser()); // ⬅️ ADICIONADO: Deve vir antes das rotas!
+
+app.use(cors({
+  // Permite tanto o local quanto a Vercel
+  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'], 
+  credentials: true, // ⬅️ Essencial para o sistema de login com cookies funcionar
+}));
 
 // ============================================
 // 🗄️ CONEXÃO MONGODB
@@ -60,14 +62,14 @@ const transportador = nodemailer.createTransport({
 // 🛣️ ROTAS DA API
 // ============================================
 
-// Rotas de Autenticação
+// Rotas de Autenticação (Login, Cadastro, Logout, Me)
 app.use('/api/auth', authRoutes);
 
 // Rota de Teste
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
 /**
- * POST: Cadastrar novo alerta e enviar e-mail de boas-vindas
+ * POST: Cadastrar novo alerta
  */
 app.post('/api/cadastrar-alerta', async (req, res) => {
   const { url, email } = req.body;
@@ -79,7 +81,6 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
     const $ = cheerio.load(resposta.data);
     const tituloDoSite = $('title').text().trim() || url;
 
-    // Salva no Banco de Dados
     const novoAlerta = await Alerta.create({ url, email, titulo: tituloDoSite });
 
     const urlCancelamento = `${process.env.BASE_URL || 'https://notifica-ai.onrender.com'}/api/cancelar-alerta/${novoAlerta._id}`;
@@ -99,7 +100,7 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
 });
 
 /**
- * GET: Listar todos os alertas (usado pelo Dashboard do React)
+ * GET: Listar todos os alertas
  */
 app.get('/api/alertas', async (_req, res) => {
   try {
@@ -123,7 +124,7 @@ app.delete('/api/cancelar-alerta/:id', async (req, res) => {
 });
 
 /**
- * GET: Cancelar alerta via Link do E-mail (Retorna HTML)
+ * GET: Cancelar alerta via Link do E-mail
  */
 app.get('/api/cancelar-alerta/:id', async (req, res) => {
   try {
@@ -149,7 +150,6 @@ function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
 }
 
-// Roda a cada 6 horas (0 */6 * * *)
 cron.schedule('0 */6 * * *', async () => {
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
   const alertas = await Alerta.find({ status: 'ativo' });
@@ -161,16 +161,13 @@ cron.schedule('0 */6 * * *', async () => {
         timeout: 10000,
       });
       const $ = cheerio.load(resposta.data);
-      // Focamos no texto do body para detectar mudanças reais de conteúdo
       const conteudo = $('body').text().replace(/\s+/g, ' ').trim();
       const hashAtual = gerarHash(conteudo);
 
       if (!alerta.hashConteudo) {
-        // Primeira vez monitorando: salva o hash inicial
         alerta.hashConteudo = hashAtual;
         await alerta.save();
       } else if (alerta.hashConteudo !== hashAtual) {
-        // Mudança detectada!
         console.log(`🚨 MUDANÇA DETECTADA: ${alerta.url}`);
         
         await transportador.sendMail({
@@ -180,7 +177,6 @@ cron.schedule('0 */6 * * *', async () => {
           text: `Atenção!\n\nIdentificamos uma mudança no site que você está monitorando:\n\n🔗 ${alerta.url}\n\nVerifique agora mesmo para não perder o prazo!`,
         });
 
-        // Atualiza o hash para não repetir o alerta sem nova mudança
         alerta.hashConteudo = hashAtual;
         await alerta.save();
       }
@@ -198,4 +194,6 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor voando na porta ${PORT}`);
   console.log(`⚙️  Vigia programado para rodar a cada 6 horas.`);
+  // Log de segurança para você conferir se a chave JWT está carregada
+  console.log(`🔑 JWT_SECRET presente: ${process.env.JWT_SECRET ? '✅ Sim' : '❌ Não (Verifique seu .env!)'}`);
 });
