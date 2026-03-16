@@ -42,11 +42,10 @@ export default function Cadastro() {
       const mensagemErro = await cadastrar(nome, email, senha);
 
       if (mensagemErro) {
-        // Se o back-end retornar erro (ex: e-mail já existe), mostra na tela
         setErro(mensagemErro);
       } else {
-        // 🎉 SUCESSO TOTAL! É AQUI QUE ELE REDIRECIONA:
-        navigate("/home"); 
+        // 🎉 SUCESSO! REDIRECIONA DIRETO PARA O LOGIN:
+        navigate("/login"); 
       }
     } catch (err) {
       setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
@@ -85,7 +84,7 @@ export default function Cadastro() {
 
               <Input
                 label="Nome completo"
-                placeholder="Ex: Aisha Brito"
+                placeholder=""
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
