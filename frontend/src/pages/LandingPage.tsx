@@ -136,7 +136,7 @@ export default function LandingPage() {
             ].map((card) => (
               <div
                 key={card.url}
-                className="shrink-0 border border-white/5 border-l-4 border-l-purple-600 p-4 rounded-lg min-w-[200px]"
+                className="shrink-0 border border-white/5 border-l-4 border-l-purple-600 p-4 rounded-lg min-w-50"
                 style={{ background: 'linear-gradient(135deg, rgba(108,52,131,0.06) 0%, rgba(0,0,0,0) 100%)' }}
               >
                 <div className="font-mono text-[9px] text-neutral-600 mb-1">{card.url}</div>

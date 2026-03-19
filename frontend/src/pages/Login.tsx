@@ -29,7 +29,8 @@ export default function Login() {
     <>
       <Navbar />
       <div
-        className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white"
+        // 🛠️ Adicionado: flex, items-center, justify-center, px-6 e py-24 para responsividade
+        className="min-h-screen flex items-center justify-center px-6 py-24 bg-[#0a0a0a] selection:bg-purple-500 selection:text-white"
         style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.1) 0%, transparent 70%), #0a0a0a' }}
       >
         <AuthCard
@@ -44,7 +45,7 @@ export default function Login() {
             </>
           }
         >
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5 w-full max-w-sm sm:max-w-md mx-auto">
             <Input
               type="email"
               label="E-mail"
@@ -63,7 +64,7 @@ export default function Login() {
             />
 
             {erro && (
-              <p className="font-mono text-[10px] text-red-400 bg-red-400/10 border border-red-400/20 px-4 py-3 rounded-lg">
+              <p className="font-mono text-[10px] md:text-xs text-red-400 bg-red-400/10 border border-red-400/20 px-4 py-3 rounded-lg">
                 {erro}
               </p>
             )}
@@ -71,7 +72,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-purple-100 hover:shadow-[0_8px_30px_rgba(108,52,131,0.2)] transition-all mt-4 text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-white text-black font-bold py-4 rounded-xl hover:bg-purple-100 hover:shadow-[0_8px_30px_rgba(108,52,131,0.2)] transition-all mt-4 text-xs md:text-sm uppercase tracking-wider disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
