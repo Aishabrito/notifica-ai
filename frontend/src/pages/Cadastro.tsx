@@ -58,33 +58,33 @@ export default function Cadastro() {
     <>
       <Navbar />
       <div
-        className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white flex items-center justify-center px-4 py-24"
+        className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white flex items-center justify-center px-4 md:px-6 py-24"
         style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a' }}
       >
-        <div className="w-full max-w-lg relative">
+        <div className="w-full max-w-lg relative mx-auto">
           
           {/* Brilho decorativo Roxo no fundo */}
-          <div className="absolute -top-20 -left-20 w-64 h-64 bg-purple-600/5 rounded-full blur-3xl -z-10" />
+          <div className="absolute -top-20 -left-10 md:-left-20 w-48 md:w-64 h-48 md:h-64 bg-purple-600/5 rounded-full blur-3xl -z-10" />
 
           {/* HEADER */}
           <div className="text-center mb-8">
             <Link to="/" className="font-display font-extrabold text-2xl tracking-tighter text-white">
               Notifica<span className="text-emerald-400">.ai</span>
             </Link>
-            <h1 className="text-3xl font-black tracking-tighter mt-4 mb-1 text-white">Crie sua conta.</h1>
-            <p className="text-neutral-500 text-sm font-light">Comece a monitorar em 20 segundos. É grátis.</p>
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tighter mt-4 mb-1 text-white">Crie sua conta.</h1>
+            <p className="text-neutral-500 text-xs sm:text-sm font-light">Comece a monitorar em 20 segundos. É grátis.</p>
           </div>
 
           {/* CARD OPERACIONAL */}
           <div
-            className="rounded-2xl border border-white/[0.05] p-8 text-[#f5f2eb] shadow-2xl"
+            className="rounded-2xl border p-6 sm:p-8 text-[#f5f2eb] shadow-2xl"
             style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(108,52,131,0.02) 100%)' }}
           >
             <form onSubmit={handleSubmit} className="space-y-4">
 
               <Input
                 label="Nome completo"
-                placeholder=""
+                placeholder="Ex: Aisha Brito"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -157,7 +157,7 @@ export default function Cadastro() {
                 >
                   {aceito && <span className="text-black text-[10px] font-bold">✓</span>}
                 </div>
-                <span className="text-[11px] text-neutral-500 leading-relaxed font-light">
+                <span className="text-[11px] sm:text-xs text-neutral-500 leading-relaxed font-light">
                   Concordo com os{" "}
                   <span className="text-purple-400 hover:text-purple-300 transition-colors">Termos de Uso</span>{" "}
                   e{" "}
@@ -167,7 +167,7 @@ export default function Cadastro() {
 
               {/* Mensagem de Erro Dinâmica */}
               {erro && (
-                <div className="font-mono text-[10px] text-purple-400 bg-purple-400/5 border border-purple-400/20 px-4 py-3 rounded-lg animate-shake">
+                <div className="font-mono text-[10px] sm:text-xs text-purple-400 bg-purple-400/5 border border-purple-400/20 px-4 py-3 rounded-lg animate-shake">
                   ● {erro}
                 </div>
               )}
@@ -176,7 +176,7 @@ export default function Cadastro() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-emerald-400 text-black font-bold py-4 rounded-lg hover:bg-emerald-300 hover:shadow-[0_8px_30px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all text-xs uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed mt-4"
+                className="w-full bg-emerald-400 text-black font-bold py-3 sm:py-4 rounded-lg hover:bg-emerald-300 hover:shadow-[0_8px_30px_rgba(16,185,129,0.4)] hover:-translate-y-0.5 transition-all text-xs sm:text-sm uppercase tracking-widest disabled:opacity-50 disabled:cursor-not-allowed mt-4"
               >
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
@@ -188,7 +188,7 @@ export default function Cadastro() {
             </form>
           </div>
 
-          <p className="text-center text-sm text-neutral-600 mt-8 font-light">
+          <p className="text-center text-xs sm:text-sm text-neutral-600 mt-8 font-light">
             Já possui uma credencial?{" "}
             <Link to="/login" className="text-purple-400 font-medium hover:text-purple-300 transition-colors border-b border-purple-500/20 pb-0.5">
               Acessar conta
