@@ -9,7 +9,7 @@ interface NavbarProps {
 export const Navbar = ({ logado = false }: NavbarProps) => {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
-  const [menuAberto, setMenuAberto] = useState(false); // ⬅️ Controla o menu no celular
+  const [menuAberto, setMenuAberto] = useState(false);
 
   const handleLogout = async () => {
     await logout();
@@ -22,31 +22,29 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
     <nav className="fixed top-0 left-0 right-0 z-50 bg-neutral-950/95 backdrop-blur border-b border-neutral-900">
       {/* Container Principal */}
       <div className="flex justify-between items-center px-6 md:px-16 py-4 md:py-6">
-        <Link to="/" onClick={fecharMenu} className="font-black text-xl tracking-tight text-white">
+        <Link to={logado ? "/dashboard" : "/"} onClick={fecharMenu} className="font-black text-xl tracking-tight text-white">
           Notifica<span className="text-emerald-400">.ai</span>
         </Link>
 
-        {/* 🍔 Ícone do Menu Hambúrguer (Aparece só no Celular) */}
+        {/* Ícone do Menu Hambúrguer — só no celular */}
         <button
           onClick={() => setMenuAberto(!menuAberto)}
           className="md:hidden text-white focus:outline-none"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {menuAberto ? (
-              // Ícone de "X" (Fechar)
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             ) : (
-              // Ícone de Hambúrguer (Abrir)
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
             )}
           </svg>
         </button>
 
-        {/* 💻 Menu Desktop (Escondido no Celular, aparece de Tablet para cima) */}
+        {/* Menu Desktop */}
         <div className="hidden md:flex items-center gap-8">
           {logado ? (
             <>
-              <span className="font-mono text-xs text-neutral-500 tracking-wide">
+              <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-[200px]">
                 {usuario?.email}
               </span>
               <button
@@ -72,7 +70,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
         </div>
       </div>
 
-      {/* 📱 Menu Mobile (Desce quando clica no hambúrguer) */}
+      {/* Menu Mobile */}
       {menuAberto && (
         <div className="md:hidden absolute top-full left-0 w-full bg-neutral-950/95 backdrop-blur-md border-b border-neutral-900 p-6 flex flex-col gap-6 shadow-2xl">
           {logado ? (
@@ -81,10 +79,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
                 {usuario?.email}
               </span>
               <button
-                onClick={() => {
-                  fecharMenu();
-                  handleLogout();
-                }}
+                onClick={() => { fecharMenu(); handleLogout(); }}
                 className="w-full text-left font-mono text-xs text-red-400 tracking-wide py-2"
               >
                 Sair da conta →

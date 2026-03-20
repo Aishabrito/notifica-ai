@@ -1,13 +1,24 @@
-const express = require('express');
-const jwt = require('jsonwebtoken');
-const Usuario = require('../models/Usuario'); // Verifique se o nome do arquivo é Usuario.js
+const express    = require('express');
+const jwt        = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
+const Usuario    = require('../models/Usuario');
+const { emailBoasVindas } = require('../utils/emailBoasVindas');
+
 const router = express.Router();
+
+const transportador = nodemailer.createTransport({
+  service: 'gmail',
+  auth: {
+    user: process.env.EMAIL_REMETENTE,
+    pass: process.env.SENHA_APP,
+  },
+});
 
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+  maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
 const gerarToken = (id) =>
@@ -27,7 +38,15 @@ router.post('/cadastro', async (req, res) => {
       return res.status(409).json({ sucesso: false, mensagem: 'E-mail já cadastrado.' });
 
     const usuario = await Usuario.create({ nome, email, senha });
-    const token = gerarToken(usuario._id);
+    const token   = gerarToken(usuario._id);
+
+    // E-mail de boas-vindas em HTML (dispara sem bloquear a resposta)
+    transportador.sendMail({
+      from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+      to: email,
+      subject: '🎉 Bem-vinda ao Notifica.ai!',
+      html: emailBoasVindas(nome),
+    }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 
     res.cookie('token', token, COOKIE_OPTS);
     console.log('✅ Usuário cadastrado com sucesso!');
@@ -60,8 +79,15 @@ router.post('/login', async (req, res) => {
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
     });
   } catch (err) {
+    console.error('❌ ERRO NO LOGIN:', err);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao entrar.' });
   }
+});
+
+// ─── LOGOUT ────────────────────────────────────────
+router.post('/logout', (_req, res) => {
+  res.clearCookie('token', COOKIE_OPTS);
+  res.json({ sucesso: true });
 });
 
 // ─── ME (VERIFICAR SESSÃO) ──────────────────────────
@@ -72,6 +98,8 @@ router.get('/me', async (req, res) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const usuario = await Usuario.findById(decoded.id).select('-senha');
+    if (!usuario) return res.status(401).json({ sucesso: false });
+
     res.json({ sucesso: true, usuario });
   } catch {
     res.status(401).json({ sucesso: false });
