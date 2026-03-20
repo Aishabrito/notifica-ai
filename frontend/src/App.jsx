@@ -4,37 +4,30 @@ import Login        from './pages/Login';
 import Cadastro     from './pages/Cadastro';
 import ComoFunciona from './pages/ComoFunciona';
 import LandingPage  from './pages/LandingPage';
-import { AuthProvider }  from './contexts/AuthContext';
-import { PrivateRoute }  from './components/private-route';
+import Termos       from './pages/Termos';
+import Privacidade  from './pages/Privacidade';
+import NotFound     from './pages/NotFound';
+import { AuthProvider } from './contexts/AuthContext';
+import { PrivateRoute } from './components/private-route';
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-[#0a0a0a] selection:bg-emerald-400 selection:text-black font-sans">
+        <div className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white font-sans">
           <Routes>
-            {/* Rotas Públicas  */}
             <Route path="/"              element={<LandingPage />} />
             <Route path="/como-funciona" element={<ComoFunciona />} />
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />
-            
-            {/* 🔒 Rota Privada (Painel Operacional Fechado) */}
-            <Route 
-              path="/dashboard" 
-              element={
-                <PrivateRoute>
-                  <Home />
-                </PrivateRoute>
-              } 
-            />
-
-            {/* 404 - Página não encontrada */}
-            <Route path="*" element={
-              <div className="flex items-center justify-center h-screen text-white font-mono text-sm uppercase tracking-widest">
-                404 | Página não encontrada
-              </div>
+            <Route path="/termos"        element={<Termos />} />
+            <Route path="/privacidade"   element={<Privacidade />} />
+            <Route path="/dashboard" element={
+              <PrivateRoute>
+                <Home />
+              </PrivateRoute>
             } />
+            <Route path="*" element={<NotFound />} />
           </Routes>
         </div>
       </Router>

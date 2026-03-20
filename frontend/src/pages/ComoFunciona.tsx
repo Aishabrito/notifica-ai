@@ -52,7 +52,7 @@ export default function ComoFunciona() {
       style={{ cursor: "none" }}
     >
       {/* Ruído */}
-      <div className="fixed inset-0 pointer-events-none z-[1000] opacity-[0.35]"
+      <div className="fixed inset-0 pointer-events-none z-1000 opacity-[0.35]"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E")` }}
       />
       <CustomCursor />
@@ -60,7 +60,7 @@ export default function ComoFunciona() {
 
       {/* HERO */}
       <section
-        className="pt-32 md:pt-40 pb-16 md:pb-24 px-6 md:px-16 border-b border-white/[0.05] relative overflow-hidden"
+        className="pt-32 md:pt-40 pb-16 md:pb-24 px-6 md:px-16 border-b border-white/5 relative overflow-hidden"
         style={{ background: 'radial-gradient(ellipse 70% 60% at 70% 40%, rgba(108,52,131,0.14) 0%, transparent 70%), #0a0a0a' }}
       >
         <Reveal>
@@ -186,7 +186,7 @@ export default function ComoFunciona() {
 
       {/* CTA */}
       <section
-        className="px-6 md:px-16 py-20 md:py-32 text-center relative overflow-hidden border-t border-white/[0.05]"
+        className="px-6 md:px-16 py-20 md:py-32 text-center relative overflow-hidden border-t border-white/5"
         style={{ background: 'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a' }}
       >
         <Reveal>
