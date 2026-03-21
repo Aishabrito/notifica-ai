@@ -54,19 +54,34 @@ export default function Home() {
     }
   };
 
-  useEffect(() => { carregarAlertas(); }, [usuario, emailManual]);
+  useEffect(() => {
+    fetch(`${API}/teste`).catch(() => {});
+    carregarAlertas();
+  }, [usuario, emailManual]);
+
+  useEffect(() => {
+    const onFocus = () => carregarAlertas();
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+  }, [usuario, emailManual]);
 
   const handleCadastrar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (ativos >= LIMITE) return;
     setStatusMsg({ tipo: "loading", texto: "Iniciando monitoramento..." });
 
+  
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 20000);
+
     try {
       const r = await fetch(`${API}/api/cadastrar-alerta`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url, email: emailAtivo }),
+        signal: controller.signal,
       });
+      clearTimeout(timeout);
       const d = await r.json();
       if (d.sucesso) {
         setUrl("");
@@ -76,7 +91,14 @@ export default function Home() {
         throw new Error(d.mensagem);
       }
     } catch (err: unknown) {
-      setStatusMsg({ tipo: "erro", texto: err instanceof Error ? err.message : "Erro de conexão." });
+      clearTimeout(timeout);
+      const isTimeout = err instanceof Error && err.name === "AbortError";
+      setStatusMsg({
+        tipo: "erro",
+        texto: isTimeout
+          ? "Servidor demorou demais. Tente novamente em instantes."
+          : err instanceof Error ? err.message : "Erro de conexão.",
+      });
     }
   };
 
