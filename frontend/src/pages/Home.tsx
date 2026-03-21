@@ -28,21 +28,22 @@ const StatusDot = ({ status }: { status: "ativo" | "pausado" }) => (
 export default function Home() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
-  const [alertas, setAlertas]       = useState<Alerta[]>([]);
-  const [carregando, setCarregando] = useState(true);
-  const [url, setUrl]               = useState("");
+  const [alertas, setAlertas]         = useState<Alerta[]>([]);
+  const [carregando, setCarregando]   = useState(true);
+  const [url, setUrl]                 = useState("");
   const [emailManual, setEmailManual] = useState("");
-  const [statusMsg, setStatusMsg]   = useState({ tipo: "", texto: "" });
+  const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
 
   const emailAtivo = usuario?.email || emailManual;
 
-  const carregarAlertas = async () => {
+  const carregarAlertas = async (emailParam?: string) => {
+    const emailFiltro = emailParam ?? emailAtivo;
     try {
       const r = await fetch(`${API}/api/alertas`);
       const d = await r.json();
       if (d.sucesso) {
-        setAlertas(emailAtivo
-          ? d.alertas.filter((a: Alerta) => a.email === emailAtivo)
+        setAlertas(emailFiltro
+          ? d.alertas.filter((a: Alerta) => a.email === emailFiltro)
           : []
         );
       }
@@ -68,9 +69,9 @@ export default function Home() {
       });
       const d = await r.json();
       if (d.sucesso) {
-        setStatusMsg({ tipo: "sucesso", texto: `Monitorando: ${d.titulo}` });
         setUrl("");
-        carregarAlertas();
+        await carregarAlertas(emailAtivo);
+        setStatusMsg({ tipo: "sucesso", texto: `Monitorando: ${d.titulo}` });
       } else {
         throw new Error(d.mensagem);
       }
@@ -80,7 +81,7 @@ export default function Home() {
   };
 
   const handleCancelar = async (id: string) => {
-    await fetch(`${API}/api/cancelar-alerta/${id}`);
+    await fetch(`${API}/api/cancelar-alerta/${id}`, { method: "DELETE" });
     setAlertas((prev) => prev.filter((a) => a._id !== id));
   };
 
