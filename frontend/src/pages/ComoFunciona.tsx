@@ -106,36 +106,64 @@ export default function ComoFunciona() {
         </div>
       </section>
 
-      {/* 3 PASSOS */}
-      <section
-        className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05]"
-        style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a' }}
-      >
-        <Reveal>
-          <Label>// em três passos</Label>
-          <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-10 md:mb-14">Simples assim.</h2>
-        </Reveal>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-purple-900/10 rounded-xl overflow-hidden border border-purple-500/10">
-          {[
-            { n: "01", title: "Você cola o link",        desc: "Encontrou a página? Cola o link e coloca seu e-mail. É o único trabalho que você tem." },
-            { n: "02", title: "A gente monitora",        desc: "Nosso sistema checa de 6 em 6 horas — madrugada, manhã, tarde e noite. Todo dia, inclusive feriados." },
-            { n: "03", title: "Mudou? E-mail na hora.",  desc: "Qualquer atualização e você recebe um e-mail imediatamente com o link direto. Sem spam." },
-          ].map((s, i) => (
-            <Reveal key={s.n} delay={i * 0.1}>
-              <div
-                className="p-8 md:p-12 group relative overflow-hidden h-full"
-                style={{ background: 'linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(108,52,131,0.01) 100%)' }}
-              >
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/15 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="text-6xl md:text-7xl font-black text-purple-950/30 leading-none mb-4 md:mb-6 group-hover:text-purple-500/10 transition-colors">{s.n}</div>
-                <div className="text-base md:text-lg font-bold tracking-tight mb-2 md:mb-3 group-hover:text-emerald-400 transition-colors">{s.title}</div>
-                <div className="text-sm text-neutral-500 leading-relaxed">{s.desc}</div>
-              </div>
-            </Reveal>
-          ))}
+{/* 3 PASSOS */}
+<section
+  className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05]"
+  style={{
+    background:
+      "radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a",
+  }}
+>
+  <Reveal>
+    <Label>// em três passos</Label>
+    <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-10 md:mb-14">
+      Simples assim.
+    </h2>
+  </Reveal>
+
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-purple-900/15 rounded-xl overflow-hidden border border-purple-600/20">
+    {[
+      {
+        n: "01",
+        title: "Você cola o link",
+        desc: "Encontrou a página? Cola o link e coloca seu e-mail. É o único trabalho que você tem.",
+      },
+      {
+        n: "02",
+        title: "A gente monitora",
+        desc: "Nosso sistema checa de 6 em 6 horas — madrugada, manhã, tarde e noite. Todo dia, inclusive feriados.",
+      },
+      {
+        n: "03",
+        title: "Mudou? E-mail na hora.",
+        desc: "Qualquer atualização e você recebe um e-mail imediatamente com o link direto. Sem spam.",
+      },
+    ].map((s, i) => (
+      <Reveal key={s.n} delay={i * 0.1}>
+        <div className="p-8 md:p-12 group relative overflow-hidden h-full transition-colors duration-300 hover:bg-purple-900/25">
+          {/* Linha de destaque no hover */}
+          <div className="absolute bottom-0 left-0 right-0 h-1 bg-emerald-400 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
+
+          {/* Glow discreto */}
+          <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-700/15 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+
+          {/* Número */}
+          <div className="text-6xl md:text-7xl font-black text-purple-400/70 leading-none mb-4 md:mb-6 group-hover:text-purple-300 transition-colors">
+            {s.n}
+          </div>
+
+          {/* Título */}
+          <div className="text-base md:text-lg font-bold tracking-tight mb-2 md:mb-3 text-neutral-200 group-hover:text-emerald-400 transition-colors">
+            {s.title}
+          </div>
+
+          {/* Descrição */}
+          <div className="text-sm text-zinc-400 leading-relaxed">{s.desc}</div>
         </div>
-      </section>
+      </Reveal>
+    ))}
+  </div>
+</section>
 
       {/* NA PRÁTICA */}
       <section className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05] relative overflow-hidden">

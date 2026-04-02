@@ -172,39 +172,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 3 PASSOS */}
-      <section
-        className="py-20 md:py-32 px-6 md:px-20 border-t border-white/[0.05]"
-        style={{ background: 'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a' }}
-      >
-        <div className="max-w-5xl mx-auto">
-          <div className="text-center mb-10 md:mb-14 reveal">
-            <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4">// em três passos</span>
-            <h2 className="font-display font-extrabold text-4xl md:text-6xl tracking-tighter leading-none">
-              Simples assim.
-            </h2>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-px bg-purple-900/10 rounded-xl overflow-hidden border border-purple-500/10">
-            {[
-              { n: "01", title: "Você cola o link",       desc: "Cola o link e seu e-mail. É o único trabalho que você tem." },
-              { n: "02", title: "A gente monitora",       desc: "Checamos de 6 em 6 horas — manhã, tarde, noite e madrugada." },
-              { n: "03", title: "Mudou? E-mail na hora.", desc: "Qualquer atualização e você recebe um e-mail imediatamente." },
-            ].map((s, i) => (
-              <div
-                key={s.n}
-                className="p-8 md:p-10 group relative overflow-hidden reveal"
-                style={{ transitionDelay: `${i * 0.1}s`, background: 'linear-gradient(145deg, rgba(255,255,255,0.02) 0%, rgba(108,52,131,0.01) 100%)' }}
-              >
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-purple-500 scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left" />
-                <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-500/15 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-                <div className="text-5xl md:text-6xl font-black text-purple-950/30 leading-none mb-4 md:mb-6 font-display group-hover:text-purple-500/10 transition-colors">{s.n}</div>
-                <div className="font-display font-bold text-base md:text-lg mb-2 group-hover:text-emerald-400 transition-colors">{s.title}</div>
-                <div className="text-sm text-neutral-500 font-light leading-relaxed">{s.desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
 
       {/* CTA */}
       <section
