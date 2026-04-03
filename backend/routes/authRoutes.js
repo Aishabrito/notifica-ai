@@ -1,24 +1,16 @@
 const express    = require('express');
 const jwt        = require('jsonwebtoken');
-const nodemailer = require('nodemailer');
 const Usuario    = require('../models/Usuario');
+const transportador = require('../utils/mailer');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
 
 const router = express.Router();
-
-const transportador = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_REMETENTE,
-    pass: process.env.SENHA_APP,
-  },
-});
 
 const COOKIE_OPTS = {
   httpOnly: true,
   secure: process.env.NODE_ENV === 'production',
   sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
 };
 
 const gerarToken = (id) =>
@@ -26,7 +18,7 @@ const gerarToken = (id) =>
 
 // ─── CADASTRO ──────────────────────────────────────
 router.post('/cadastro', async (req, res) => {
-  console.log('📬 Recebi tentativa de cadastro:', req.body.email);
+  console.log('📬 Tentativa de cadastro:', req.body.email);
   try {
     const { nome, email, senha } = req.body;
 
@@ -40,16 +32,16 @@ router.post('/cadastro', async (req, res) => {
     const usuario = await Usuario.create({ nome, email, senha });
     const token   = gerarToken(usuario._id);
 
-    // E-mail de boas-vindas em HTML (dispara sem bloquear a resposta)
+    // E-mail de boas-vindas (dispara sem bloquear a resposta)
     transportador.sendMail({
-      from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+      from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
       subject: '🎉 Bem-vinda ao Notifica.ai!',
       html: emailBoasVindas(nome),
     }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 
     res.cookie('token', token, COOKIE_OPTS);
-    console.log('✅ Usuário cadastrado com sucesso!');
+    console.log('✅ Usuário cadastrado:', email);
 
     res.status(201).json({
       sucesso: true,
@@ -66,14 +58,17 @@ router.post('/login', async (req, res) => {
   console.log('🔑 Tentativa de login:', req.body.email);
   try {
     const { email, senha } = req.body;
-    const usuario = await Usuario.findOne({ email });
 
-    if (!usuario || !(await usuario.verificarSenha(senha))) {
+    if (!email || !senha)
+      return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
+
+    const usuario = await Usuario.findOne({ email });
+    if (!usuario || !(await usuario.verificarSenha(senha)))
       return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
-    }
 
     const token = gerarToken(usuario._id);
     res.cookie('token', token, COOKIE_OPTS);
+
     res.json({
       sucesso: true,
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },

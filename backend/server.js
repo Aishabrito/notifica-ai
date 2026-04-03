@@ -1,18 +1,20 @@
 require('dotenv').config();
 
-const express      = require('express');
-const cors         = require('cors');
-const axios        = require('axios');
-const cheerio      = require('cheerio');
-const nodemailer   = require('nodemailer');
-const mongoose     = require('mongoose');
-const cookieParser = require('cookie-parser'); 
-const cron         = require('node-cron');
-const crypto       = require('crypto');
+const express       = require('express');
+const cors          = require('cors');
+const axios         = require('axios');
+const cheerio       = require('cheerio');
+const mongoose      = require('mongoose');
+const cookieParser  = require('cookie-parser');
+const cron          = require('node-cron');
+const crypto        = require('crypto');
 
-// Importação das rotas e serviços da nova pasta /src
-const authRoutes = require('./src/routes/authRoutes');
+const transportador             = require('./src/utils/mailer');
+const authRoutes                = require('./src/routes/authRoutes');
+const { autenticar }            = require('./src/middleware/auth');
 const { executarMonitoramento } = require('./src/service/crawler');
+const Alerta                    = require('./src/models/alertaModel');
+const adminRoutes               = require('./src/routes/adminRoutes'); 
 
 const app = express();
 
@@ -20,11 +22,10 @@ const app = express();
 // ⚙️ MIDDLEWARES
 // ============================================
 app.use(express.json());
-app.use(cookieParser()); 
-
+app.use(cookieParser());
 app.use(cors({
-  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'], 
-  credentials: true, 
+  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'],
+  credentials: true,
 }));
 
 // ============================================
@@ -38,21 +39,7 @@ mongoose.connect(process.env.MONGODB_URI)
   .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
 
 // ============================================
-// 📋 MODELOS (Schema)
-// ============================================
-const alertaSchema = new mongoose.Schema({
-  url:           { type: String, required: true },
-  email:         { type: String, required: true },
-  titulo:        { type: String },
-  hashConteudo:  { type: String },
-  status:        { type: String, default: 'ativo' },
-  criadoEm:      { type: Date, default: Date.now },
-});
-
-const Alerta = mongoose.models.Alerta || mongoose.model('Alerta', alertaSchema);
-
-// ============================================
-// 🤖 FUNÇÃO DE INICIALIZAÇÃO
+// 🤖 INICIALIZAÇÃO DO VIGIA
 // ============================================
 async function inicializarVigia() {
   try {
@@ -65,17 +52,6 @@ async function inicializarVigia() {
     console.error('❌ Erro na inicialização do vigia:', err.message);
   }
 }
-
-// ============================================
-// 📬 CONFIGURAÇÃO DE E-MAIL
-// ============================================
-const transportador = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_REMETENTE,
-    pass: process.env.SENHA_APP,
-  },
-});
 
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
@@ -95,10 +71,19 @@ function extrairConteudoLimpo(html) {
 // ============================================
 app.use('/api/auth', authRoutes);
 
+// 👑 ROTA DO PAINEL ADM ADICIONADA AQUI!
+app.use('/api/admin', adminRoutes);
+
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
-app.post('/api/cadastrar-alerta', async (req, res) => {
-  const { url, email } = req.body;
+// Cadastrar alerta (protegido)
+app.post('/api/cadastrar-alerta', autenticar, async (req, res) => {
+  const { url } = req.body;
+  const email   = req.usuario.email;
+
+  if (!url)
+    return res.status(400).json({ sucesso: false, mensagem: 'URL é obrigatória.' });
+
   try {
     const resposta = await axios.get(url, {
       headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
@@ -106,52 +91,85 @@ app.post('/api/cadastrar-alerta', async (req, res) => {
     });
 
     const conteudoLimpo = extrairConteudoLimpo(resposta.data);
-    const hashInicial = gerarHash(conteudoLimpo);
-    const $ = cheerio.load(resposta.data);
-    const tituloDoSite = $('title').text().trim() || url;
+    const hashInicial   = gerarHash(conteudoLimpo);
+    const $             = cheerio.load(resposta.data);
+    const tituloDoSite  = $('title').text().trim() || url;
 
-    const novoAlerta = await Alerta.create({ 
-      url, 
-      email, 
+    const novoAlerta = await Alerta.create({
+      url,
+      email,
       titulo: tituloDoSite,
-      hashConteudo: hashInicial 
+      hashConteudo: hashInicial,
+      usuario: req.usuario._id,
     });
 
-    const urlCancelamento = `${process.env.BASE_URL || 'https://notifica-ai.onrender.com'}/api/cancelar-alerta/${novoAlerta._id}`;
+    const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${novoAlerta._id}`;
 
     await transportador.sendMail({
-      from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+      from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
       subject: '🚀 Monitoramento Iniciado — Notifica.ai',
-      text: `Olá!\n\nSeu alerta para "${tituloDoSite}" foi criado.\n\nLink: ${url}\n\nPara cancelar: ${urlCancelamento}`,
+      html: `
+        <h2>Monitoramento ativado!</h2>
+        <p>Seu alerta para <b>${tituloDoSite}</b> foi criado com sucesso.</p>
+        <p><b>URL monitorada:</b> <a href="${url}">${url}</a></p>
+        <p>Você receberá um e-mail assim que detectarmos uma mudança.</p>
+        <hr>
+        <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
+      `,
     });
 
     res.json({ sucesso: true, titulo: tituloDoSite, id: novoAlerta._id });
   } catch (err) {
+    console.error('❌ Erro ao cadastrar alerta:', err.message);
     res.status(400).json({ sucesso: false, mensagem: 'Não foi possível acessar o site.' });
   }
 });
 
-app.get('/api/alertas', async (_req, res) => {
+// Listar alertas do usuário logado (protegido)
+app.get('/api/alertas', autenticar, async (req, res) => {
   try {
-    const alertas = await Alerta.find().sort({ criadoEm: -1 });
+    const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
     res.json({ sucesso: true, alertas });
   } catch (err) {
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
 });
 
-app.delete('/api/cancelar-alerta/:id', async (req, res) => {
+// Cancelar alerta (protegido — só o dono pode cancelar)
+app.delete('/api/cancelar-alerta/:id', autenticar, async (req, res) => {
   try {
-    await Alerta.findByIdAndDelete(req.params.id);
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+    if (!alerta)
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+
+    await alerta.deleteOne();
     res.json({ sucesso: true, mensagem: 'Alerta removido!' });
   } catch (err) {
     res.status(400).json({ sucesso: false, mensagem: 'Erro ao remover.' });
   }
 });
 
+// Reativar alerta pausado (protegido)
+app.patch('/api/reativar-alerta/:id', autenticar, async (req, res) => {
+  try {
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+    if (!alerta)
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+
+    alerta.status         = 'ativo';
+    alerta.falhasSeguidas = 0;
+    alerta.ultimoErro     = null;
+    await alerta.save();
+
+    res.json({ sucesso: true, mensagem: 'Alerta reativado!' });
+  } catch (err) {
+    res.status(400).json({ sucesso: false, mensagem: 'Erro ao reativar.' });
+  }
+});
+
 // ============================================
-// 🤖 O VIGIA (Cron Job)
+// 🤖 CRON JOB — roda a cada hora
 // ============================================
 cron.schedule('0 * * * *', async () => {
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
