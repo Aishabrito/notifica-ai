@@ -113,9 +113,10 @@ async function verificarAlerta(alerta) {
     if (alerta.falhasSeguidas > 0) {
       alerta.falhasSeguidas = 0;
       alerta.ultimoErro     = null;
-      await alerta.save();
       console.log(`[Crawler] ✅ ${alerta.url} — contador de falhas resetado`);
     }
+    alerta.ultimaVerificacao = new Date();
+    await alerta.save();
 
     // Verifica se houve mudança de conteúdo
     if (alerta.hashConteudo && alerta.hashConteudo !== hashAtual) {
@@ -125,22 +126,27 @@ async function verificarAlerta(alerta) {
       alerta.hashConteudo = hashAtual;
       await alerta.save();
 
-      // Salva registro no histórico de mudanças
-      try {
-        await Mudanca.create({
-          alertaId:     alerta._id,
-          hashAnterior,
-          hashNovo:     hashAtual,
-        });
-      } catch (erroMudanca) {
-        console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
-      }
-
+      // Tenta enviar o e-mail e registra se foi enviado com sucesso
+      let emailEnviado = false;
       try {
         await enviarEmailMudanca(alerta);
+        emailEnviado = true;
         console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+      }
+
+      // Salva registro no histórico de mudanças
+      try {
+        await Mudanca.create({
+          alertaId:        alerta._id,
+          hashAnterior,
+          hashNovo:        hashAtual,
+          emailNotificado: alerta.email,
+          emailEnviado,
+        });
+      } catch (erroMudanca) {
+        console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
       }
 
       return 'mudanca';
