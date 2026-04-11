@@ -9,7 +9,8 @@ const alertaSchema = new mongoose.Schema({
   status:         { type: String, enum: ['ativo', 'pausado', 'inativo'], default: 'ativo' },
   falhasSeguidas: { type: Number, default: 0 },
   ultimoErro:     { type: String, default: null },
-  criadoEm:       { type: Date, default: Date.now },
+  criadoEm:          { type: Date, default: Date.now },
+  ultimaVerificacao: { type: Date, default: null },
 });
 
 module.exports = mongoose.models.Alerta || mongoose.model('Alerta', alertaSchema);
