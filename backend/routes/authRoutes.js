@@ -1,6 +1,7 @@
-const express    = require('express');
-const jwt        = require('jsonwebtoken');
-const Usuario    = require('../models/Usuario');
+// src/routes/authRoutes.js
+const express       = require('express');
+const jwt           = require('jsonwebtoken');
+const Usuario       = require('../models/usuarioModel');
 const transportador = require('../utils/mailer');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
 
@@ -16,7 +17,7 @@ const COOKIE_OPTS = {
 const gerarToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-// ─── CADASTRO ──────────────────────────────────────
+// ─── CADASTRO ──────────────────────────────────────────────────────────────────
 router.post('/cadastro', async (req, res) => {
   console.log('📬 Tentativa de cadastro:', req.body.email);
   try {
@@ -32,7 +33,6 @@ router.post('/cadastro', async (req, res) => {
     const usuario = await Usuario.create({ nome, email, senha });
     const token   = gerarToken(usuario._id);
 
-    // E-mail de boas-vindas (dispara sem bloquear a resposta)
     transportador.sendMail({
       from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
@@ -45,7 +45,13 @@ router.post('/cadastro', async (req, res) => {
 
     res.status(201).json({
       sucesso: true,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
+      usuario: {
+        id:    usuario._id,
+        nome:  usuario.nome,
+        email: usuario.email,
+        plano: usuario.plano,
+        role:  usuario.role ?? 'user', // ← adicionado
+      },
     });
   } catch (err) {
     console.error('❌ ERRO NO CADASTRO:', err);
@@ -53,7 +59,7 @@ router.post('/cadastro', async (req, res) => {
   }
 });
 
-// ─── LOGIN ─────────────────────────────────────────
+// ─── LOGIN ─────────────────────────────────────────────────────────────────────
 router.post('/login', async (req, res) => {
   console.log('🔑 Tentativa de login:', req.body.email);
   try {
@@ -71,7 +77,13 @@ router.post('/login', async (req, res) => {
 
     res.json({
       sucesso: true,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
+      usuario: {
+        id:    usuario._id,
+        nome:  usuario.nome,
+        email: usuario.email,
+        plano: usuario.plano,
+        role:  usuario.role ?? 'user', // ← adicionado
+      },
     });
   } catch (err) {
     console.error('❌ ERRO NO LOGIN:', err);
@@ -79,13 +91,13 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// ─── LOGOUT ────────────────────────────────────────
+// ─── LOGOUT ────────────────────────────────────────────────────────────────────
 router.post('/logout', (_req, res) => {
   res.clearCookie('token', COOKIE_OPTS);
   res.json({ sucesso: true });
 });
 
-// ─── ME (VERIFICAR SESSÃO) ──────────────────────────
+// ─── ME (VERIFICAR SESSÃO) ─────────────────────────────────────────────────────
 router.get('/me', async (req, res) => {
   try {
     const token = req.cookies?.token;
@@ -95,6 +107,7 @@ router.get('/me', async (req, res) => {
     const usuario = await Usuario.findById(decoded.id).select('-senha');
     if (!usuario) return res.status(401).json({ sucesso: false });
 
+    // Retorna o objeto completo do mongoose — já inclui role
     res.json({ sucesso: true, usuario });
   } catch {
     res.status(401).json({ sucesso: false });

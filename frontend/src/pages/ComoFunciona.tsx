@@ -81,7 +81,7 @@ export default function ComoFunciona() {
       </section>
 
       {/* PARA QUEM É */}
-      <section className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05]">
+      <section className="px-6 md:px-16 py-16 md:py-24 border-b border-white/5">
         <Reveal>
           <Label>// para quem é</Label>
           <h2 className="text-4xl md:text-5xl font-black tracking-tighter mb-10 md:mb-14 leading-tight">Qualquer site.<br />Qualquer mudança.</h2>
@@ -108,7 +108,7 @@ export default function ComoFunciona() {
 
 {/* 3 PASSOS */}
 <section
-  className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05]"
+  className="px-6 md:px-16 py-16 md:py-24 border-b border-white/5"
   style={{
     background:
       "radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a",
@@ -166,9 +166,9 @@ export default function ComoFunciona() {
 </section>
 
       {/* NA PRÁTICA */}
-      <section className="px-6 md:px-16 py-16 md:py-24 border-b border-white/[0.05] relative overflow-hidden">
+      <section className="px-6 md:px-16 py-16 md:py-24 border-b border-white/5 relative overflow-hidden">
         {/* Escondi a bola de blur no mobile porque pode vazar da tela, volta no desktop */}
-        <div className="hidden md:block absolute top-1/2 -translate-y-1/2 left-0 w-[400px] h-[400px] rounded-full blur-[100px] pointer-events-none bg-purple-900/15" />
+        <div className="hidden md:block absolute top-1/2 -translate-y-1/2 left-0 w-100 h-100 rounded-full blur-[100px] pointer-events-none bg-purple-900/15" />
         
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 lg:gap-24 items-center max-w-6xl mx-auto">
           <Reveal>

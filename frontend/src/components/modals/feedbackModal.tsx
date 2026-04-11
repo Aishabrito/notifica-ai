@@ -1,7 +1,5 @@
-// src/components/FeedbackModal.tsx
 import { useState } from "react";
-import { useAuth } from "../contexts/AuthContext";
-
+import { useAuth } from "../../contexts/AuthContext";
 const API = "https://notifica-ai.onrender.com";
 
 type Status = "idle" | "loading" | "success" | "error";
