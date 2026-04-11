@@ -1,3 +1,5 @@
+// src/App.tsx
+
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Home         from './pages/Home';
 import Login        from './pages/Login';
@@ -9,6 +11,10 @@ import Privacidade  from './pages/Privacidade';
 import NotFound     from './pages/NotFound';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/private-route';
+
+// ✅ Novos imports
+import AdminRoute     from './components/AdminRoute';
+import AdminDashboard from './pages/AdminDashboard';
 
 export default function App() {
   return (
@@ -27,6 +33,14 @@ export default function App() {
                 <Home />
               </PrivateRoute>
             } />
+
+            {/* ✅ Rota admin — só acessível para role === 'admin' */}
+            <Route path="/admin" element={
+              <AdminRoute>
+                <AdminDashboard />
+              </AdminRoute>
+            } />
+
             <Route path="*" element={<NotFound />} />
           </Routes>
         </div>

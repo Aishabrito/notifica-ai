@@ -1,30 +1,14 @@
-const axios        = require('axios');
-const cheerio      = require('cheerio');
-const crypto       = require('crypto');
-const mongoose     = require('mongoose');
+const axios         = require('axios');
+const cheerio       = require('cheerio');
+const crypto        = require('crypto');
 const transportador = require('../utils/mailer');
+const Alerta        =require('../models/alertaModel')
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
 // ============================================
 const LIMITE_FALHAS = 3;
 const EMAIL_ADM     = process.env.EMAIL_REMETENTE; // contato.notificaai@gmail.com
-
-// ============================================
-// 📋 MODEL (reutiliza se já existir)
-// ============================================
-const alertaSchema = new mongoose.Schema({
-  url:            { type: String, required: true },
-  email:          { type: String, required: true },
-  titulo:         { type: String },
-  hashConteudo:   { type: String },
-  status:         { type: String, enum: ['ativo', 'pausado', 'inativo'], default: 'ativo' },
-  criadoEm:       { type: Date, default: Date.now },
-  falhasSeguidas: { type: Number, default: 0 },
-  ultimoErro:     { type: String, default: null },
-});
-
-const Alerta = mongoose.models.Alerta || mongoose.model('Alerta', alertaSchema);
 
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
