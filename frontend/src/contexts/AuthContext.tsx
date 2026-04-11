@@ -7,6 +7,7 @@ interface Usuario {
   nome: string;
   email: string;
   plano: "gratuito" | "premium";
+  role: "user" | "admin";
 }
 
 interface AuthContextType {
@@ -17,7 +18,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | null>(null);
+export const AuthContext = createContext<AuthContextType | null>(null);
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);

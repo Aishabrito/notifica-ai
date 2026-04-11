@@ -11,9 +11,10 @@ const crypto        = require('crypto');
 
 const transportador             = require('./src/utils/mailer');
 const authRoutes                = require('./src/routes/authRoutes');
-const { autenticar }            = require('./src/middleware/auth');
+const { autenticar }            = require('./src/middleware/authMiddleware');
 const { executarMonitoramento } = require('./src/service/crawler');
 const Alerta                    = require('./src/models/alertaModel');
+const LogCron                   = require('./src/models/LogCron');
 const adminRoutes               = require('./src/routes/adminRoutes'); 
 
 const app = express();
@@ -172,9 +173,23 @@ app.patch('/api/reativar-alerta/:id', autenticar, async (req, res) => {
 // 🤖 CRON JOB — roda a cada hora
 // ============================================
 cron.schedule('0 * * * *', async () => {
+  const inicio = Date.now();
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
   const alertas = await Alerta.find({ status: 'ativo' });
-  await executarMonitoramento(alertas);
+  const metricas = await executarMonitoramento(alertas);
+  const tempoDuracao = Date.now() - inicio;
+
+  try {
+    await LogCron.create({
+      alertasVerificados: metricas.alertasVerificados,
+      alertasComMudanca:  metricas.alertasComMudanca,
+      alertasComErro:     metricas.alertasComErro,
+      tempoDuracao,
+    });
+  } catch (errLog) {
+    console.error('❌ Erro ao salvar log do cron:', errLog.message);
+  }
+
   console.log('🤖 Vigia: Verificação concluída.');
 });
 

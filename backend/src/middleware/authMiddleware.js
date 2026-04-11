@@ -19,4 +19,11 @@ const autenticar = async (req, res, next) => {
   }
 };
 
-module.exports = { autenticar };
+const isAdmin = (req, res, next) => {
+  if (!req.usuario || req.usuario.role !== 'admin') {
+    return res.status(403).json({ sucesso: false, mensagem: 'Acesso restrito a administradores.' });
+  }
+  next();
+};
+
+module.exports = { autenticar, isAdmin };

@@ -2,7 +2,8 @@ const axios         = require('axios');
 const cheerio       = require('cheerio');
 const crypto        = require('crypto');
 const transportador = require('../utils/mailer');
-const Alerta        =require('../models/alertaModel')
+const Alerta        = require('../models/alertaModel');
+const Mudanca       = require('../models/Mudanca');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
@@ -120,8 +121,20 @@ async function verificarAlerta(alerta) {
     if (alerta.hashConteudo && alerta.hashConteudo !== hashAtual) {
       console.log(`[Crawler] 🔔 Mudança detectada em: ${alerta.url}`);
 
+      const hashAnterior  = alerta.hashConteudo;
       alerta.hashConteudo = hashAtual;
       await alerta.save();
+
+      // Salva registro no histórico de mudanças
+      try {
+        await Mudanca.create({
+          alertaId:     alerta._id,
+          hashAnterior,
+          hashNovo:     hashAtual,
+        });
+      } catch (erroMudanca) {
+        console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
+      }
 
       try {
         await enviarEmailMudanca(alerta);
@@ -129,6 +142,8 @@ async function verificarAlerta(alerta) {
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
       }
+
+      return 'mudanca';
 
     } else if (!alerta.hashConteudo) {
       // Primeiro acesso — salva o hash inicial
@@ -138,6 +153,8 @@ async function verificarAlerta(alerta) {
     } else {
       console.log(`[Crawler] ✔️  Sem mudanças em: ${alerta.url}`);
     }
+
+    return 'ok';
 
   } catch (erro) {
     // ❌ FALHA — incrementa contador
@@ -166,6 +183,7 @@ async function verificarAlerta(alerta) {
     }
 
     await alerta.save();
+    return 'erro';
   }
 }
 
@@ -175,17 +193,23 @@ async function verificarAlerta(alerta) {
 async function executarMonitoramento(alertas) {
   if (!alertas || alertas.length === 0) {
     console.log('[Crawler] Nenhum alerta ativo para verificar.');
-    return;
+    return { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
   }
 
   console.log(`[Crawler] Iniciando verificação de ${alertas.length} alerta(s)...`);
 
+  let alertasComMudanca = 0;
+  let alertasComErro    = 0;
+
   for (const alerta of alertas) {
-    await verificarAlerta(alerta);
+    const resultado = await verificarAlerta(alerta);
+    if (resultado === 'mudanca') alertasComMudanca += 1;
+    if (resultado === 'erro')    alertasComErro    += 1;
     await jitter(); // delay aleatório entre 1s e 4s para evitar bloqueios
   }
 
   console.log('[Crawler] ✅ Verificação concluída.');
+  return { alertasVerificados: alertas.length, alertasComMudanca, alertasComErro };
 }
 
 module.exports = { executarMonitoramento };

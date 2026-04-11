@@ -2,24 +2,22 @@
 const express = require('express');
 const router = express.Router();
 
-const Usuario = require('../models/Usuario'); 
-const Alerta = require('../models/Alerta');   
-const Feedback = require('../models/Feedback'); 
+const Usuario = require('../models/Usuario');
+const Alerta  = require('../models/alertaModel');
+const Feedback = require('../models/Feedback');
+const Mudanca  = require('../models/Mudanca');
+const LogCron  = require('../models/LogCron');
 
-// Trocamos o verifyToken pelo seu autenticar!
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 
-// Importando os Middlewares
-const { verifyToken, isAdmin } = require('../middleware/authMiddleware');
-
 // Rota: GET /api/admin/dashboard
-router.get('/dashboard', verifyToken, isAdmin, async (req, res) => {
+router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
-    // Busca todas as métricas ao mesmo tempo para ser mais rápido
-    const [totalUsers, totalAlerts, feedbacks] = await Promise.all([
+    const [totalUsers, totalAlerts, alertasPausados, feedbacks] = await Promise.all([
       Usuario.countDocuments({}),
       Alerta.countDocuments({ status: 'ativo' }),
-      Feedback.find({}).sort({ criadoEm: -1 })
+      Alerta.countDocuments({ status: 'pausado' }),
+      Feedback.find({}).sort({ criadoEm: -1 }),
     ]);
 
     res.json({
@@ -27,12 +25,37 @@ router.get('/dashboard', verifyToken, isAdmin, async (req, res) => {
       dados: {
         totalUsers,
         totalAlerts,
-        feedbacks
-      }
+        alertasPausados,
+        feedbacks,
+      },
     });
   } catch (err) {
     console.error('Erro no Dashboard ADM:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar o painel do administrador.' });
+  }
+});
+
+// Rota: GET /api/admin/cron-logs
+router.get('/cron-logs', autenticar, isAdmin, async (req, res) => {
+  try {
+    const logs = await LogCron.find({}).sort({ dataExecucao: -1 }).limit(50);
+    res.json({ sucesso: true, logs });
+  } catch (err) {
+    console.error('Erro ao buscar cron logs:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar logs do cron.' });
+  }
+});
+
+// Rota: GET /api/admin/historico/:alertaId
+router.get('/historico/:alertaId', autenticar, isAdmin, async (req, res) => {
+  try {
+    const mudancas = await Mudanca.find({ alertaId: req.params.alertaId })
+      .sort({ criadoEm: -1 })
+      .limit(100);
+    res.json({ sucesso: true, mudancas });
+  } catch (err) {
+    console.error('Erro ao buscar histórico:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar histórico de mudanças.' });
   }
 });
 

@@ -6,6 +6,7 @@ const usuarioSchema = new mongoose.Schema({
   email:    { type: String, required: true, unique: true, lowercase: true, trim: true },
   senha:    { type: String, required: true, minlength: 8 },
   plano:    { type: String, enum: ['gratuito', 'premium'], default: 'gratuito' },
+  role:     { type: String, enum: ['user', 'admin'], default: 'user' },
   criadoEm: { type: Date, default: Date.now },
 });
 

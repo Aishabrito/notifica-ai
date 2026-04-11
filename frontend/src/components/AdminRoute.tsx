@@ -1,8 +1,7 @@
 // src/components/AdminRoute.tsx
 
-import { useContext } from "react";
 import { Navigate } from "react-router-dom";
-import { AuthContext } from "../contexts/AuthContext";
+import { useAuth } from "../contexts/AuthContext";
 
 interface AdminRouteProps {
   children: React.ReactNode;
@@ -17,9 +16,17 @@ interface AdminRouteProps {
  *   <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
  */
 export default function AdminRoute({ children }: AdminRouteProps) {
-  const { user } = useContext(AuthContext);
+  const { usuario, carregando } = useAuth();
 
-  if (!user || user.role !== "admin") {
+  if (carregando) {
+    return (
+      <div className="min-h-screen bg-neutral-950 flex items-center justify-center">
+        <div className="w-6 h-6 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
+
+  if (!usuario || usuario.role !== "admin") {
     return <Navigate to="/dashboard" replace />;
   }
 

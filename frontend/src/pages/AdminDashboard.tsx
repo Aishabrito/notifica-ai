@@ -1,5 +1,5 @@
 // src/pages/AdminDashboard.tsx
-import { useContext, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Users,
@@ -12,8 +12,8 @@ import {
   AlertCircle,
   LucideIcon,
 } from "lucide-react";
-import { AuthContext } from "../contexts/AuthContext";
-import api from "../services/api";
+import { useAuth } from "../contexts/AuthContext";
+import api from "../services/Api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -109,7 +109,7 @@ function SkeletonRow() {
 
 export default function AdminDashboard() {
   const navigate         = useNavigate();
-  const { user, logout } = useContext(AuthContext);
+  const { usuario, logout } = useAuth();
 
   const [dados, setDados]         = useState<DashboardDados | null>(null);
   const [loading, setLoading]     = useState<boolean>(true);
@@ -192,9 +192,9 @@ export default function AdminDashboard() {
           <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Painel Administrativo</h1>
           <p className="text-sm text-slate-500 mt-1">
             Visão geral da plataforma em tempo real.
-            {user?.email && (
+            {usuario?.email && (
               <span className="ml-1.5 text-slate-400">
-                Logado como <span className="font-medium text-slate-600">{user.email}</span>
+                Logado como <span className="font-medium text-slate-600">{usuario?.email}</span>
               </span>
             )}
           </p>
