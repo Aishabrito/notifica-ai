@@ -15,7 +15,8 @@ const { autenticar }            = require('./src/middleware/authMiddleware');
 const { executarMonitoramento } = require('./src/service/crawler');
 const Alerta                    = require('./src/models/alertaModel');
 const LogCron                   = require('./src/models/LogCron');
-const adminRoutes               = require('./src/routes/adminRoutes'); 
+const adminRoutes               = require('./src/routes/adminRoutes');
+const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
 
@@ -74,6 +75,9 @@ app.use('/api/auth', authRoutes);
 
 // 👑 ROTA DO PAINEL ADM ADICIONADA AQUI!
 app.use('/api/admin', adminRoutes);
+
+// 💬 ROTA DE FEEDBACKS
+app.use('/api/feedbacks', feedbackRoutes);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
