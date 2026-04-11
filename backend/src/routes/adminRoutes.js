@@ -49,7 +49,7 @@ router.get('/cron-logs', autenticar, isAdmin, async (req, res) => {
 // Rota: GET /api/admin/historico/:alertaId
 router.get('/historico/:alertaId', autenticar, isAdmin, async (req, res) => {
   try {
-    const mudancas = await Mudanca.find({ alertaId: req.params.alertaId })
+    const mudancas = await Mudanca.find({ alerta: req.params.alertaId })
       .sort({ criadoEm: -1 })
       .limit(100);
     res.json({ sucesso: true, mudancas });

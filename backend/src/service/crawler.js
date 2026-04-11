@@ -128,9 +128,11 @@ async function verificarAlerta(alerta) {
       // Salva registro no histórico de mudanças
       try {
         await Mudanca.create({
-          alertaId:     alerta._id,
+          alerta:          alerta._id,
           hashAnterior,
-          hashNovo:     hashAtual,
+          hashNovo:        hashAtual,
+          emailNotificado: alerta.email,
+          emailEnviado:    false,
         });
       } catch (erroMudanca) {
         console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
@@ -139,6 +141,11 @@ async function verificarAlerta(alerta) {
       try {
         await enviarEmailMudanca(alerta);
         console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
+        await Mudanca.findOneAndUpdate(
+          { alerta: alerta._id, hashNovo: hashAtual },
+          { emailEnviado: true },
+          { sort: { criadoEm: -1 } }
+        );
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
       }
@@ -193,23 +200,23 @@ async function verificarAlerta(alerta) {
 async function executarMonitoramento(alertas) {
   if (!alertas || alertas.length === 0) {
     console.log('[Crawler] Nenhum alerta ativo para verificar.');
-    return { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
+    return { alertasVerificados: 0, mudancasDetectadas: 0, falhas: 0 };
   }
 
   console.log(`[Crawler] Iniciando verificação de ${alertas.length} alerta(s)...`);
 
-  let alertasComMudanca = 0;
-  let alertasComErro    = 0;
+  let mudancasDetectadas = 0;
+  let falhas             = 0;
 
   for (const alerta of alertas) {
     const resultado = await verificarAlerta(alerta);
-    if (resultado === 'mudanca') alertasComMudanca += 1;
-    if (resultado === 'erro')    alertasComErro    += 1;
+    if (resultado === 'mudanca') mudancasDetectadas += 1;
+    if (resultado === 'erro')    falhas             += 1;
     await jitter(); // delay aleatório entre 1s e 4s para evitar bloqueios
   }
 
   console.log('[Crawler] ✅ Verificação concluída.');
-  return { alertasVerificados: alertas.length, alertasComMudanca, alertasComErro };
+  return { alertasVerificados: alertas.length, mudancasDetectadas, falhas };
 }
 
 module.exports = { executarMonitoramento };

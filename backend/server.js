@@ -16,6 +16,7 @@ const { executarMonitoramento } = require('./src/service/crawler');
 const Alerta                    = require('./src/models/alertaModel');
 const LogCron                   = require('./src/models/LogCron');
 const adminRoutes               = require('./src/routes/adminRoutes'); 
+const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
 
@@ -74,6 +75,7 @@ app.use('/api/auth', authRoutes);
 
 // 👑 ROTA DO PAINEL ADM ADICIONADA AQUI!
 app.use('/api/admin', adminRoutes);
+app.use('/api/feedbacks', feedbackRoutes);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
@@ -182,8 +184,9 @@ cron.schedule('0 * * * *', async () => {
   try {
     await LogCron.create({
       alertasVerificados: metricas.alertasVerificados,
-      alertasComMudanca:  metricas.alertasComMudanca,
-      alertasComErro:     metricas.alertasComErro,
+      mudancasDetectadas: metricas.mudancasDetectadas,
+      falhas:             metricas.falhas,
+      finalizadoEm:       new Date(),
       tempoDuracao,
     });
   } catch (errLog) {
