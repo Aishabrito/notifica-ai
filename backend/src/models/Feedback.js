@@ -2,9 +2,9 @@
 const mongoose = require('mongoose');
 
 const feedbackSchema = new mongoose.Schema({
-  email: { type: String, required: true },
+  email:    { type: String, required: true, lowercase: true, trim: true },
   mensagem: { type: String, required: true },
-  lido: { type: Boolean, default: false }, 
+  lido:     { type: Boolean, default: false }, 
   criadoEm: { type: Date, default: Date.now }
 });
 
