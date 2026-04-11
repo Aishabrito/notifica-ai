@@ -142,7 +142,7 @@ async function verificarAlerta(alerta) {
         await enviarEmailMudanca(alerta);
         console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
         await Mudanca.findOneAndUpdate(
-          { alerta: alerta._id, hashNovo: hashAtual },
+          { alerta: alerta._id, hashNovo: hashAtual, emailEnviado: false },
           { emailEnviado: true },
           { sort: { criadoEm: -1 } }
         );
