@@ -2,8 +2,8 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
-
-const API = "https://notifica-ai.onrender.com";
+import api from "../services/Api";
+import axios from "axios";
 
 interface Alerta {
   _id: string;
@@ -39,8 +39,7 @@ export default function Home() {
   const carregarAlertas = async (emailParam?: string) => {
     const emailFiltro = emailParam ?? emailAtivo;
     try {
-      const r = await fetch(`${API}/api/alertas`);
-      const d = await r.json();
+      const { data: d } = await api.get("/api/alertas");
       if (d.sucesso) {
         setAlertas(emailFiltro
           ? d.alertas.filter((a: Alerta) => a.email === emailFiltro)
@@ -55,7 +54,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetch(`${API}/teste`).catch(() => {});
+    api.get("/teste").catch(() => {});
     carregarAlertas();
   }, [usuario, emailManual]);
 
@@ -75,14 +74,12 @@ export default function Home() {
     const timeout = setTimeout(() => controller.abort(), 20000);
 
     try {
-      const r = await fetch(`${API}/api/cadastrar-alerta`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, email: emailAtivo }),
-        signal: controller.signal,
-      });
+      const { data: d } = await api.post(
+        "/api/cadastrar-alerta",
+        { url, email: emailAtivo },
+        { signal: controller.signal },
+      );
       clearTimeout(timeout);
-      const d = await r.json();
       if (d.sucesso) {
         setUrl("");
         await carregarAlertas(emailAtivo);
@@ -92,19 +89,24 @@ export default function Home() {
       }
     } catch (err: unknown) {
       clearTimeout(timeout);
-      const isTimeout = err instanceof Error && err.name === "AbortError";
+      const isTimeout = axios.isCancel(err) || (err instanceof Error && err.name === "AbortError");
+      const axiosMsg = axios.isAxiosError(err) ? err.response?.data?.mensagem : undefined;
       setStatusMsg({
         tipo: "erro",
         texto: isTimeout
           ? "Servidor demorou demais. Tente novamente em instantes."
-          : err instanceof Error ? err.message : "Erro de conexão.",
+          : axiosMsg || (err instanceof Error ? err.message : "Erro de conexão."),
       });
     }
   };
 
   const handleCancelar = async (id: string) => {
-    await fetch(`${API}/api/cancelar-alerta/${id}`, { method: "DELETE" });
-    setAlertas((prev) => prev.filter((a) => a._id !== id));
+    try {
+      await api.delete(`/api/cancelar-alerta/${id}`);
+      setAlertas((prev) => prev.filter((a) => a._id !== id));
+    } catch (err) {
+      console.error("Erro ao cancelar alerta:", err);
+    }
   };
 
   const handleLogout = async () => {
