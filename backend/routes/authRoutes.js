@@ -1,7 +1,7 @@
 // src/routes/authRoutes.js
 const express       = require('express');
 const jwt           = require('jsonwebtoken');
-const Usuario       = require('../models/usuarioModel');
+const Usuario       = require('../models/Usuario');
 const transportador = require('../utils/mailer');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
 
@@ -50,7 +50,7 @@ router.post('/cadastro', async (req, res) => {
         nome:  usuario.nome,
         email: usuario.email,
         plano: usuario.plano,
-        role:  usuario.role ?? 'user', // ← adicionado
+        role:  usuario.role ?? 'user',
       },
     });
   } catch (err) {
@@ -69,6 +69,8 @@ router.post('/login', async (req, res) => {
       return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
 
     const usuario = await Usuario.findOne({ email });
+    console.log('🔍 Role do usuário:', usuario?.role); // ← log de debug
+
     if (!usuario || !(await usuario.verificarSenha(senha)))
       return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
 
@@ -82,7 +84,7 @@ router.post('/login', async (req, res) => {
         nome:  usuario.nome,
         email: usuario.email,
         plano: usuario.plano,
-        role:  usuario.role ?? 'user', // ← adicionado
+        role:  usuario.role ?? 'user',
       },
     });
   } catch (err) {
@@ -107,7 +109,6 @@ router.get('/me', async (req, res) => {
     const usuario = await Usuario.findById(decoded.id).select('-senha');
     if (!usuario) return res.status(401).json({ sucesso: false });
 
-    // Retorna o objeto completo do mongoose — já inclui role
     res.json({ sucesso: true, usuario });
   } catch {
     res.status(401).json({ sucesso: false });

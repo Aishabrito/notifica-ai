@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useAuth } from "../../contexts/AuthContext";
+import { useAuth } from "../../pages/AuthContext";
 const API = "https://notifica-ai.onrender.com";
 
 type Status = "idle" | "loading" | "success" | "error";
