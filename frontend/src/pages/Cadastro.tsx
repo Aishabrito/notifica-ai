@@ -159,9 +159,9 @@ export default function Cadastro() {
                 </div>
                 <span className="text-[11px] sm:text-xs text-neutral-500 leading-relaxed font-light">
                   Concordo com os{" "}
-                  <span className="text-purple-400 hover:text-purple-300 transition-colors">Termos de Uso</span>{" "}
+                  <Link to="/termos" className="text-purple-400 hover:text-purple-300 transition-colors">Termos de Uso</Link>{" "}
                   e{" "}
-                  <span className="text-purple-400 hover:text-purple-300 transition-colors">Política de Privacidade</span>.
+                  <Link to="/privacidade" className="text-purple-400 hover:text-purple-300 transition-colors">Política de Privacidade</Link>.
                 </span>
               </label>
 

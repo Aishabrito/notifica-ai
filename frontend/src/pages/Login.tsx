@@ -1,9 +1,10 @@
 // src/pages/Login.tsx
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import { Footer } from "../components/footer";
+import api from "../services/Api";
 
 export default function Login() {
   const { login } = useAuth();
@@ -13,6 +14,58 @@ export default function Login() {
   const [senha, setSenha]     = useState("");
   const [erro, setErro]       = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+
+  // Estado do modal "Esqueci minha senha"
+  const [modalAberto, setModalAberto]           = useState(false);
+  const [emailReset, setEmailReset]             = useState("");
+  const [loadingReset, setLoadingReset]         = useState(false);
+  const [mensagemReset, setMensagemReset]       = useState<string | null>(null);
+  const [erroReset, setErroReset]               = useState<string | null>(null);
+  const modalRef = useRef<HTMLDivElement>(null);
+
+  const abrirModal = () => {
+    setEmailReset("");
+    setMensagemReset(null);
+    setErroReset(null);
+    setModalAberto(true);
+  };
+
+  const fecharModal = () => setModalAberto(false);
+
+  // Fechar com ESC
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") fecharModal();
+    };
+    if (modalAberto) document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [modalAberto]);
+
+  // Fechar clicando fora do modal
+  const handleOverlayClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (modalRef.current && !modalRef.current.contains(e.target as Node)) {
+      fecharModal();
+    }
+  };
+
+  const handleEnviarReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErroReset(null);
+    setMensagemReset(null);
+    setLoadingReset(true);
+    try {
+      const { data } = await api.post("/api/auth/forgot-password", { email: emailReset });
+      if (data.sucesso) {
+        setMensagemReset(data.mensagem);
+      } else {
+        setErroReset(data.mensagem || "Erro ao enviar e-mail.");
+      }
+    } catch {
+      setErroReset("Não foi possível conectar ao servidor.");
+    } finally {
+      setLoadingReset(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,9 +142,13 @@ export default function Login() {
                   <label className="font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-600">
                     Senha
                   </label>
-                  <span className="font-mono text-[9px] text-purple-400/60 hover:text-purple-400 cursor-pointer transition-colors">
+                  <button
+                    type="button"
+                    onClick={abrirModal}
+                    className="font-mono text-[9px] text-purple-400/60 hover:text-purple-400 cursor-pointer transition-colors bg-transparent border-none p-0"
+                  >
                     esqueci →
-                  </span>
+                  </button>
                 </div>
                 <input
                   type="password"
@@ -134,6 +191,17 @@ export default function Login() {
             </Link>
           </p>
 
+          {/* Links legais */}
+          <p className="text-center font-mono text-[9px] text-neutral-800 mt-3">
+            <Link to="/termos" className="text-purple-400/50 hover:text-purple-400 transition-colors border-b border-purple-500/20 pb-0.5">
+              Termos de Uso
+            </Link>
+            {" · "}
+            <Link to="/privacidade" className="text-purple-400/50 hover:text-purple-400 transition-colors border-b border-purple-500/20 pb-0.5">
+              Política de Privacidade
+            </Link>
+          </p>
+
           {/* Indicador de status */}
           <div className="flex items-center justify-center gap-2 mt-5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -145,6 +213,91 @@ export default function Login() {
         </div>
       </div>
       <Footer />
+
+      {/* Modal Esqueci minha senha */}
+      {modalAberto && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: "rgba(0,0,0,0.75)", backdropFilter: "blur(4px)" }}
+          onClick={handleOverlayClick}
+        >
+          <div
+            ref={modalRef}
+            className="w-full max-w-sm rounded-2xl border border-white/[0.07] p-7"
+            style={{ background: "linear-gradient(145deg, #111 0%, #0d0d0d 100%)" }}
+          >
+            {/* Cabeçalho do modal */}
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <p className="font-mono text-[9px] text-purple-400 uppercase tracking-[0.2em] mb-1">// recuperar acesso</p>
+                <h2 className="text-lg font-black tracking-tighter text-white">Esqueceu a senha?</h2>
+              </div>
+              <button
+                onClick={fecharModal}
+                className="w-7 h-7 flex items-center justify-center rounded-lg border border-neutral-800 text-neutral-600 hover:text-white hover:border-neutral-600 transition-all font-mono text-xs"
+              >
+                ✕
+              </button>
+            </div>
+
+            <p className="font-mono text-[10px] text-neutral-600 mb-5 leading-relaxed">
+              Informe seu e-mail e enviaremos um link para redefinir sua senha.
+            </p>
+
+            {!mensagemReset ? (
+              <form onSubmit={handleEnviarReset} className="space-y-4">
+                <div>
+                  <label className="block font-mono text-[9px] uppercase tracking-[0.2em] text-neutral-600 mb-2">
+                    E-mail
+                  </label>
+                  <input
+                    type="email"
+                    placeholder="seu@email.com"
+                    value={emailReset}
+                    onChange={(e) => setEmailReset(e.target.value)}
+                    required
+                    autoFocus
+                    className="w-full bg-black/40 border border-neutral-800 rounded-xl px-4 py-3 font-mono text-xs text-white placeholder-neutral-700 outline-none focus:border-purple-500/50 transition-all"
+                  />
+                </div>
+
+                {erroReset && (
+                  <p className="font-mono text-[10px] text-red-400 bg-red-400/5 border border-red-400/20 px-4 py-3 rounded-lg">
+                    ● {erroReset}
+                  </p>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={loadingReset}
+                  className="w-full bg-purple-500 hover:bg-purple-400 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-xl font-mono text-xs uppercase tracking-widest transition-all"
+                >
+                  {loadingReset ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Enviando...
+                    </span>
+                  ) : "Enviar link →"}
+                </button>
+              </form>
+            ) : (
+              <div className="text-center py-4">
+                <div className="w-10 h-10 bg-emerald-400/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <span className="text-emerald-400 text-lg">✓</span>
+                </div>
+                <p className="font-mono text-[10px] text-emerald-400 mb-2">E-mail enviado!</p>
+                <p className="font-mono text-[10px] text-neutral-600 leading-relaxed">{mensagemReset}</p>
+                <button
+                  onClick={fecharModal}
+                  className="mt-5 font-mono text-[9px] text-purple-400/60 hover:text-purple-400 transition-colors"
+                >
+                  fechar →
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 }
