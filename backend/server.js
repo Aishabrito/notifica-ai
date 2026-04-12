@@ -32,7 +32,11 @@ app.use(cors({
       'http://localhost:5173',
       'http://127.0.0.1:5173',
     ];
-    if (!origin || allowedOrigins.includes(origin)) {
+    // Allow requests without an Origin header only in non-production (e.g., server-to-server)
+    if (!origin && process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    if (origin && allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
       callback(new Error('Not allowed by CORS'));

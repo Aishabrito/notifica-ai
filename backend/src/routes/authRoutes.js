@@ -1,5 +1,6 @@
 const express    = require('express');
 const jwt        = require('jsonwebtoken');
+const crypto     = require('crypto');
 const nodemailer = require('nodemailer');
 const Usuario    = require('../models/Usuario');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
@@ -119,15 +120,15 @@ router.get('/me', async (req, res) => {
 router.post('/forgot-password', async (req, res) => {
   try {
     const { email } = req.body;
-    if (!email)
+    if (!email || typeof email !== 'string')
       return res.status(400).json({ sucesso: false, mensagem: 'E-mail é obrigatório.' });
 
-    const usuario = await Usuario.findOne({ email });
+    const emailNormalizado = email.toLowerCase().trim();
+    const usuario = await Usuario.findOne({ email: emailNormalizado });
     // Sempre retorna sucesso para não revelar se o e-mail existe
     if (!usuario)
       return res.json({ sucesso: true, mensagem: 'Se esse e-mail estiver cadastrado, você receberá um link de recuperação.' });
 
-    const crypto = require('crypto');
     const token = crypto.randomBytes(32).toString('hex');
     const expira = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
 
