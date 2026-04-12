@@ -15,7 +15,8 @@ const { autenticar }            = require('./src/middleware/authMiddleware');
 const { executarMonitoramento } = require('./src/service/crawler');
 const Alerta                    = require('./src/models/alertaModel');
 const LogCron                   = require('./src/models/LogCron');
-const adminRoutes               = require('./src/routes/adminRoutes'); 
+const adminRoutes               = require('./src/routes/adminRoutes');
+const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
 
@@ -74,6 +75,9 @@ app.use('/api/auth', authRoutes);
 
 // 👑 ROTA DO PAINEL ADM ADICIONADA AQUI!
 app.use('/api/admin', adminRoutes);
+
+// 💬 ROTAS DE FEEDBACK
+app.use('/api/feedbacks', feedbackRoutes);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
@@ -173,18 +177,35 @@ app.patch('/api/reativar-alerta/:id', autenticar, async (req, res) => {
 // 🤖 CRON JOB — roda a cada hora
 // ============================================
 cron.schedule('0 * * * *', async () => {
-  const inicio = Date.now();
+  const iniciadoEm = new Date();
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
-  const alertas = await Alerta.find({ status: 'ativo' });
-  const metricas = await executarMonitoramento(alertas);
-  const tempoDuracao = Date.now() - inicio;
+
+  let metricas = { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
+  let sucesso   = true;
+  let erroGlobal = null;
+
+  try {
+    const alertas = await Alerta.find({ status: 'ativo' });
+    metricas = await executarMonitoramento(alertas);
+  } catch (errExec) {
+    sucesso    = false;
+    erroGlobal = errExec.message;
+    console.error('❌ Erro durante o monitoramento:', errExec.message);
+  }
+
+  const finalizadoEm = new Date();
+  const tempoDuracao = finalizadoEm - iniciadoEm;
 
   try {
     await LogCron.create({
       alertasVerificados: metricas.alertasVerificados,
-      alertasComMudanca:  metricas.alertasComMudanca,
+      mudancasDetectadas: metricas.alertasComMudanca,
       alertasComErro:     metricas.alertasComErro,
       tempoDuracao,
+      sucesso,
+      erroGlobal,
+      iniciadoEm,
+      finalizadoEm,
     });
   } catch (errLog) {
     console.error('❌ Erro ao salvar log do cron:', errLog.message);
