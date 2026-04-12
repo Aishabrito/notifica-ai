@@ -29,7 +29,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     fetch(`${API}/api/auth/me`, { credentials: "include" })
       .then((r) => r.json())
-      .then((d) => { if (d.sucesso) setUsuario(d.usuario); })
+      .then((d) => {
+        if (d.sucesso) {
+          setUsuario({ ...d.usuario, role: d.usuario.role ?? 'user' });
+        }
+      })
       .catch(() => {})
       .finally(() => setCarregando(false));
   }, []);
