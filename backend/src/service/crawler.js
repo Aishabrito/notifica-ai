@@ -123,24 +123,30 @@ async function verificarAlerta(alerta) {
 
       const hashAnterior  = alerta.hashConteudo;
       alerta.hashConteudo = hashAtual;
+      alerta.ultimaVerificacao = new Date();
       await alerta.save();
+
+      let emailEnviado = false;
+
+      try {
+        await enviarEmailMudanca(alerta);
+        emailEnviado = true;
+        console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
+      } catch (erroEmail) {
+        console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+      }
 
       // Salva registro no histórico de mudanças
       try {
         await Mudanca.create({
-          alertaId:     alerta._id,
+          alertaId:        alerta._id,
           hashAnterior,
-          hashNovo:     hashAtual,
+          hashNovo:        hashAtual,
+          emailNotificado: alerta.email,
+          emailEnviado,
         });
       } catch (erroMudanca) {
         console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
-      }
-
-      try {
-        await enviarEmailMudanca(alerta);
-        console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
-      } catch (erroEmail) {
-        console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
       }
 
       return 'mudanca';
@@ -148,9 +154,12 @@ async function verificarAlerta(alerta) {
     } else if (!alerta.hashConteudo) {
       // Primeiro acesso — salva o hash inicial
       alerta.hashConteudo = hashAtual;
+      alerta.ultimaVerificacao = new Date();
       await alerta.save();
       console.log(`[Crawler] 💾 Hash inicial salvo para: ${alerta.url}`);
     } else {
+      alerta.ultimaVerificacao = new Date();
+      await alerta.save();
       console.log(`[Crawler] ✔️  Sem mudanças em: ${alerta.url}`);
     }
 
