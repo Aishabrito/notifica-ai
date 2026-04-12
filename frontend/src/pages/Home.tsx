@@ -78,12 +78,9 @@ export default function Home() {
         throw new Error(d.mensagem);
       }
     } catch (err: unknown) {
-      const isTimeout = err instanceof Error && err.name === "AbortError";
       setStatusMsg({
         tipo: "erro",
-        texto: isTimeout
-          ? "Servidor demorou demais. Tente novamente em instantes."
-          : err instanceof Error ? err.message : "Erro de conexão.",
+        texto: err instanceof Error ? err.message : "Erro de conexão.",
       });
     }
   };

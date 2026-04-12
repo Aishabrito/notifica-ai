@@ -20,6 +20,14 @@ interface AuthContextType {
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 
+function extrairMensagemErro(err: unknown, fallback: string): string {
+  if (err && typeof err === "object" && "response" in err) {
+    const axiosErr = err as { response?: { data?: { mensagem?: string } } };
+    return axiosErr.response?.data?.mensagem ?? fallback;
+  }
+  return fallback;
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
@@ -42,11 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (d.sucesso) { setUsuario(d.usuario); return null; }
       return d.mensagem;
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { mensagem?: string } } };
-        return axiosErr.response?.data?.mensagem ?? "Erro ao cadastrar.";
-      }
-      return "Erro de conexão.";
+      return extrairMensagemErro(err, "Erro ao cadastrar.");
     }
   };
 
@@ -65,11 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return { erro: d.mensagem, role: "user" };
     } catch (err: unknown) {
-      if (err && typeof err === "object" && "response" in err) {
-        const axiosErr = err as { response?: { data?: { mensagem?: string } } };
-        return { erro: axiosErr.response?.data?.mensagem ?? "Erro ao entrar.", role: "user" };
-      }
-      return { erro: "Erro de conexão.", role: "user" };
+      return { erro: extrairMensagemErro(err, "Erro ao entrar."), role: "user" };
     }
   };
 
