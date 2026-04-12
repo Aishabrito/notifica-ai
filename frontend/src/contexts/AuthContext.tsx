@@ -1,7 +1,6 @@
 // src/contexts/AuthContext.tsx
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
-
-const API = "https://notifica-ai.onrender.com";
+import api from "../services/Api";
 
 interface Usuario {
   id: string;
@@ -27,9 +26,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   // Verifica sessão ativa ao carregar o app
   useEffect(() => {
-    fetch(`${API}/api/auth/me`, { credentials: "include" })
-      .then((r) => r.json())
-      .then((d) => {
+    api.get("/api/auth/me")
+      .then(({ data: d }) => {
         if (d.sucesso) {
           setUsuario({ ...d.usuario, role: d.usuario.role ?? 'user' });
         }
@@ -39,15 +37,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const cadastrar = async (nome: string, email: string, senha: string): Promise<string | null> => {
-    const r = await fetch(`${API}/api/auth/cadastro`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ nome, email, senha }),
-    });
-    const d = await r.json();
-    if (d.sucesso) { setUsuario(d.usuario); return null; }
-    return d.mensagem;
+    try {
+      const { data: d } = await api.post("/api/auth/cadastro", { nome, email, senha });
+      if (d.sucesso) { setUsuario(d.usuario); return null; }
+      return d.mensagem;
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { mensagem?: string } } };
+        return axiosErr.response?.data?.mensagem ?? "Erro ao cadastrar.";
+      }
+      return "Erro de conexão.";
+    }
   };
 
   // ─── login agora retorna { erro, role } em vez de só a string de erro ────────
@@ -57,24 +57,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     email: string,
     senha: string
   ): Promise<{ erro: string | null; role: "user" | "admin" }> => {
-    const r = await fetch(`${API}/api/auth/login`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ email, senha }),
-    });
-    const d = await r.json();
-
-    if (d.sucesso) {
-      setUsuario(d.usuario);
-      return { erro: null, role: d.usuario.role ?? "user" };
+    try {
+      const { data: d } = await api.post("/api/auth/login", { email, senha });
+      if (d.sucesso) {
+        setUsuario(d.usuario);
+        return { erro: null, role: d.usuario.role ?? "user" };
+      }
+      return { erro: d.mensagem, role: "user" };
+    } catch (err: unknown) {
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { mensagem?: string } } };
+        return { erro: axiosErr.response?.data?.mensagem ?? "Erro ao entrar.", role: "user" };
+      }
+      return { erro: "Erro de conexão.", role: "user" };
     }
-
-    return { erro: d.mensagem, role: "user" };
   };
 
   const logout = async (): Promise<void> => {
-    await fetch(`${API}/api/auth/logout`, { method: "POST", credentials: "include" });
+    await api.post("/api/auth/logout").catch(() => {});
     setUsuario(null);
   };
 

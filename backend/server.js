@@ -25,10 +25,29 @@ const app = express();
 // ============================================
 app.use(express.json());
 app.use(cookieParser());
+const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
+  ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
+  : [
+      'https://notifica-ai.vercel.app',
+      'http://localhost:5173',
+      'http://localhost:3000',
+      'http://127.0.0.1:5173',
+    ];
+
 app.use(cors({
-  origin: ['https://notifica-ai.vercel.app', 'http://localhost:5173'],
+  origin: (origin, callback) => {
+    // Allow requests with no origin (e.g. mobile apps, curl, server-to-server)
+    if (!origin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    console.warn(`🚫 CORS bloqueou origem: ${origin}`);
+    callback(new Error('Not allowed by CORS'));
+  },
   credentials: true,
+  methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 }));
+
+console.log('🌐 CORS_ORIGINS permitidas:', ALLOWED_ORIGINS);
 
 // ============================================
 // 🗄️ CONEXÃO MONGODB

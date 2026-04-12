@@ -2,8 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
-
-const API = "https://notifica-ai.onrender.com";
+import api from "../services/Api";
 
 interface Alerta {
   _id: string;
@@ -39,8 +38,7 @@ export default function Home() {
   const carregarAlertas = async (emailParam?: string) => {
     const emailFiltro = emailParam ?? emailAtivo;
     try {
-      const r = await fetch(`${API}/api/alertas`);
-      const d = await r.json();
+      const { data: d } = await api.get("/api/alertas");
       if (d.sucesso) {
         setAlertas(emailFiltro
           ? d.alertas.filter((a: Alerta) => a.email === emailFiltro)
@@ -55,7 +53,7 @@ export default function Home() {
   };
 
   useEffect(() => {
-    fetch(`${API}/teste`).catch(() => {});
+    api.get("/teste").catch(() => {});
     carregarAlertas();
   }, [usuario, emailManual]);
 
@@ -70,19 +68,8 @@ export default function Home() {
     if (ativos >= LIMITE) return;
     setStatusMsg({ tipo: "loading", texto: "Iniciando monitoramento..." });
 
-  
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 20000);
-
     try {
-      const r = await fetch(`${API}/api/cadastrar-alerta`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, email: emailAtivo }),
-        signal: controller.signal,
-      });
-      clearTimeout(timeout);
-      const d = await r.json();
+      const { data: d } = await api.post("/api/cadastrar-alerta", { url, email: emailAtivo });
       if (d.sucesso) {
         setUrl("");
         await carregarAlertas(emailAtivo);
@@ -91,7 +78,6 @@ export default function Home() {
         throw new Error(d.mensagem);
       }
     } catch (err: unknown) {
-      clearTimeout(timeout);
       const isTimeout = err instanceof Error && err.name === "AbortError";
       setStatusMsg({
         tipo: "erro",
@@ -103,7 +89,7 @@ export default function Home() {
   };
 
   const handleCancelar = async (id: string) => {
-    await fetch(`${API}/api/cancelar-alerta/${id}`, { method: "DELETE" });
+    await api.delete(`/api/cancelar-alerta/${id}`).catch(() => {});
     setAlertas((prev) => prev.filter((a) => a._id !== id));
   };
 

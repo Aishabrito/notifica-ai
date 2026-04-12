@@ -15,10 +15,12 @@ const transportador = nodemailer.createTransport({
   },
 });
 
+const isProd = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
+  secure: isProd,
+  // 'none' required for cross-site cookies (Vercel ↔ Render); 'lax' for local dev
+  sameSite: isProd ? 'none' : 'lax',
   maxAge: 7 * 24 * 60 * 60 * 1000,
 };
 
