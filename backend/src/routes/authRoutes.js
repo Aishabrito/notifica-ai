@@ -53,7 +53,7 @@ router.post('/cadastro', async (req, res) => {
 
     res.status(201).json({
       sucesso: true,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
     });
   } catch (err) {
     console.error('❌ ERRO NO CADASTRO:', err);
@@ -76,7 +76,7 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, COOKIE_OPTS);
     res.json({
       sucesso: true,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano },
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
     });
   } catch (err) {
     console.error('❌ ERRO NO LOGIN:', err);
@@ -100,7 +100,16 @@ router.get('/me', async (req, res) => {
     const usuario = await Usuario.findById(decoded.id).select('-senha');
     if (!usuario) return res.status(401).json({ sucesso: false });
 
-    res.json({ sucesso: true, usuario });
+    res.json({
+      sucesso: true,
+      usuario: {
+        id: usuario._id,
+        nome: usuario.nome,
+        email: usuario.email,
+        plano: usuario.plano,
+        role: usuario.role ?? 'user',
+      },
+    });
   } catch {
     res.status(401).json({ sucesso: false });
   }
