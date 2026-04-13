@@ -106,7 +106,18 @@ const limiterAlertasGeral = rateLimit({
 // ============================================
 // 🛡️ VALIDAÇÃO DE URL (anti-SSRF)
 // ============================================
-const PRIVATE_IP_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0|::1$|fd[0-9a-f]{2}:)/i;
+
+// IPv4 private / loopback ranges
+const PRIVATE_IPV4_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0)/;
+
+// IPv6 private / loopback / link-local / ULA ranges
+const PRIVATE_IPV6_REGEX = /^(::1$|fe[89ab][0-9a-f]:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
+
+function isPrivateAddress(address) {
+  // Detect IPv6 addresses (contain ':')
+  if (address.includes(':')) return PRIVATE_IPV6_REGEX.test(address);
+  return PRIVATE_IPV4_REGEX.test(address);
+}
 
 async function validarUrlPublica(rawUrl) {
   let parsed;
@@ -122,12 +133,12 @@ async function validarUrlPublica(rawUrl) {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  // Block obvious private/loopback hostnames
+  // Block obvious private/loopback hostnames without DNS lookup
   if (
     hostname === 'localhost' ||
     hostname === '0.0.0.0' ||
     hostname === '::1' ||
-    PRIVATE_IP_REGEX.test(hostname)
+    isPrivateAddress(hostname)
   ) {
     return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
   }
@@ -136,7 +147,7 @@ async function validarUrlPublica(rawUrl) {
   try {
     const result = await dns.lookup(hostname, { all: true });
     for (const { address } of result) {
-      if (PRIVATE_IP_REGEX.test(address)) {
+      if (isPrivateAddress(address)) {
         return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
       }
     }
@@ -174,7 +185,7 @@ app.use('/api/feedbacks', feedbackRoutes);
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 
 // Cadastrar alerta (protegido)
-app.post('/api/cadastrar-alerta', autenticar, limiterCadastrarAlerta, async (req, res) => {
+app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req, res) => {
   const { url } = req.body;
   const email   = req.usuario.email;
 
@@ -237,7 +248,7 @@ app.post('/api/cadastrar-alerta', autenticar, limiterCadastrarAlerta, async (req
 });
 
 // Listar alertas do usuário logado (protegido)
-app.get('/api/alertas', autenticar, limiterAlertasGeral, async (req, res) => {
+app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
     res.json({ sucesso: true, alertas });
@@ -247,7 +258,7 @@ app.get('/api/alertas', autenticar, limiterAlertasGeral, async (req, res) => {
 });
 
 // Cancelar alerta (protegido — só o dono pode cancelar)
-app.delete('/api/cancelar-alerta/:id', autenticar, limiterAlertasGeral, async (req, res) => {
+app.delete('/api/cancelar-alerta/:id', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
     if (!alerta)
@@ -261,7 +272,7 @@ app.delete('/api/cancelar-alerta/:id', autenticar, limiterAlertasGeral, async (r
 });
 
 // Reativar alerta pausado (protegido)
-app.patch('/api/reativar-alerta/:id', autenticar, limiterAlertasGeral, async (req, res) => {
+app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
     if (!alerta)
