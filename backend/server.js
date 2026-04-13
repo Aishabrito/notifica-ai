@@ -63,7 +63,9 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(() => {
     console.log('✅ MongoDB conectado com sucesso!');
-    inicializarVigia();
+    // Aguarda 2 minutos antes de iniciar o monitoramento para não bloquear
+    // o servidor durante o boot (evita timeout no primeiro acesso do usuário)
+    setTimeout(inicializarVigia, 2 * 60 * 1000);
   })
   .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
 
@@ -183,6 +185,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
+
+app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Cadastrar alerta (protegido)
 app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req, res) => {

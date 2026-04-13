@@ -24,6 +24,8 @@ const StatusDot = ({ status }: { status: "ativo" | "pausado" }) => (
   </span>
 );
 
+const BLOCKED_DOMAINS = ["instagram.com", "youtube.com", "youtu.be", "facebook.com", "tiktok.com"];
+
 export default function Home() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
@@ -66,6 +68,27 @@ export default function Home() {
   const handleCadastrar = async (e: React.FormEvent) => {
     e.preventDefault();
     if (ativos >= LIMITE) return;
+
+    // Client-side URL validation
+    let parsedUrl: URL;
+    try {
+      parsedUrl = new URL(url);
+    } catch {
+      setStatusMsg({ tipo: "erro", texto: "URL inválida. Use um endereço http:// ou https:// completo." });
+      return;
+    }
+
+    if (parsedUrl.protocol !== "http:" && parsedUrl.protocol !== "https:") {
+      setStatusMsg({ tipo: "erro", texto: "Apenas URLs http:// e https:// são permitidas." });
+      return;
+    }
+
+    const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+    if (BLOCKED_DOMAINS.some((d) => hostname === d || hostname.endsWith("." + d))) {
+      setStatusMsg({ tipo: "erro", texto: "Este site não pode ser monitorado. Insira o link de uma página pública com conteúdo rastreável (ex: resultado, edital, lista)." });
+      return;
+    }
+
     setStatusMsg({ tipo: "loading", texto: "Iniciando monitoramento..." });
 
     try {

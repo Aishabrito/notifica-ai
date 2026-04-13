@@ -92,7 +92,7 @@ export default function LandingPage() {
             </Link>
             <Link
               to="/como-funciona"
-              className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 hover:text-purple-400 border-b border-purple-500/20 pb-1 transition-colors"
+              className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-purple-400 border-b border-purple-500/20 pb-1 transition-colors"
             >
               ver detalhes →
             </Link>
@@ -153,10 +153,10 @@ export default function LandingPage() {
           <div className="reveal">
             <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4 md:mb-6">// o problema</span>
             <h2 className="font-display font-extrabold text-4xl md:text-7xl tracking-tighter leading-none mb-6 md:mb-8">
-              Cansada de dar <em className="text-emerald-400 not-italic">F5 na página</em>?
+              Cansou de dar <em className="text-emerald-400 not-italic">F5 na página</em>?
             </h2>
             <p className="text-neutral-500 font-light leading-relaxed text-sm md:text-base">
-              Resultado de lista de espera ninguém te avisa. Você fica presa num loop de ansiedade que o Notifica.ai resolve.
+              Resultado de lista de espera ninguém te avisa. Você fica preso(a) num loop de ansiedade que o Notifica.ai resolve.
             </p>
           </div>
           <div
