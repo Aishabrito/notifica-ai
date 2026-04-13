@@ -24,6 +24,8 @@ const StatusDot = ({ status }: { status: "ativo" | "pausado" }) => (
   </span>
 );
 
+const BLOCKED_DOMAINS = ["instagram.com", "youtube.com", "youtu.be", "facebook.com", "tiktok.com"];
+
 export default function Home() {
   const { usuario, logout } = useAuth();
   const navigate = useNavigate();
@@ -82,7 +84,6 @@ export default function Home() {
     }
 
     const hostname = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
-    const BLOCKED_DOMAINS = ["instagram.com", "youtube.com", "youtu.be", "facebook.com", "tiktok.com"];
     if (BLOCKED_DOMAINS.some((d) => hostname === d || hostname.endsWith("." + d))) {
       setStatusMsg({ tipo: "erro", texto: "Este site não pode ser monitorado. Insira o link de uma página pública com conteúdo rastreável (ex: resultado, edital, lista)." });
       return;

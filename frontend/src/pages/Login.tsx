@@ -43,6 +43,10 @@ export default function Login() {
     return () => window.removeEventListener("keydown", onKey);
   }, [modalAberto]);
 
+  useEffect(() => {
+    return () => { loadingTimers.current.forEach(clearTimeout); };
+  }, []);
+
   const handleRecupero = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoadingRecupero(true);
