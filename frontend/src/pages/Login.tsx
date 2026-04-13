@@ -15,6 +15,8 @@ export default function Login() {
   const [senha, setSenha]     = useState("");
   const [erro, setErro]       = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [loadingStage, setLoadingStage] = useState(0);
+  const loadingTimers = useRef<ReturnType<typeof setTimeout>[]>([]);
 
   // ── Esqueci minha senha ──────────────────────────────────────────────────────
   const [modalAberto, setModalAberto]             = useState(false);
@@ -74,9 +76,18 @@ export default function Login() {
     e.preventDefault();
     setErro(null);
     setLoading(true);
+    setLoadingStage(0);
+
+    const t1 = setTimeout(() => setLoadingStage(1), 3000);
+    const t2 = setTimeout(() => setLoadingStage(2), 10000);
+    loadingTimers.current = [t1, t2];
 
     const { erro: mensagemErro, role } = await login(email, senha);
+
+    loadingTimers.current.forEach(clearTimeout);
+    loadingTimers.current = [];
     setLoading(false);
+    setLoadingStage(0);
 
     if (mensagemErro) {
       setErro(mensagemErro);
@@ -110,7 +121,7 @@ export default function Login() {
             </div>
 
             <h1 className="text-3xl font-black tracking-tighter text-white leading-[1.1] mb-2">
-              Bem-vinda<br />de volta.
+              Bem-vindo(a)<br />de volta.
             </h1>
             <p className="font-mono text-[11px] text-neutral-600 tracking-[0.05em]">
               // acesse seus alertas ativos
@@ -179,7 +190,9 @@ export default function Login() {
                 {loading ? (
                   <span className="flex items-center justify-center gap-2">
                     <span className="w-3.5 h-3.5 border-2 border-black border-t-transparent rounded-full animate-spin" />
-                    Entrando...
+                    {loadingStage === 0 && "Conectando..."}
+                    {loadingStage === 1 && "Acordando nossos servidores..."}
+                    {loadingStage === 2 && "O primeiro acesso do dia leva uns segundinhos a mais. Aguente firme! ☕"}
                   </span>
                 ) : "Entrar →"}
               </button>

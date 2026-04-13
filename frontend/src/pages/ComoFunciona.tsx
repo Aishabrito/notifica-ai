@@ -94,7 +94,7 @@ export default function ComoFunciona() {
           ].map((item) => (
             <Reveal key={item.who}>
               <div
-                className="rounded-xl p-6 border border-purple-500/10 hover:border-purple-500/30 transition-all h-full group"
+                className="rounded-xl p-6 border border-purple-500/10 hover:border-purple-500/30 hover:-translate-y-1 transition-all h-full group"
                 style={{ background: 'linear-gradient(135deg, rgba(108,52,131,0.06) 0%, rgba(0,0,0,0) 100%)' }}
               >
                 <div className="text-2xl mb-4">{item.icon}</div>
@@ -148,7 +148,7 @@ export default function ComoFunciona() {
           <div className="absolute -top-10 -left-10 w-32 h-32 bg-purple-700/15 rounded-full blur-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
 
           {/* Número */}
-          <div className="text-6xl md:text-7xl font-black text-purple-400/70 leading-none mb-4 md:mb-6 group-hover:text-purple-300 transition-colors">
+          <div className="text-6xl md:text-7xl font-black text-purple-300 leading-none mb-4 md:mb-6 group-hover:text-purple-200 transition-colors">
             {s.n}
           </div>
 
