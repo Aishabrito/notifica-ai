@@ -44,7 +44,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
         <div className="hidden md:flex items-center gap-8">
           {logado ? (
             <>
-              <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-[200px]">
+              <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-50">
                 {usuario?.email}
               </span>
               <button
