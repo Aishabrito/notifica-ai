@@ -9,9 +9,9 @@ const router = express.Router();
 
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production',
-  sameSite: 'strict',
-  maxAge: 7 * 24 * 60 * 60 * 1000, // 7 dias
+  secure: true,      
+  sameSite: 'none',    
+  maxAge: 7 * 24 * 60 * 60 * 1000 
 };
 
 const gerarToken = (id) =>

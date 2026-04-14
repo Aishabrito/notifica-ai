@@ -219,7 +219,6 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
     const hashInicial   = gerarHash(conteudoLimpo);
     const $             = cheerio.load(resposta.data);
     const tituloDoSite  = $('title').text().trim() || url;
-
     const novoAlerta = await Alerta.create({
       url,
       email,
@@ -230,27 +229,43 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
 
     const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${novoAlerta._id}`;
 
-    await transportador.sendMail({
-      from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
-      to: email,
-      subject: '🚀 Monitoramento Iniciado — Notifica.ai',
-      html: `
-        <h2>Monitoramento ativado!</h2>
-        <p>Seu alerta para <b>${tituloDoSite}</b> foi criado com sucesso.</p>
-        <p><b>URL monitorada:</b> <a href="${url}">${url}</a></p>
-        <p>Você receberá um e-mail assim que detectarmos uma mudança.</p>
-        <hr>
-        <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
-      `,
-    });
+       try {
+      await transportador.sendMail({
+        from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+        to: email,
+        subject: `✅ Alerta Criado: ${tituloDoSite}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Seu alerta está ativo!</h2>
+            <p>Estamos vigiando o site: <br><strong><a href="${url}">${tituloDoSite}</a></strong></p>
+            <p>Vamos te avisar por e-mail assim que detectarmos qualquer alteração.</p>
+            <br>
+            <p style="font-size: 12px; color: #666;">
+              Se quiser parar de receber alertas deste site, 
+              <a href="${urlCancelamento}">clique aqui para cancelar</a>.
+            </p>
+          </div>
+        `
+      });
+    } catch (erroEmail) {
+      console.error('❌ Erro ao enviar email de confirmação:', erroEmail);
+      // Desfaz a criação do alerta se o e-mail falhar
+      await Alerta.findByIdAndDelete(novoAlerta._id);
+      return res.status(400).json({ 
+        sucesso: false, 
+        mensagem: 'Erro ao enviar e-mail de confirmação. O alerta não foi salvo.' 
+      });
+    }
 
-    res.json({ sucesso: true, titulo: tituloDoSite, id: novoAlerta._id });
+    res.json({ sucesso: true, alerta: novoAlerta });
+
   } catch (err) {
-    console.error('❌ Erro ao cadastrar alerta:', err.message);
-    res.status(400).json({ sucesso: false, mensagem: 'Não foi possível acessar o site.' });
+    
+    // Esse catch vai pegar erros do axios.get (se o site do CEFET estiver fora do ar)
+    console.error('Erro no cadastro do alerta:', err);
+    res.status(400).json({ sucesso: false, mensagem: 'Não foi possível ler este site. Verifique se a URL está correta.' });
   }
 });
-
 // Listar alertas do usuário logado (protegido)
 app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
@@ -340,4 +355,4 @@ cron.schedule('0 * * * *', async () => {
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`🚀 Servidor voando na porta ${PORT}`);
-});
+}); 

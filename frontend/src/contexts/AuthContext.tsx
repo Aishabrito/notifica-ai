@@ -32,18 +32,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [usuario, setUsuario] = useState<Usuario | null>(null);
   const [carregando, setCarregando] = useState(true);
 
-  // Verifica sessão ativa ao carregar o app
+ // Verifica sessão ativa ao carregar o app
   useEffect(() => {
-    api.get("/api/auth/me")
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000); // Se o Render demorar mais de 8s, ele desiste e vai pro login
+
+    api.get("/api/auth/me", { signal: controller.signal })
       .then(({ data: d }) => {
         if (d.sucesso) {
           setUsuario({ ...d.usuario, role: d.usuario.role ?? 'user' });
         }
       })
-      .catch(() => {})
-      .finally(() => setCarregando(false));
-  }, []);
+      .catch((err) => {
+        console.log("Não autenticado ou erro de timeout", err);
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        setCarregando(false);
+      });
 
+    return () => { 
+      clearTimeout(timeout); 
+      controller.abort(); 
+    };
+  }, []);
   const cadastrar = async (nome: string, email: string, senha: string): Promise<string | null> => {
     try {
       const { data: d } = await api.post("/api/auth/cadastro", { nome, email, senha });
