@@ -1,19 +1,11 @@
 const express    = require('express');
 const jwt        = require('jsonwebtoken');
 const rateLimit  = require('express-rate-limit');
-const nodemailer = require('nodemailer');
+const transportador = require('../utils/mailer');
 const Usuario    = require('../models/Usuario');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
 
 const router = express.Router();
-
-const transportador = nodemailer.createTransport({
-  service: 'gmail',
-  auth: {
-    user: process.env.EMAIL_REMETENTE,
-    pass: process.env.SENHA_APP,
-  },
-});
 
 const isProd = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = {
