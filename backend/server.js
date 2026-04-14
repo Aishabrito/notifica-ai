@@ -245,10 +245,11 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
     res.json({ sucesso: true, alerta: novoAlerta });
 
   } catch (err) {
-    
-    // Esse catch vai pegar erros do axios.get (se o site do CEFET estiver fora do ar)
-    console.error('Erro no cadastro do alerta:', err.message);
-    res.status(400).json({ sucesso: false, mensagem: 'Não foi possível ler este site. Verifique se a URL está correta e acessível.' });
+    // Esse catch pega erros do axios.get (site fora do ar, bloqueio, timeout, etc.)
+    console.error('[Cadastro] ❌ Falha no axios.get:', err.code, err.message);
+    // 400 apenas se a URL for malformada; 502 se o site de destino não respondeu
+    const status = err.code === 'ERR_INVALID_URL' ? 400 : 502;
+    res.status(status).json({ sucesso: false, mensagem: 'Não foi possível ler este site. Verifique se a URL está correta e acessível.' });
   }
 });
 // Listar alertas do usuário logado (protegido)
