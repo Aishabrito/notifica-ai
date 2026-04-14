@@ -241,7 +241,7 @@ export default function Login() {
           onClick={fecharModal}
         >
           <div
-            className="w-full max-w-sm rounded-2xl border border-white/[0.08] p-7 relative"
+            className="w-full max-w-sm rounded-2xl border border-white/8 p-7 relative"
             style={{ background: "linear-gradient(145deg, rgba(20,20,20,0.98) 0%, rgba(108,52,131,0.06) 100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
