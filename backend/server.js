@@ -150,19 +150,6 @@ async function validarUrlPublica(rawUrl) {
   // Sem dns.lookup, sem bloqueios de domínios .br!
   return { valido: true };
 }
-  // Resolve DNS and check resulting IPs
-  try {
-    const result = await dns.lookup(hostname, { all: true });
-    for (const { address } of result) {
-      if (isPrivateAddress(address)) {
-        return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
-      }
-    }
-  } catch {
-    return { valido: false, motivo: 'Não foi possível resolver o domínio da URL.' };
-  }
-
-  return { valido: true };
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
 // ============================================
