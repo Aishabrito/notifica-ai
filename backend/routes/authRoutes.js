@@ -11,8 +11,8 @@ const COOKIE_OPTS = {
   httpOnly: true,
   secure: true,      
   sameSite: 'none',    
-  maxAge: 7 * 24 * 60 * 60 * 1000 
 };
+ res.cookie('token', token, COOKIE_OPTS);
 
 const gerarToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -40,7 +40,6 @@ router.post('/cadastro', async (req, res) => {
       html: emailBoasVindas(nome),
     }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 
-    res.cookie('token', token, COOKIE_OPTS);
     console.log('✅ Usuário cadastrado:', email);
 
     res.status(201).json({

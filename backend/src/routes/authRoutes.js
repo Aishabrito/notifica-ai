@@ -18,10 +18,9 @@ const transportador = nodemailer.createTransport({
 const isProd = process.env.NODE_ENV === 'production';
 const COOKIE_OPTS = {
   httpOnly: true,
-  secure: isProd,
-  // 'none' required for cross-site cookies (Vercel ↔ Render); 'lax' for local dev
-  sameSite: isProd ? 'none' : 'lax',
-  maxAge: 7 * 24 * 60 * 60 * 1000,
+  secure: true,
+  sameSite: 'none',
+  path: '/',
 };
 
 const gerarToken = (id) =>
@@ -89,10 +88,12 @@ router.post('/login', async (req, res) => {
 
 // ─── LOGOUT ────────────────────────────────────────
 router.post('/logout', (_req, res) => {
-  res.clearCookie('token', COOKIE_OPTS);
+  // Pega todas as regras do COOKIE_OPTS, mas "joga fora" o maxAge
+  const { maxAge, ...opcoesDeLogout } = COOKIE_OPTS; 
+  
+  res.clearCookie('token', opcoesDeLogout);
   res.json({ sucesso: true });
 });
-
 // ─── ME (VERIFICAR SESSÃO) ──────────────────────────
 router.get('/me', async (req, res) => {
   try {
