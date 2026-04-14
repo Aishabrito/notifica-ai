@@ -24,17 +24,31 @@ function extrairConteudoLimpo(html) {
   return $('body').text().replace(/\s+/g, ' ').trim();
 }
 
+const USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:124.0) Gecko/20100101 Firefox/124.0',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15'
+];
+
 function gerarHeaders() {
+  // Sorteia um navegador aleatório da lista acima
+  const agenteAleatorio = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+  
   return {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36',
+    'User-Agent': agenteAleatorio,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
     'Accept-Language': 'pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7',
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
+    // Esses headers extras simulam ainda mais o comportamento de um navegador real:
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1'
   };
 }
-
 function jitter(minMs = 1000, maxMs = 5000) {
   const ms = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -46,21 +60,26 @@ function jitter(minMs = 1000, maxMs = 5000) {
 async function enviarEmailMudanca(alerta) {
   const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${alerta._id}`;
 
-  await transportador.sendMail({
-    from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
-    to: alerta.email,
-    subject: `🚨 Atualização detectada — ${alerta.titulo || alerta.url}`,
-    html: `
-      <h2>Mudança detectada!</h2>
-      <p>O site que você está monitorando foi atualizado.</p>
-      <p><b>Site:</b> ${alerta.titulo || alerta.url}</p>
-      <p><b>URL:</b> <a href="${alerta.url}">${alerta.url}</a></p>
-      <hr>
-      <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
-    `,
-  });
+  try {
+      await transportador.sendMail({
+        from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
+        to: alerta.email,
+        subject: `🚨 Atualização detectada — ${alerta.titulo || alerta.url}`,
+        html: `
+          <h2>Mudança detectada!</h2>
+          <p>O site que você está monitorando foi atualizado.</p>
+          <p><b>Site:</b> ${alerta.titulo || alerta.url}</p>
+          <p><b>URL:</b> <a href="${alerta.url}">${alerta.url}</a></p>
+          <hr>
+          <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
+        `,
+      });
+      console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
+  } catch (erro) {
+      console.error(`[Crawler] ❌ Erro ao enviar email na função enviarEmailMudanca:`, erro);
+      throw erro; // Repassa o erro para ser pego pelo bloco catch lá embaixo
+  }
 }
-
 // ============================================
 // 📧 E-MAIL DE ALERTA ADM (para a Aísha)
 // ============================================

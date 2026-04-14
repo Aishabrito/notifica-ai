@@ -110,17 +110,13 @@ const limiterAlertasGeral = rateLimit({
 });
 
 // ============================================
-// 🛡️ VALIDAÇÃO DE URL (anti-SSRF)
+// 🛡️ VALIDAÇÃO DE URL (anti-SSRF SIMPLIFICADA)
 // ============================================
 
-// IPv4 private / loopback ranges
 const PRIVATE_IPV4_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0)/;
-
-// IPv6 private / loopback / link-local / ULA ranges
 const PRIVATE_IPV6_REGEX = /^(::1$|fe[89ab][0-9a-f]:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
 
 function isPrivateAddress(address) {
-  // Detect IPv6 addresses (contain ':')
   if (address.includes(':')) return PRIVATE_IPV6_REGEX.test(address);
   return PRIVATE_IPV4_REGEX.test(address);
 }
@@ -139,7 +135,7 @@ async function validarUrlPublica(rawUrl) {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  // Block obvious private/loopback hostnames without DNS lookup
+  // Bloqueia redes privadas óbvias, mas NÃO USA dns.lookup que estava travando no Render
   if (
     hostname === 'localhost' ||
     hostname === '0.0.0.0' ||
@@ -149,6 +145,8 @@ async function validarUrlPublica(rawUrl) {
     return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
   }
 
+  return { valido: true };
+}
   // Resolve DNS and check resulting IPs
   try {
     const result = await dns.lookup(hostname, { all: true });
@@ -162,8 +160,6 @@ async function validarUrlPublica(rawUrl) {
   }
 
   return { valido: true };
-}
-
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
 // ============================================
