@@ -121,6 +121,7 @@ function isPrivateAddress(address) {
   return PRIVATE_IPV4_REGEX.test(address);
 }
 
+// O "async" precisa estar aqui!
 async function validarUrlPublica(rawUrl) {
   let parsed;
   try {
@@ -135,7 +136,7 @@ async function validarUrlPublica(rawUrl) {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  // Bloqueia redes privadas óbvias, mas NÃO USA dns.lookup que estava travando no Render
+  // Bloqueia redes privadas óbvias (localhost, IPs internos)
   if (
     hostname === 'localhost' ||
     hostname === '0.0.0.0' ||
@@ -145,6 +146,8 @@ async function validarUrlPublica(rawUrl) {
     return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
   }
 
+  // Se chegou até aqui, é uma URL válida. 
+  // Sem dns.lookup, sem bloqueios de domínios .br!
   return { valido: true };
 }
   // Resolve DNS and check resulting IPs
