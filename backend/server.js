@@ -41,12 +41,13 @@ const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    // Allow requests with no origin only in non-production (e.g. curl, local dev)
-    if (!origin) {
-      if (process.env.NODE_ENV !== 'production') return callback(null, true);
-      return callback(new Error('Not allowed by CORS'));
-    }
+    // 1. Permite requisições de servidores, Postman ou Health Checks do Render (sem origem)
+    if (!origin) return callback(null, true);
+    
+    // 2. Permite requisições da Vercel e do Localhost
     if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
+    
+    // 3. Bloqueia qualquer outro site "impostor" tentando acessar sua API
     console.warn(`🚫 CORS bloqueou origem: ${origin}`);
     callback(new Error('Not allowed by CORS'));
   },
