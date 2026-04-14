@@ -23,6 +23,8 @@ const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
 
+app.set('trust proxy', 1);
+
 // ============================================
 // ⚙️ MIDDLEWARES
 // ============================================
@@ -65,7 +67,7 @@ mongoose.connect(process.env.MONGODB_URI, {
     console.log('✅ MongoDB conectado com sucesso!');
     // Aguarda 2 minutos antes de iniciar o monitoramento para não bloquear
     // o servidor durante o boot (evita timeout no primeiro acesso do usuário)
-    setTimeout(inicializarVigia, 2 * 60 * 1000);
+    setTimeout(inicializarVigia, 15 * 1000);
   })
   .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
 
