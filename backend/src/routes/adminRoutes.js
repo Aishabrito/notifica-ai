@@ -13,20 +13,50 @@ const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 // Rota: GET /api/admin/dashboard
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
-    const [totalUsers, totalAlerts, alertasPausados, feedbacks] = await Promise.all([
-      Usuario.countDocuments({}),
-      Alerta.countDocuments({ status: 'ativo' }),
+    const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks] = await Promise.all([
+      Usuario.find({}).select('-senha -codigoReset -codigoResetExpira').sort({ criadoEm: -1 }),
+      Alerta.find({}).sort({ criadoEm: -1 }),
       Alerta.countDocuments({ status: 'pausado' }),
+      Alerta.countDocuments({ falhasSeguidas: { $gt: 0 }, status: { $ne: 'pausado' } }),
       Feedback.find({}).sort({ criadoEm: -1 }),
     ]);
+
+    // Conta quantos alertas cada usuário tem
+    const contagemPorUsuario = {};
+    for (const a of alertasRaw) {
+      const uid = String(a.usuario);
+      contagemPorUsuario[uid] = (contagemPorUsuario[uid] ?? 0) + 1;
+    }
+
+    const users = usuariosRaw.map((u) => ({
+      _id:      u._id,
+      email:    u.email,
+      role:     u.role,
+      criadoEm: u.criadoEm,
+      alertas:  contagemPorUsuario[String(u._id)] ?? 0,
+    }));
+
+    // Mapeia campo `usuario` (ObjectId) → `userId` esperado pelo frontend
+    const alertas = alertasRaw.map((a) => ({
+      _id:               a._id,
+      userId:            a.usuario,
+      email:             a.email,
+      url:               a.url,
+      status:            a.status,
+      criadoEm:          a.criadoEm ?? a.createdAt,
+      ultimaVerificacao: a.ultimaVerificacao,
+    }));
 
     res.json({
       sucesso: true,
       dados: {
-        totalUsers,
-        totalAlerts,
+        totalUsers:      usuariosRaw.length,
+        totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
         alertasPausados,
+        alertasComErro,
         feedbacks,
+        users,
+        alertas,
       },
     });
   } catch (err) {
