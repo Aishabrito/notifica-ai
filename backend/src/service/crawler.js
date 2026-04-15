@@ -9,7 +9,7 @@ const Mudanca       = require('../models/Mudanca');
 // ⚙️ CONFIGURAÇÕES
 // ============================================
 const LIMITE_FALHAS = 3;
-const EMAIL_ADM     = process.env.EMAIL_REMETENTE; // contato.notificaai@gmail.com
+const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
 
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
