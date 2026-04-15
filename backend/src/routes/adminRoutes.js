@@ -13,30 +13,51 @@ const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 // Rota: GET /api/admin/dashboard
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
-    // 1. Buscamos as listas completas em vez de apenas contar
-    const [usuarios, todosAlertas, feedbacks, logsRecentes] = await Promise.all([
-      Usuario.find({}).select('-senha').lean(), // Traz todos sem a senha
-      Alerta.find({}).lean(),
-      Feedback.find({}).sort({ criadoEm: -1 }).limit(20).lean(),
+    const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes] = await Promise.all([
+      Usuario.find({}).select('-senha -codigoReset -codigoResetExpira').sort({ criadoEm: -1 }),
+      Alerta.find({}).sort({ criadoEm: -1 }),
+      Alerta.countDocuments({ status: 'pausado' }),
+      Alerta.countDocuments({ falhasSeguidas: { $gt: 0 }, status: { $ne: 'pausado' } }),
+      Feedback.find({}).sort({ criadoEm: -1 }),
       LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
     ]);
 
-    // 2. Calculamos as estatísticas para os StatCards
-    const totalUsers = usuarios.length;
-    const totalAlerts = todosAlertas.filter(a => a.status === 'ativo').length;
-    const alertasPausados = todosAlertas.filter(a => a.status === 'pausado').length;
-    const alertasComErro = todosAlertas.filter(a => a.status === 'erro').length;
+    // Conta quantos alertas cada usuário tem
+    const contagemPorUsuario = {};
+    for (const a of alertasRaw) {
+      const uid = String(a.usuario);
+      contagemPorUsuario[uid] = (contagemPorUsuario[uid] ?? 0) + 1;
+    }
 
-    // 3. Montamos o objeto crawlerHealth com base nos logs reais
+    const users = usuariosRaw.map((u) => ({
+      _id:      u._id,
+      email:    u.email,
+      role:     u.role,
+      criadoEm: u.criadoEm,
+      alertas:  contagemPorUsuario[String(u._id)] ?? 0,
+    }));
+
+    // Mapeia campo `usuario` (ObjectId) → `userId` esperado pelo frontend
+    const alertas = alertasRaw.map((a) => ({
+      _id:               a._id,
+      userId:            a.usuario,
+      email:             a.email,
+      url:               a.url,
+      status:            a.status,
+      criadoEm:          a.criadoEm ?? a.createdAt,
+      ultimaVerificacao: a.ultimaVerificacao,
+    }));
+
+    // Monta o objeto crawlerHealth com base nos logs reais
     const ultimoLog = logsRecentes[0];
     const crawlerHealth = {
       status: ultimoLog?.status === 'erro' ? 'degradado' : 'operacional',
       ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
-      proximaExecucao: new Date(Date.now() + 60 * 60 * 1000), // Ex: daqui a 1h
+      proximaExecucao: new Date(Date.now() + 60 * 60 * 1000),
       totalVerificacoesHoje: ultimoLog?.totalVerificadas || 0,
       mudancasDetectadasHoje: ultimoLog?.totalMudancas || 0,
       emailsEnviadosHoje: ultimoLog?.totalEmailsEnviados || 0,
-      taxaSucessoEmail: 100, // Você pode calcular isso se tiver o campo no log
+      taxaSucessoEmail: 100,
       logs: logsRecentes.map(l => ({
         _id: l._id,
         tipo: l.status === 'sucesso' ? 'sucesso' : 'erro',
@@ -45,17 +66,16 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }))
     };
 
-    // 4. Enviamos tudo com os nomes que o seu FRONTEND espera (em inglês)
     res.json({
       sucesso: true,
       dados: {
-        totalUsers,
-        totalAlerts,
+        totalUsers:      usuariosRaw.length,
+        totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
         alertasPausados,
         alertasComErro,
-        users: usuarios,      // O frontend espera 'users'
-        alertas: todosAlertas, // O frontend espera 'alertas'
         feedbacks,
+        users,
+        alertas,
         crawlerHealth
       },
     });

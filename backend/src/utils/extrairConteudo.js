@@ -55,11 +55,16 @@ function extrairComCheerio(html, seletorCss) {
 
   // Remove tags que nunca carregam conteúdo relevante
   $alvo.find(
-    'script, style, noscript, iframe, svg, link, meta, img, input, button, form, video, audio, canvas, object, embed'
+    'script, style, noscript, template, iframe, svg, link, meta, img, input, button, form, video, audio, canvas, object, embed'
   ).remove();
 
   // Remove áreas de layout/navegação
   $alvo.find('header, footer, nav, aside').remove();
+
+  // Remove elementos com conteúdo dinâmico que muda a cada requisição
+  // (timestamps relativos, contadores de views/shares, regiões live)
+  $alvo.find('time').remove();
+  $alvo.find('[aria-live]').remove();
 
   // Remove anúncios, banners, pop-ups, cookie notices e widgets dinâmicos
   const seletoresLixo = [
@@ -75,6 +80,7 @@ function extrairComCheerio(html, seletorCss) {
     '.newsletter', '.subscribe', '.cta',
     '.comments', '#comments', '.comment-section',
     '.breadcrumb', '.breadcrumbs', '.pagination',
+    '[class*="count"]', '[class*="views"]', '[class*="counter"]',
   ].join(', ');
 
   $alvo.find(seletoresLixo).remove();
