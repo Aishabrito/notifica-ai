@@ -166,7 +166,7 @@ function extrairConteudoLimpo(html, seletorCss) {
   const $alvo = seletorCss ? $(seletorCss) : $('body');
 
   // Remove tags inúteis do bloco alvo
-  $alvo.find('script, style, footer, noscript, iframe, head, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
+  $alvo.find('script, style, footer, noscript, iframe, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
 
   // Remove atributos dinâmicos que mudam a cada requisição (tokens, nonces, etc.)
   $alvo.find('[data-token], [data-nonce], [data-csrf], [nonce]').removeAttr('data-token data-nonce data-csrf nonce');
