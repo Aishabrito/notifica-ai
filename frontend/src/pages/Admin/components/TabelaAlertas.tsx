@@ -45,13 +45,13 @@ export default function AlertsTable({ alerts }: { alerts: AlertRecord[] }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<"all" | AlertRecord["status"]>("all");
 
-  const filtered = useMemo(() => {
-    return alerts.filter(a => {
-      const matchQ = !query || a.email.toLowerCase().includes(query.toLowerCase()) || a.url.toLowerCase().includes(query.toLowerCase());
-      const matchS = statusFilter === "all" || a.status === statusFilter;
-      return matchQ && matchS;
-    });
-  }, [alerts, query, statusFilter]);
+ const filtered = useMemo(() => {
+  return (alerts ?? []).filter(a => {
+    const matchQ = !query || a.email.toLowerCase().includes(query.toLowerCase()) || a.url.toLowerCase().includes(query.toLowerCase());
+    const matchS = statusFilter === "all" || a.status === statusFilter;
+    return matchQ && matchS;
+  });
+}, [alerts, query, statusFilter]);
 
   return (
     <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">

@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
-import { DashboardDados } from "./components/types";
+import { DashboardDados } from "./components/types"; 
 
 // ─── Importação dos Componentes Filhos ────────────────────────────────────────
 import StatCard from "./components/StatCard";
@@ -181,24 +181,24 @@ export default function AdminDashboard() {
           ))}
         </div>
 
-        {/* ── Conteúdo das Abas ── */}
+        {/* ── Conteúdo das Abas com Proteção de Dados ── */}
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <PainelSaudeCrawler health={dados?.crawlerHealth} />
-            <PainelLogCrawler logs={dados?.crawlerHealth?.logs} />
+            <PainelLogCrawler logs={dados?.crawlerHealth?.logs ?? []} />
           </div>
         )}
 
         {tab === "usuarios" && dados && (
-          <TabelaUsuarios users={dados.users} alerts={dados.alertas} />
+          <TabelaUsuarios users={dados.users ?? []} alerts={dados.alertas ?? []} />
         )}
 
         {tab === "alertas" && dados && (
-          <TabelaAlertas alerts={dados.alertas} />
+          <TabelaAlertas alerts={dados.alertas ?? []} />
         )}
 
         {tab === "feedbacks" && dados && (
-          <TabelaFeedbacks feedbacks={dados.feedbacks} />
+          <TabelaFeedbacks feedbacks={dados.feedbacks ?? []} />
         )}
 
         {/* Loading State para abas */}
