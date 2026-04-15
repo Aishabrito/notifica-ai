@@ -10,7 +10,6 @@ const LogCron  = require('../models/LogCron');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 
-// Rota: GET /api/admin/dashboard
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
     const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes] = await Promise.all([
@@ -22,14 +21,38 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
     ]);
 
-    // Conta quantos alertas cada usuário tem
+    // 1. Lógica para calcular a Próxima Execução Real (Brasília)
+    const agora = new Date();
+    // Obtém a hora atual em Brasília para decidir o próximo passo
+    const horaBrasilia = parseInt(new Intl.DateTimeFormat("en-US", {
+      timeZone: "America/Sao_Paulo",
+      hour: "numeric",
+      hour12: false,
+    }).format(agora));
+
+    let proxima = new Date();
+    // Reseta minutos e segundos para ficar redondo (ex: 10:00:00)
+    proxima.setMinutes(0);
+    proxima.setSeconds(0);
+    proxima.setMilliseconds(0);
+
+    if (horaBrasilia < 10) {
+      proxima.setHours(10 + (agora.getHours() - horaBrasilia)); // Ajusta para o fuso do servidor
+    } else if (horaBrasilia < 15) {
+      proxima.setHours(15 + (agora.getHours() - horaBrasilia));
+    } else {
+      // Próxima é amanhã às 10h
+      proxima.setDate(proxima.getDate() + 1);
+      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
+    }
+
+    // --- Processamento dos dados para o Front ---
     const contagemPorUsuario = {};
     for (const a of alertasRaw) {
       const uid = String(a.usuario);
       contagemPorUsuario[uid] = (contagemPorUsuario[uid] ?? 0) + 1;
     }
 
-    // Força String() nos ObjectIds para garantir serialização JSON correta
     const users = usuariosRaw.map((u) => ({
       _id:      String(u._id),
       email:    u.email,
@@ -38,7 +61,6 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       alertas:  contagemPorUsuario[String(u._id)] ?? 0,
     }));
 
-    // Mapeia campo `usuario` (ObjectId) → `userId` esperado pelo frontend
     const alertas = alertasRaw.map((a) => ({
       _id:               String(a._id),
       userId:            String(a.usuario),
@@ -49,15 +71,14 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       ultimaVerificacao: a.ultimaVerificacao,
     }));
 
-    // Monta o objeto crawlerHealth com os campos corretos do modelo LogCron
     const ultimoLog = logsRecentes[0];
     const crawlerHealth = {
       status: ultimoLog?.sucesso === false ? 'degradado' : 'operacional',
       ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
-      proximaExecucao: new Date(Date.now() + 60 * 60 * 1000),
+      proximaExecucao: proxima, // <--- AGORA VAI MOSTRAR 10:00 OU 15:00
       totalVerificacoesHoje: ultimoLog?.alertasVerificados || 0,
       mudancasDetectadasHoje: ultimoLog?.mudancasDetectadas || 0,
-      emailsEnviadosHoje: 0, // não rastreado no LogCron — campo reservado para futura implementação
+      emailsEnviadosHoje: 0,
       taxaSucessoEmail: 100,
       logs: logsRecentes.map(l => ({
         _id: String(l._id),
@@ -85,7 +106,6 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar o painel do administrador.' });
   }
 });
-
 // Rota: GET /api/admin/cron-logs
 router.get('/cron-logs', autenticar, isAdmin, async (req, res) => {
   try {
