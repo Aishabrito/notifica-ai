@@ -11,6 +11,10 @@ const Mudanca       = require('../models/Mudanca');
 const LIMITE_FALHAS = 3;
 const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
 
+// Cooldown entre notificações de um mesmo alerta (em milissegundos).
+// Impede que o usuário receba vários e-mails seguidos (evita spam).
+const COOLDOWN_NOTIFICACAO_MS = 24 * 60 * 60 * 1000; // 24 horas
+
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
 // ============================================
@@ -157,12 +161,26 @@ async function verificarAlerta(alerta) {
 
       let emailEnviado = false;
 
-      try {
-        await enviarEmailMudanca(alerta);
-        emailEnviado = true;
-        console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
-      } catch (erroEmail) {
-        console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+      // Verifica cooldown: só envia e-mail se já passaram 24h desde a última notificação
+      const agora          = Date.now();
+      const ultimaNotif    = alerta.ultimaNotificacao ? new Date(alerta.ultimaNotificacao).getTime() : 0;
+      const dentroCooldown = (agora - ultimaNotif) < COOLDOWN_NOTIFICACAO_MS;
+
+      if (dentroCooldown) {
+        console.log(
+          `[Crawler] ⏳ E-mail suprimido para ${alerta.email} (cooldown ativo). ` +
+          `Última notificação: ${new Date(alerta.ultimaNotificacao).toISOString()}`
+        );
+      } else {
+        try {
+          await enviarEmailMudanca(alerta);
+          emailEnviado = true;
+          alerta.ultimaNotificacao = new Date();
+          await alerta.save();
+          console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
+        } catch (erroEmail) {
+          console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+        }
       }
 
       // Salva registro no histórico de mudanças
