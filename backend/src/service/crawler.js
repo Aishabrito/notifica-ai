@@ -120,7 +120,7 @@ async function verificarAlerta(alerta) {
       timeout: 15000,
     });
 
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss);
+    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss, alerta.url);
     const hashAtual     = gerarHash(conteudoLimpo);
 
     // ✅ SUCESSO — reseta contador de falhas

@@ -185,7 +185,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
     });
 
     const seletorLimpo  = seletorCss ? seletorCss.trim() : null;
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, seletorLimpo);
+    const conteudoLimpo = extrairConteudoLimpo(resposta.data, seletorLimpo, url);
     const hashInicial   = gerarHash(conteudoLimpo);
     const $             = cheerio.load(resposta.data);
     const tituloDoSite  = $('title').text().trim() || url;
