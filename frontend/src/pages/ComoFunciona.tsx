@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/[0.04] bg-[#0a0a0a]/80 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4#0a0a0a]/80 backdrop-blur-md">
       <Link to="/" className="font-mono font-bold text-sm tracking-widest text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </Link>
@@ -29,7 +29,7 @@ function Navbar() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="border-t border-white/[0.05] px-6 md:px-20 py-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <footer className="border-t border-white/5 px-6 md:px-20 py-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <span className="font-mono text-sm font-bold text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </span>
@@ -100,7 +100,7 @@ function MockWindow({
       style={{ background: 'linear-gradient(145deg, rgba(108,52,131,0.05) 0%, #111 100%)' }}
     >
       {/* Barra do "navegador" */}
-      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/[0.02]">
+      <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/2">
         <span className="w-2.5 h-2.5 rounded-full bg-red-500/40" />
         <span className="w-2.5 h-2.5 rounded-full bg-yellow-400/40" />
         <span className="w-2.5 h-2.5 rounded-full bg-emerald-400/40" />
@@ -310,11 +310,11 @@ function CustomCursor() {
     <>
       <div
         ref={dot}
-        className="fixed top-0 left-0 w-1.5 h-1.5 bg-emerald-400 rounded-full pointer-events-none z-[9999]"
+        className="fixed top-0 left-0 w-1.5 h-1.5 bg-emerald-400 rounded-full pointer-events-none z-9999"
       />
       <div
         ref={ring}
-        className="fixed top-0 left-0 w-7 h-7 border border-purple-500/50 rounded-full pointer-events-none z-[9998]"
+        className="fixed top-0 left-0 w-7 h-7 border border-purple-500/50 rounded-full pointer-events-none z-9998"
       />
     </>
   );
@@ -340,7 +340,7 @@ export default function ComoFunciona() {
         style={{ cursor: 'none' }}
       >
         {/* Noise overlay */}
-        <div className="noise-overlay fixed inset-0 pointer-events-none z-[1000] opacity-[0.35]" />
+        <div className="noise-overlay fixed inset-0 pointer-events-none z-1000 opacity-[0.35]" />
 
         <CustomCursor />
         <Navbar />

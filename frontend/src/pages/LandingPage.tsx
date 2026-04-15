@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/[0.04] bg-[#0a0a0a]/80 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-[#0a0a0a]/80 backdrop-blur-md">
       <Link to="/" className="font-mono font-bold text-sm tracking-widest text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </Link>
@@ -26,7 +26,7 @@ function Navbar() {
 // ─── Footer ───────────────────────────────────────────────────────────────────
 function Footer() {
   return (
-    <footer className="border-t border-white/[0.05] px-6 md:px-20 py-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+    <footer className="border-t border-white/5 px-6 md:px-20 py-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
       <span className="font-mono text-sm font-bold text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </span>
@@ -52,7 +52,7 @@ function Ticker() {
       <span className="font-mono text-[9px] text-purple-200 whitespace-nowrap tracking-widest bg-purple-500/30 px-2 py-0.5 rounded-full shrink-0 uppercase">
         Ao vivo
       </span>
-      <div className="overflow-hidden max-w-[240px] sm:max-w-sm md:max-w-md">
+      <div className="overflow-hidden max-w-60 sm:max-w-sm md:max-w-md">
         <div className="flex gap-8 animate-[ticker_18s_linear_infinite] whitespace-nowrap">
           {doubled.map((item, i) => (
             <span key={i} className={`font-mono text-[10px] ${item.color}`}>
@@ -100,7 +100,7 @@ function AnxietyBar({ label, val }: { label: string; val: string }) {
           style={{ width: '0%' }}
           data-width={val}
         />
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-purple-600/20 to-transparent w-1/3 animate-[scan_2s_linear_infinite]" />
+        <div className="absolute inset-0 bg-linear-to-r from-transparent via-purple-600/20 to-transparent w-1/3 animate-[scan_2s_linear_infinite]" />
       </div>
     </div>
   );
@@ -251,7 +251,7 @@ export default function LandingPage() {
               {desktopCards.map((c) => (
                 <div
                   key={c.url}
-                  className="shrink-0 border border-white/5 border-l-4 border-l-purple-600 p-4 rounded-lg min-w-[180px]"
+                  className="shrink-0 border border-white/5 border-l-4 border-l-purple-600 p-4 rounded-lg min-w-45"
                   style={{ background: 'linear-gradient(135deg, rgba(108,52,131,0.06) 0%, rgba(0,0,0,0) 100%)' }}
                 >
                   <div className="font-mono text-[9px] text-neutral-600 mb-1">{c.url}</div>
@@ -263,7 +263,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── PROBLEMA ─────────────────────────────────────────────────── */}
-        <section className="py-20 md:py-32 px-6 md:px-20 border-t border-white/[0.05] observe-section">
+        <section className="py-20 md:py-32 px-6 md:px-20 border-t border-white/5 observe-section">
           <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
             <div>
               <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4 md:mb-6 reveal-up">
@@ -297,7 +297,7 @@ export default function LandingPage() {
         </section>
 
         {/* ── NÚMEROS / PROVA SOCIAL ────────────────────────────────────── */}
-        <section className="py-20 md:py-28 px-6 md:px-20 border-t border-white/[0.05] observe-section">
+        <section className="py-20 md:py-28 px-6 md:px-20 border-t border-white/5 observe-section">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4 reveal-up">
@@ -318,7 +318,7 @@ export default function LandingPage() {
 
         {/* ── CTA FINAL ────────────────────────────────────────────────── */}
         <section
-          className="border-t border-white/[0.05] py-20 md:py-28 px-6 text-center relative overflow-hidden observe-section"
+          className="border-t border-white/5 py-20 md:py-28 px-6 text-center relative overflow-hidden observe-section"
           style={{
             background:
               'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a',
