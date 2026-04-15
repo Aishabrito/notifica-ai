@@ -15,6 +15,7 @@ const dns           = require('dns').promises;
 
 const transportador             = require('./src/utils/mailer');
 const { getHeaders }            = require('./src/utils/headers');
+const { extrairConteudoLimpo }  = require('./src/utils/extrairConteudo');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
 const { executarMonitoramento } = require('./src/service/crawler');
@@ -69,26 +70,8 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(() => {
     console.log('✅ MongoDB conectado com sucesso!');
-    // Aguarda 2 minutos antes de iniciar o monitoramento para não bloquear
-    // o servidor durante o boot (evita timeout no primeiro acesso do usuário)
-    setTimeout(inicializarVigia, 15 * 1000);
   })
   .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
-
-// ============================================
-// 🤖 INICIALIZAÇÃO DO VIGIA
-// ============================================
-async function inicializarVigia() {
-  try {
-    const alertas = await Alerta.find({ status: 'ativo' });
-    if (alertas.length > 0) {
-      console.log(`🤖 Ronda inicial: Verificando ${alertas.length} alertas ativos...`);
-      await executarMonitoramento(alertas);
-    }
-  } catch (err) {
-    console.error('❌ Erro na inicialização do vigia:', err.message);
-  }
-}
 
 // ============================================
 // 🚦 RATE LIMITERS
@@ -157,21 +140,6 @@ async function validarUrlPublica(rawUrl) {
 // ============================================
 function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
-}
-
-function extrairConteudoLimpo(html, seletorCss) {
-  const $ = cheerio.load(html);
-
-  // Se um seletor CSS foi informado, extrai apenas o conteúdo alvo
-  const $alvo = seletorCss ? $(seletorCss) : $('body');
-
-  // Remove tags inúteis do bloco alvo
-  $alvo.find('script, style, footer, noscript, iframe, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
-
-  // Remove atributos dinâmicos que mudam a cada requisição (tokens, nonces, etc.)
-  $alvo.find('[data-token], [data-nonce], [data-csrf], [nonce]').removeAttr('data-token data-nonce data-csrf nonce');
-
-  return $alvo.text().replace(/\s+/g, ' ').trim();
 }
 
 // ============================================
@@ -307,9 +275,9 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
 });
 
 // ============================================
-// 🤖 CRON JOB — roda às 10h (horário de Brasília)
+// 🤖 CRON JOB — roda às 10h e 15h (horário de Brasília)
 // ============================================
-cron.schedule('0 10 * * *', async () => {
+cron.schedule('0 10,15 * * *', async () => {
   const iniciadoEm = new Date();
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
 
