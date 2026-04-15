@@ -51,7 +51,7 @@ const emailBoasVindas = (nome) => `
               </table>
 
               <!-- CTA -->
-              <a href="https://notifica-ai.vercel.app/dashboard"
+              <a href="https://notifica.dev.br/dashboard"
                  style="display:inline-block;background:#10b981;color:#000;font-weight:700;font-size:13px;padding:14px 32px;border-radius:8px;text-decoration:none;letter-spacing:0.5px;">
                 Criar meu primeiro alerta →
               </a>

@@ -151,7 +151,7 @@ router.post('/forgot-password', recuperacaoLimiter, async (req, res) => {
       { expiresIn: '1h' }
     );
 
-    const resetUrl = `${process.env.BASE_URL ?? 'https://notifica-ai.vercel.app'}/redefinir-senha?token=${resetToken}`;
+    const resetUrl = `${process.env.BASE_URL ?? 'https://notifica.dev.br'}/redefinir-senha?token=${resetToken}`;
 
     await transportador.sendMail({
       from: `"Notifica.ai 🔐" <${process.env.EMAIL_REMETENTE}>`,

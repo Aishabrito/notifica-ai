@@ -34,7 +34,7 @@ O **Notifica.ai** nasceu de um problema real: a angústia de esperar uma atualiz
 | Node.js + Express | Servidor e API REST |
 | Mongoose | Modelagem e conexão com banco |
 | Axios + Cheerio | Web scraping dos sites monitorados |
-| Nodemailer | Envio de e-mails transacionais |
+| Resend | Envio de e-mails transacionais |
 | Node-cron | Agendamento do Vigia automático |
 
 ### Banco de Dados & Infraestrutura
@@ -97,8 +97,8 @@ Quer rodar o projeto localmente ou contribuir? Abre uma [issue](https://github.c
 
 | Serviço | URL |
 |---|---|
-| Frontend | [notifica-ai.vercel.app](https://notifica-ai.vercel.app) |
-| Backend | [notifica-ai.onrender.com](https://notifica-ai.onrender.com) |
+| Frontend | [notifica.dev.br](https://notifica.dev.br) |
+| Backend | [notifica.dev.br/api](https://notifica.dev.br/api) |
 
 ---
 
@@ -106,7 +106,7 @@ Quer rodar o projeto localmente ou contribuir? Abre uma [issue](https://github.c
 
 - Credenciais protegidas via variáveis de ambiente (`.env`)
 - Arquivo `.env` incluído no `.gitignore` — nunca versionado
-- Senhas de App do Gmail em vez de senha principal
+- E-mails enviados via Resend com domínio próprio verificado (SPF/DKIM/DMARC)
 
 ---
 
