@@ -11,10 +11,8 @@ import Privacidade  from './pages/Privacidade';
 import NotFound     from './pages/NotFound';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/private-route';
-
-// ✅ Novos imports
 import AdminRoute     from './components/AdminRoute';
-import AdminDashboard from './pages/AdminDashboard';
+import AdminDashboard from "./pages/Admin/AdminDashboard";
 
 export default function App() {
   return (
