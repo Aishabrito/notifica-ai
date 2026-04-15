@@ -84,7 +84,7 @@ export default function Cadastro() {
 
               <Input
                 label="Nome completo"
-                placeholder="Ex: Aisha Brito"
+                placeholder="Ex: Maria Silva"
                 value={nome}
                 onChange={(e) => setNome(e.target.value)}
                 required
@@ -102,7 +102,7 @@ export default function Cadastro() {
               <Input
                 type="tel"
                 label="Telefone (opcional)"
-                placeholder="(21) 99999-9999"
+                placeholder="(DDD) 99999-9999"
                 value={telefone}
                 onChange={(e) => setTelefone(e.target.value)}
               />
