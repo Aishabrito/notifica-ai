@@ -159,10 +159,19 @@ function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
 }
 
-function extrairConteudoLimpo(html) {
+function extrairConteudoLimpo(html, seletorCss) {
   const $ = cheerio.load(html);
-  $('script, style, footer, noscript, iframe, head, nav, .ads, #footer, .sidebar').remove();
-  return $('body').text().replace(/\s+/g, ' ').trim();
+
+  // Se um seletor CSS foi informado, extrai apenas o conteúdo alvo
+  const $alvo = seletorCss ? $(seletorCss) : $('body');
+
+  // Remove tags inúteis do bloco alvo
+  $alvo.find('script, style, footer, noscript, iframe, head, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
+
+  // Remove atributos dinâmicos que mudam a cada requisição (tokens, nonces, etc.)
+  $alvo.find('[data-token], [data-nonce], [data-csrf], [nonce]').removeAttr('data-token data-nonce data-csrf nonce');
+
+  return $alvo.text().replace(/\s+/g, ' ').trim();
 }
 
 // ============================================
@@ -182,7 +191,7 @@ app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Da
 
 // Cadastrar alerta (protegido)
 app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req, res) => {
-  const { url } = req.body;
+  const { url, seletorCss } = req.body;
   const email   = req.usuario.email;
 
   if (!url)
@@ -207,7 +216,8 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
       timeout: 15000,
     });
 
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data);
+    const seletorLimpo  = seletorCss ? seletorCss.trim() : null;
+    const conteudoLimpo = extrairConteudoLimpo(resposta.data, seletorLimpo);
     const hashInicial   = gerarHash(conteudoLimpo);
     const $             = cheerio.load(resposta.data);
     const tituloDoSite  = $('title').text().trim() || url;
@@ -215,6 +225,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
       url,
       email,
       titulo: tituloDoSite,
+      seletorCss: seletorLimpo,
       hashConteudo: hashInicial,
       usuario: req.usuario._id,
     });
@@ -296,7 +307,7 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
 });
 
 // ============================================
-// 🤖 CRON JOB — roda a cada hora
+// 🤖 CRON JOB — roda às 10h (horário de Brasília)
 // ============================================
 cron.schedule('0 10 * * *', async () => {
   const iniciadoEm = new Date();
@@ -334,7 +345,7 @@ cron.schedule('0 10 * * *', async () => {
   }
 
   console.log('🤖 Vigia: Verificação concluída.');
-});
+}, { timezone: 'America/Sao_Paulo' });
 
 // ============================================
 // 🚀 LANÇAMENTO
