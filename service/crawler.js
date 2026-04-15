@@ -1,9 +1,9 @@
 const axios         = require('axios');
 const crypto        = require('crypto');
-const transportador = require('../utils/mailer');
-const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
-const Alerta        = require('../models/alertaModel');
-const Mudanca       = require('../models/Mudanca');
+const transportador = require('../backend/src/utils/mailer');
+const { extrairConteudoLimpo } = require('../backend/src/utils/extrairConteudo');
+const Alerta        = require('../backend/src/models/alertaModel');
+const Mudanca       = require('../backend/src/models/Mudanca');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES

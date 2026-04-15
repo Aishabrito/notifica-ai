@@ -13,20 +13,50 @@ const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 // Rota: GET /api/admin/dashboard
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
-    const [totalUsers, totalAlerts, alertasPausados, feedbacks] = await Promise.all([
-      Usuario.countDocuments({}),
-      Alerta.countDocuments({ status: 'ativo' }),
-      Alerta.countDocuments({ status: 'pausado' }),
-      Feedback.find({}).sort({ criadoEm: -1 }),
+    // 1. Buscamos as listas completas em vez de apenas contar
+    const [usuarios, todosAlertas, feedbacks, logsRecentes] = await Promise.all([
+      Usuario.find({}).select('-senha').lean(), // Traz todos sem a senha
+      Alerta.find({}).lean(),
+      Feedback.find({}).sort({ criadoEm: -1 }).limit(20).lean(),
+      LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
     ]);
 
+    // 2. Calculamos as estatísticas para os StatCards
+    const totalUsers = usuarios.length;
+    const totalAlerts = todosAlertas.filter(a => a.status === 'ativo').length;
+    const alertasPausados = todosAlertas.filter(a => a.status === 'pausado').length;
+    const alertasComErro = todosAlertas.filter(a => a.status === 'erro').length;
+
+    // 3. Montamos o objeto crawlerHealth com base nos logs reais
+    const ultimoLog = logsRecentes[0];
+    const crawlerHealth = {
+      status: ultimoLog?.status === 'erro' ? 'degradado' : 'operacional',
+      ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
+      proximaExecucao: new Date(Date.now() + 60 * 60 * 1000), // Ex: daqui a 1h
+      totalVerificacoesHoje: ultimoLog?.totalVerificadas || 0,
+      mudancasDetectadasHoje: ultimoLog?.totalMudancas || 0,
+      emailsEnviadosHoje: ultimoLog?.totalEmailsEnviados || 0,
+      taxaSucessoEmail: 100, // Você pode calcular isso se tiver o campo no log
+      logs: logsRecentes.map(l => ({
+        _id: l._id,
+        tipo: l.status === 'sucesso' ? 'sucesso' : 'erro',
+        mensagem: l.mensagem || `Execução finalizada: ${l.totalVerificadas} verificadas`,
+        criadoEm: l.dataExecucao
+      }))
+    };
+
+    // 4. Enviamos tudo com os nomes que o seu FRONTEND espera (em inglês)
     res.json({
       sucesso: true,
       dados: {
         totalUsers,
         totalAlerts,
         alertasPausados,
+        alertasComErro,
+        users: usuarios,      // O frontend espera 'users'
+        alertas: todosAlertas, // O frontend espera 'alertas'
         feedbacks,
+        crawlerHealth
       },
     });
   } catch (err) {
