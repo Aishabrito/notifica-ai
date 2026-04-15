@@ -57,7 +57,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       proximaExecucao: new Date(Date.now() + 60 * 60 * 1000),
       totalVerificacoesHoje: ultimoLog?.alertasVerificados || 0,
       mudancasDetectadasHoje: ultimoLog?.mudancasDetectadas || 0,
-      emailsEnviadosHoje: 0,
+      emailsEnviadosHoje: 0, // não rastreado no LogCron — campo reservado para futura implementação
       taxaSucessoEmail: 100,
       logs: logsRecentes.map(l => ({
         _id: String(l._id),

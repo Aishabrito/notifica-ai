@@ -32,7 +32,8 @@ export default function Home() {
   const [alertas, setAlertas]         = useState<Alerta[]>([]);
   const [carregando, setCarregando]   = useState(true);
   const [url, setUrl]                 = useState("");
-  const [emailManual, setEmailManual] = useState("");  const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
+  const [emailManual, setEmailManual] = useState("");
+  const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
 
   const emailAtivo = usuario?.email || emailManual;
 
