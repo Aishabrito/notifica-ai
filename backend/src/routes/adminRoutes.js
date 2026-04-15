@@ -1,4 +1,3 @@
-// src/routes/adminRoutes.js
 const express = require('express');
 const router = express.Router();
 
@@ -10,6 +9,9 @@ const LogCron  = require('../models/LogCron');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 
+// ============================================================
+// 📊 DASHBOARD PRINCIPAL
+// ============================================================
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
     const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes] = await Promise.all([
@@ -23,7 +25,6 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
 
     // 1. Lógica para calcular a Próxima Execução Real (Brasília)
     const agora = new Date();
-    // Obtém a hora atual em Brasília para decidir o próximo passo
     const horaBrasilia = parseInt(new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Sao_Paulo",
       hour: "numeric",
@@ -31,17 +32,15 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     }).format(agora));
 
     let proxima = new Date();
-    // Reseta minutos e segundos para ficar redondo (ex: 10:00:00)
     proxima.setMinutes(0);
     proxima.setSeconds(0);
     proxima.setMilliseconds(0);
 
     if (horaBrasilia < 10) {
-      proxima.setHours(10 + (agora.getHours() - horaBrasilia)); // Ajusta para o fuso do servidor
+      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
     } else if (horaBrasilia < 15) {
       proxima.setHours(15 + (agora.getHours() - horaBrasilia));
     } else {
-      // Próxima é amanhã às 10h
       proxima.setDate(proxima.getDate() + 1);
       proxima.setHours(10 + (agora.getHours() - horaBrasilia));
     }
@@ -75,7 +74,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     const crawlerHealth = {
       status: ultimoLog?.sucesso === false ? 'degradado' : 'operacional',
       ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
-      proximaExecucao: proxima, // <--- AGORA VAI MOSTRAR 10:00 OU 15:00
+      proximaExecucao: proxima,
       totalVerificacoesHoje: ultimoLog?.alertasVerificados || 0,
       mudancasDetectadasHoje: ultimoLog?.mudancasDetectadas || 0,
       emailsEnviadosHoje: 0,
@@ -106,7 +105,42 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar o painel do administrador.' });
   }
 });
-// Rota: GET /api/admin/cron-logs
+
+// ============================================================
+// ⚡ CONTROLE DE ALERTAS (ATIVAR/DESATIVAR)
+// ============================================================
+router.patch('/alertas/:id/status', autenticar, isAdmin, async (req, res) => {
+  try {
+    const { status } = req.body;
+    
+    if (!['ativo', 'pausado'].includes(status)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Status inválido.' });
+    }
+
+    const alerta = await Alerta.findByIdAndUpdate(
+      req.params.id, 
+      { status }, 
+      { new: true }
+    );
+
+    if (!alerta) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
+
+    res.json({ 
+      sucesso: true, 
+      mensagem: `Alerta marcado como ${status}!`, 
+      alerta 
+    });
+  } catch (err) {
+    console.error('Erro ao atualizar status do alerta:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao atualizar alerta.' });
+  }
+});
+
+// ============================================================
+// 📜 LOGS E HISTÓRICO
+// ============================================================
 router.get('/cron-logs', autenticar, isAdmin, async (req, res) => {
   try {
     const logs = await LogCron.find({}).sort({ dataExecucao: -1 }).limit(50);
@@ -117,7 +151,6 @@ router.get('/cron-logs', autenticar, isAdmin, async (req, res) => {
   }
 });
 
-// Rota: GET /api/admin/historico/:alertaId
 router.get('/historico/:alertaId', autenticar, isAdmin, async (req, res) => {
   try {
     const mudancas = await Mudanca.find({ alertaId: req.params.alertaId })

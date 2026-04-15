@@ -1,14 +1,11 @@
 import React, { useState, useMemo } from "react";
-import { Search, ChevronDown, ChevronUp, ExternalLink, Users } from "lucide-react";
+import { Search, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { UserRecord, AlertRecord } from "./types";
 
 // ─── Helpers ───────────────────────────────────────────────────────────
-const fmt = (iso: string) =>
-  new Date(iso).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "2-digit", hour: "2-digit", minute: "2-digit" });
-
 const AVATAR_COLORS = ["bg-blue-100 text-blue-700", "bg-violet-100 text-violet-700", "bg-teal-100 text-teal-700", "bg-pink-100 text-pink-700", "bg-amber-100 text-amber-700"];
-const avatarColor = (email: string) => AVATAR_COLORS[email.charCodeAt(0) % AVATAR_COLORS.length];
-const initials = (email: string) => email.slice(0, 2).toUpperCase();
+const avatarColor = (email: string) => AVATAR_COLORS[(email?.charCodeAt(0) || 0) % AVATAR_COLORS.length];
+const initials = (email: string) => (email || "??").slice(0, 2).toUpperCase();
 
 function Avatar({ email }: { email: string }) {
   return (
@@ -28,13 +25,21 @@ function StatusBadge({ status }: { status: AlertRecord["status"] }) {
 }
 
 // ─── Componente Principal ─────────────────────────────────────────────────────
-export default function TabelaUsuarios({ users, alerts }: { users: UserRecord[]; alerts: AlertRecord[] }) {
+// Adicionada a prop onRefresh para satisfazer o contrato do Dashboard
+export default function TabelaUsuarios({ 
+  users, 
+  alerts, 
+  onRefresh 
+}: { 
+  users: UserRecord[]; 
+  alerts: AlertRecord[]; 
+  onRefresh?: () => void 
+}) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
 
-  // O filtro deve ficar AQUI dentro, logo após os useStates
   const filtered = useMemo(() => {
-    const listaSegura = users ?? []; // Evita o erro de undefined
+    const listaSegura = users ?? [];
     return listaSegura.filter((u: UserRecord) => {
       return !query || u.email.toLowerCase().includes(query.toLowerCase());
     });
@@ -53,7 +58,7 @@ export default function TabelaUsuarios({ users, alerts }: { users: UserRecord[];
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar por e-mail..."
-            className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 outline-none focus:border-indigo-300 w-48"
+            className="pl-8 pr-3 py-1.5 text-xs border border-slate-200 rounded-lg bg-slate-50 outline-none focus:border-indigo-300 w-48 text-slate-700"
           />
         </div>
       </div>
@@ -90,16 +95,16 @@ export default function TabelaUsuarios({ users, alerts }: { users: UserRecord[];
                           <span className="text-xs font-medium text-slate-700">{user.email}</span>
                         </div>
                       </td>
-                      <td className="px-5 py-3.5 text-xs text-slate-600">{user.alertas}</td>
-                      <td className="px-5 py-3.5 text-slate-400">
+                      <td className="px-5 py-3.5 text-xs text-slate-600 font-mono">{user.alertas}</td>
+                      <td className="px-5 py-3.5 text-slate-400 text-right">
                         {isExp ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
                       </td>
                     </tr>
                     {isExp && (
                       <tr className="bg-slate-50/70">
                         <td colSpan={3} className="px-5 py-3">
-                          <div className="bg-white border rounded-xl p-4 shadow-sm space-y-2">
-                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Monitoramentos ativos</p>
+                          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2 animate-in fade-in slide-in-from-top-1">
+                            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Monitoramentos de {user.email}</p>
                             {userAlerts.length === 0 ? (
                               <p className="text-xs text-slate-400 italic">Nenhum alerta configurado.</p>
                             ) : (

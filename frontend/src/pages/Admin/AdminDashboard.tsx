@@ -1,4 +1,4 @@
-// src/pages/Admin/AdminDashboard.tsx
+
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { 
@@ -29,7 +29,10 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState<Tab>("visao-geral");
 
   const fetchDados = async () => {
-    setLoading(true);
+    // Se já temos dados, não mostramos o skeleton de loading pesado, 
+    // apenas o ícone de girar no botão "Atualizar"
+    if (!dados) setLoading(true); 
+    
     setError(null);
     try {
       const { data } = await api.get("/api/admin/dashboard");
@@ -136,7 +139,7 @@ export default function AdminDashboard() {
 
         {/* ── Stat Cards ── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          {loading ? (
+          {loading && !dados ? (
             [...Array(4)].map((_, i) => (
               <div key={i} className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5 animate-pulse h-24" />
             ))
@@ -190,19 +193,29 @@ export default function AdminDashboard() {
         )}
 
         {tab === "usuarios" && dados && (
-          <TabelaUsuarios users={dados.users ?? []} alerts={dados.alertas ?? []} />
+          <TabelaUsuarios 
+            users={dados.users ?? []} 
+            alerts={dados.alertas ?? []} 
+            onRefresh={fetchDados} 
+          />
         )}
 
         {tab === "alertas" && dados && (
-          <TabelaAlertas alerts={dados.alertas ?? []} />
+          <TabelaAlertas 
+            alerts={dados.alertas ?? []} 
+            onRefresh={fetchDados} 
+          />
         )}
 
         {tab === "feedbacks" && dados && (
-          <TabelaFeedbacks feedbacks={dados.feedbacks ?? []} />
+          <TabelaFeedbacks 
+            feedbacks={dados.feedbacks ?? []} 
+            onRefresh={fetchDados} 
+          />
         )}
 
         {/* Loading State para abas */}
-        {tab !== "visao-geral" && loading && (
+        {tab !== "visao-geral" && loading && !dados && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 animate-pulse h-64" />
         )}
 
