@@ -14,11 +14,11 @@ const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
     const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes] = await Promise.all([
-      Usuario.find({}).select('-senha -codigoReset -codigoResetExpira').sort({ criadoEm: -1 }),
-      Alerta.find({}).sort({ criadoEm: -1 }),
+      Usuario.find({}).select('-senha -codigoReset -codigoResetExpira').sort({ criadoEm: -1 }).lean(),
+      Alerta.find({}).sort({ criadoEm: -1 }).lean(),
       Alerta.countDocuments({ status: 'pausado' }),
       Alerta.countDocuments({ falhasSeguidas: { $gt: 0 }, status: { $ne: 'pausado' } }),
-      Feedback.find({}).sort({ criadoEm: -1 }),
+      Feedback.find({}).sort({ criadoEm: -1 }).lean(),
       LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
     ]);
 
@@ -29,8 +29,9 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       contagemPorUsuario[uid] = (contagemPorUsuario[uid] ?? 0) + 1;
     }
 
+    // Força String() nos ObjectIds para garantir serialização JSON correta
     const users = usuariosRaw.map((u) => ({
-      _id:      u._id,
+      _id:      String(u._id),
       email:    u.email,
       role:     u.role,
       criadoEm: u.criadoEm,
@@ -39,8 +40,8 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
 
     // Mapeia campo `usuario` (ObjectId) → `userId` esperado pelo frontend
     const alertas = alertasRaw.map((a) => ({
-      _id:               a._id,
-      userId:            a.usuario,
+      _id:               String(a._id),
+      userId:            String(a.usuario),
       email:             a.email,
       url:               a.url,
       status:            a.status,
@@ -48,20 +49,20 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       ultimaVerificacao: a.ultimaVerificacao,
     }));
 
-    // Monta o objeto crawlerHealth com base nos logs reais
+    // Monta o objeto crawlerHealth com os campos corretos do modelo LogCron
     const ultimoLog = logsRecentes[0];
     const crawlerHealth = {
-      status: ultimoLog?.status === 'erro' ? 'degradado' : 'operacional',
+      status: ultimoLog?.sucesso === false ? 'degradado' : 'operacional',
       ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
       proximaExecucao: new Date(Date.now() + 60 * 60 * 1000),
-      totalVerificacoesHoje: ultimoLog?.totalVerificadas || 0,
-      mudancasDetectadasHoje: ultimoLog?.totalMudancas || 0,
-      emailsEnviadosHoje: ultimoLog?.totalEmailsEnviados || 0,
+      totalVerificacoesHoje: ultimoLog?.alertasVerificados || 0,
+      mudancasDetectadasHoje: ultimoLog?.mudancasDetectadas || 0,
+      emailsEnviadosHoje: 0,
       taxaSucessoEmail: 100,
       logs: logsRecentes.map(l => ({
-        _id: l._id,
-        tipo: l.status === 'sucesso' ? 'sucesso' : 'erro',
-        mensagem: l.mensagem || `Execução finalizada: ${l.totalVerificadas} verificadas`,
+        _id: String(l._id),
+        tipo: l.sucesso ? 'sucesso' : 'erro',
+        mensagem: l.erroGlobal || `Execução: ${l.alertasVerificados} verificados, ${l.mudancasDetectadas} mudanças`,
         criadoEm: l.dataExecucao
       }))
     };

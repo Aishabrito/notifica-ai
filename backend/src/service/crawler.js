@@ -1,9 +1,9 @@
 const axios         = require('axios');
 const crypto        = require('crypto');
-const transportador = require('../backend/src/utils/mailer');
-const { extrairConteudoLimpo } = require('../backend/src/utils/extrairConteudo');
-const Alerta        = require('../backend/src/models/alertaModel');
-const Mudanca       = require('../backend/src/models/Mudanca');
+const transportador = require('../utils/mailer');
+const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
+const Alerta        = require('../models/alertaModel');
+const Mudanca       = require('../models/Mudanca');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
@@ -44,13 +44,13 @@ function gerarHeaders(seed) {
     'Accept-Encoding': 'gzip, deflate, br',
     'Connection': 'keep-alive',
     'Upgrade-Insecure-Requests': '1',
-    // Esses headers extras simulam ainda mais o comportamento de um navegador real:
     'Sec-Fetch-Dest': 'document',
     'Sec-Fetch-Mode': 'navigate',
     'Sec-Fetch-Site': 'none',
     'Sec-Fetch-User': '?1'
   };
 }
+
 function jitter(minMs = 1000, maxMs = 5000) {
   const ms = Math.floor(Math.random() * (maxMs - minMs + 1)) + minMs;
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,9 +79,10 @@ async function enviarEmailMudanca(alerta) {
       console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
   } catch (erro) {
       console.error(`[Crawler] ❌ Erro ao enviar email na função enviarEmailMudanca:`, erro);
-      throw erro; // Repassa o erro para ser pego pelo bloco catch lá embaixo
+      throw erro;
   }
 }
+
 // ============================================
 // 📧 E-MAIL DE ALERTA ADM (para a Aísha)
 // ============================================
@@ -238,7 +239,7 @@ async function executarMonitoramento(alertas) {
     const resultado = await verificarAlerta(alerta);
     if (resultado === 'mudanca') alertasComMudanca += 1;
     if (resultado === 'erro')    alertasComErro    += 1;
-    await jitter(); // delay aleatório entre 1s e 4s para evitar bloqueios
+    await jitter();
   }
 
   console.log('[Crawler] ✅ Verificação concluída.');
