@@ -213,7 +213,6 @@ export default function ResetarSenha() {
                   <input
                     type="text"
                     inputMode="numeric"
-                    pattern="\d{6}"
                     maxLength={6}
                     placeholder="000000"
                     value={codigo}

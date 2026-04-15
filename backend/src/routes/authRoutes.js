@@ -19,6 +19,9 @@ const COOKIE_OPTS = {
 const gerarToken = (id) =>
   jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
+// Safe email validation that avoids ReDoS — domain labels cannot contain dots
+const EMAIL_REGEX = /^[^\s@]+@[^@.\s]+(?:\.[^@.\s]+)+$/;
+
 // ─── CADASTRO ──────────────────────────────────────
 router.post('/cadastro', async (req, res) => {
   console.log('📬 Recebi tentativa de cadastro:', req.body.email);
@@ -127,8 +130,7 @@ router.post('/forgot-password', recuperacaoLimiter, async (req, res) => {
   if (!email || typeof email !== 'string')
     return res.status(400).json({ sucesso: false, mensagem: 'Informe o e-mail.' });
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email))
+  if (!EMAIL_REGEX.test(email))
     return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
 
   const emailSanitizado = email.toLowerCase().trim();
@@ -145,7 +147,7 @@ router.post('/forgot-password', recuperacaoLimiter, async (req, res) => {
     }
 
     // Generate 6-digit OTP and store its SHA-256 hash
-    const codigo = String(crypto.randomInt(100000, 999999));
+    const codigo = String(crypto.randomInt(100000, 1000000));
     const codigoHash = crypto.createHash('sha256').update(codigo).digest('hex');
     const expira = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes
 
@@ -199,8 +201,7 @@ router.post('/reset-password', resetLimiter, async (req, res) => {
   if (!email || !codigo || !novaSenha)
     return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
 
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if (!emailRegex.test(email))
+  if (!EMAIL_REGEX.test(email))
     return res.status(400).json({ sucesso: false, mensagem: 'E-mail inválido.' });
 
   if (typeof codigo !== 'string' || !/^\d{6}$/.test(codigo))
