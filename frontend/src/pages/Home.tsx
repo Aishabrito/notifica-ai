@@ -32,6 +32,7 @@ export default function Home() {
   const [alertas, setAlertas]         = useState<Alerta[]>([]);
   const [carregando, setCarregando]   = useState(true);
   const [url, setUrl]                 = useState("");
+  const [seletorCss, setSeletorCss]   = useState("");
   const [emailManual, setEmailManual] = useState("");
   const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
 
@@ -92,9 +93,14 @@ export default function Home() {
     setStatusMsg({ tipo: "loading", texto: "Iniciando monitoramento..." });
 
     try {
-      const { data: d } = await api.post("/api/cadastrar-alerta", { url, email: emailAtivo });
+      const { data: d } = await api.post("/api/cadastrar-alerta", {
+        url,
+        email: emailAtivo,
+        seletorCss: seletorCss.trim() || undefined,
+      });
       if (d.sucesso) {
         setUrl("");
+        setSeletorCss("");
         await carregarAlertas(emailAtivo);
         setStatusMsg({ tipo: "sucesso", texto: `Monitorando: ${d.titulo}` });
       } else {
@@ -196,6 +202,14 @@ export default function Home() {
                   ) : "ATIVAR →"}
                 </button>
               </div>
+
+              <input
+                type="text"
+                placeholder="Seletor CSS (opcional, ex: main, #conteudo-principal, .lista-resultados)"
+                value={seletorCss}
+                onChange={(e) => setSeletorCss(e.target.value)}
+                className="w-full bg-neutral-900/50 border border-neutral-800 rounded-lg px-4 py-3 md:py-4 font-mono text-xs text-white placeholder-neutral-700 outline-none focus:border-purple-500/50 transition-all"
+              />
 
               {!usuario && (
                 <input

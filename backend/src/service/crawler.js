@@ -18,10 +18,19 @@ function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
 }
 
-function extrairConteudoLimpo(html) {
+function extrairConteudoLimpo(html, seletorCss) {
   const $ = cheerio.load(html);
-  $('script, style, footer, noscript, iframe, head, nav, .ads, #footer, .sidebar').remove();
-  return $('body').text().replace(/\s+/g, ' ').trim();
+
+  // Se um seletor CSS foi informado, extrai apenas o conteúdo alvo
+  const $alvo = seletorCss ? $(seletorCss) : $('body');
+
+  // Remove tags inúteis do bloco alvo
+  $alvo.find('script, style, footer, noscript, iframe, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
+
+  // Remove atributos dinâmicos que mudam a cada requisição (tokens, nonces, etc.)
+  $alvo.find('[data-token], [data-nonce], [data-csrf], [nonce]').removeAttr('data-token data-nonce data-csrf nonce');
+
+  return $alvo.text().replace(/\s+/g, ' ').trim();
 }
 
 const USER_AGENTS = [
@@ -126,7 +135,7 @@ async function verificarAlerta(alerta) {
       timeout: 15000,
     });
 
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data);
+    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss);
     const hashAtual     = gerarHash(conteudoLimpo);
 
     // ✅ SUCESSO — reseta contador de falhas
