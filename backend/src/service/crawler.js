@@ -1,7 +1,7 @@
 const axios         = require('axios');
-const cheerio       = require('cheerio');
 const crypto        = require('crypto');
 const transportador = require('../utils/mailer');
+const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 
@@ -16,21 +16,6 @@ const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
 // ============================================
 function gerarHash(texto) {
   return crypto.createHash('md5').update(texto).digest('hex');
-}
-
-function extrairConteudoLimpo(html, seletorCss) {
-  const $ = cheerio.load(html);
-
-  // Se um seletor CSS foi informado, extrai apenas o conteúdo alvo
-  const $alvo = seletorCss ? $(seletorCss) : $('body');
-
-  // Remove tags inúteis do bloco alvo
-  $alvo.find('script, style, footer, noscript, iframe, nav, .ads, #footer, .sidebar, svg, link, meta, img, input, button, form').remove();
-
-  // Remove atributos dinâmicos que mudam a cada requisição (tokens, nonces, etc.)
-  $alvo.find('[data-token], [data-nonce], [data-csrf], [nonce]').removeAttr('data-token data-nonce data-csrf nonce');
-
-  return $alvo.text().replace(/\s+/g, ' ').trim();
 }
 
 const USER_AGENTS = [
@@ -135,7 +120,7 @@ async function verificarAlerta(alerta) {
       timeout: 15000,
     });
 
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss);
+    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss, alerta.url);
     const hashAtual     = gerarHash(conteudoLimpo);
 
     // ✅ SUCESSO — reseta contador de falhas
@@ -160,6 +145,8 @@ async function verificarAlerta(alerta) {
       try {
         await enviarEmailMudanca(alerta);
         emailEnviado = true;
+        alerta.ultimaNotificacao = new Date();
+        await alerta.save();
         console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
