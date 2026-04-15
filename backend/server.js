@@ -36,6 +36,7 @@ const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
   : [
       'https://notifica.dev.br',
+      'https://www.notifica.dev.br',
       'http://localhost:5173',
       'http://localhost:3000',
       'http://127.0.0.1:5173',
@@ -297,7 +298,7 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
 // ============================================
 // 🤖 CRON JOB — roda a cada hora
 // ============================================
-cron.schedule('0 * * * *', async () => {
+cron.schedule('0 10 * * *', async () => {
   const iniciadoEm = new Date();
   console.log('🤖 Vigia: Iniciando verificação de rotina...');
 
