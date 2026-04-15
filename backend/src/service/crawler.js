@@ -25,10 +25,18 @@ const USER_AGENTS = [
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Safari/605.1.15'
 ];
 
-function gerarHeaders() {
-  // Sorteia um navegador aleatório da lista acima
-  const agenteAleatorio = USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-  
+function gerarHeaders(seed) {
+  // Usa seed (alerta._id) para escolher o mesmo UA sempre para o mesmo alerta,
+  // evitando que sites sirvam HTML diferente por browser e causem falsos-positivos.
+  let index;
+  if (seed) {
+    const hash = crypto.createHash('md5').update(String(seed)).digest('hex');
+    index = parseInt(hash.slice(0, 8), 16) % USER_AGENTS.length;
+  } else {
+    index = Math.floor(Math.random() * USER_AGENTS.length);
+  }
+  const agenteAleatorio = USER_AGENTS[index];
+
   return {
     'User-Agent': agenteAleatorio,
     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
@@ -116,7 +124,7 @@ async function enviarEmailADM(alerta, erro) {
 async function verificarAlerta(alerta) {
   try {
     const resposta = await axios.get(alerta.url, {
-      headers: gerarHeaders(),
+      headers: gerarHeaders(alerta._id),
       timeout: 15000,
     });
 
