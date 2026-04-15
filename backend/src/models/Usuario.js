@@ -8,6 +8,10 @@ const usuarioSchema = new mongoose.Schema({
   plano:    { type: String, enum: ['gratuito', 'premium'], default: 'gratuito' },
   role:     { type: String, enum: ['user', 'admin'], default: 'user' },
   criadoEm: { type: Date, default: Date.now },
+
+  // Recuperação de senha via código OTP
+  codigoReset:        { type: String, default: null },
+  codigoResetExpira:  { type: Date,   default: null },
 });
 
 // Hash da senha antes de salvar (CORRIGIDO)

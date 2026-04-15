@@ -8,7 +8,8 @@ import ComoFunciona from './pages/ComoFunciona';
 import LandingPage  from './pages/LandingPage';
 import Termos       from './pages/Termos';
 import Privacidade  from './pages/Privacidade';
-import NotFound     from './pages/NotFound';
+import NotFound      from './pages/NotFound';
+import ResetarSenha  from './pages/ResetarSenha';
 import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/private-route';
 import AdminRoute     from './components/AdminRoute';
@@ -25,7 +26,8 @@ export default function App() {
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />
             <Route path="/termos"        element={<Termos />} />
-            <Route path="/privacidade"   element={<Privacidade />} />
+            <Route path="/privacidade"      element={<Privacidade />} />
+            <Route path="/redefinir-senha"  element={<ResetarSenha />} />
             <Route path="/dashboard" element={
               <PrivateRoute>
                 <Home />
