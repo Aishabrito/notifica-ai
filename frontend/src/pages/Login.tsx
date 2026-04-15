@@ -163,7 +163,7 @@ export default function Login() {
                   <button
                     type="button"
                     onClick={abrirModal}
-                    className="font-mono text-[9px] text-purple-400/60 hover:text-purple-400 cursor-pointer transition-colors bg-transparent border-none p-0"
+                    className="font-mono text-[9px] text-purple-400 hover:text-purple-300 cursor-pointer transition-colors bg-transparent border-none p-0 underline underline-offset-2 decoration-purple-400/40 hover:decoration-purple-300/60"
                   >
                     esqueci →
                   </button>
@@ -258,18 +258,27 @@ export default function Login() {
               Recupere sua senha
             </h2>
             <p className="font-mono text-[10px] text-neutral-600 mb-5">
-              // informe seu e-mail para receber o link de reset
+              // informe seu e-mail para receber o código de 6 dígitos
             </p>
 
             {statusRecupero === "sucesso" ? (
               <div className="text-center space-y-3">
                 <div className="text-2xl">📬</div>
-                <p className="font-mono text-[11px] text-emerald-400">{mensagemRecupero}</p>
+                <p className="font-mono text-[11px] text-emerald-400 leading-relaxed">{mensagemRecupero}</p>
+                <p className="font-mono text-[10px] text-neutral-500 leading-relaxed">
+                  Verifique sua caixa de entrada e use o código de 6 dígitos na tela abaixo.
+                </p>
+                <Link
+                  to="/redefinir-senha"
+                  className="block w-full bg-purple-600 hover:bg-purple-500 text-white font-bold py-3 rounded-xl font-mono text-xs uppercase tracking-widest transition-all text-center mt-2"
+                >
+                  Inserir código e nova senha →
+                </Link>
                 <button
                   onClick={fecharModal}
-                  className="mt-4 font-mono text-[10px] uppercase tracking-widest text-neutral-600 hover:text-white transition-colors"
+                  className="mt-2 font-mono text-[10px] uppercase tracking-widest text-neutral-600 hover:text-white transition-colors"
                 >
-                  fechar →
+                  fechar
                 </button>
               </div>
             ) : (
