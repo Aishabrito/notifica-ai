@@ -21,7 +21,7 @@ const { Readability } = require('@mozilla/readability');
 function extrairConteudoLimpo(html, seletorCss, url = '') {
   // ── Caminho 1: seletor CSS fornecido pelo usuário ─────────────────────────
   if (seletorCss) {
-    return extrairComCheerio(html, seletorCss);
+    return normalizarTextoMonitorado(extrairComCheerio(html, seletorCss));
   }
 
   // ── Caminho 2: Readability (detecção automática do conteúdo principal) ────
@@ -31,7 +31,7 @@ function extrairConteudoLimpo(html, seletorCss, url = '') {
     const artigo = reader.parse();
 
     if (artigo && artigo.textContent) {
-      const texto = artigo.textContent.replace(/\s+/g, ' ').trim();
+      const texto = normalizarTextoMonitorado(artigo.textContent);
       if (texto.length > 0) {
         return texto;
       }
@@ -41,7 +41,7 @@ function extrairConteudoLimpo(html, seletorCss, url = '') {
   }
 
   // ── Caminho 3: fallback Cheerio (página sem artigo detectável) ───────────
-  return extrairComCheerio(html, null);
+  return normalizarTextoMonitorado(extrairComCheerio(html, null));
 }
 
 /**
@@ -90,6 +90,32 @@ function extrairComCheerio(html, seletorCss) {
   $alvo.contents().filter(function () { return this.type === 'comment'; }).remove();
 
   return $alvo.text().replace(/\s+/g, ' ').trim();
+}
+
+function normalizarTextoMonitorado(texto = '') {
+  const prefixoAtualizacao = String.raw`\b(?:última\s+atualiza(?:ção|cao)|atualizado\s+em)\b\s*:?\s*`;
+
+  return texto
+    // Metadados voláteis comuns em portais:
+    // "Última atualização em ...", "Atualizado em ...", "Acessos: 12345"
+    .replace(
+      new RegExp(
+        `${prefixoAtualizacao}(?:[a-zà-úç]{3,12},\\s*)?\\d{1,2}[\\/.-]\\d{1,2}[\\/.-]\\d{2,4}(?:,\\s*\\d{1,2}h\\d{2})?`,
+        'giu'
+      ),
+      ' '
+    )
+    .replace(
+      new RegExp(
+        `${prefixoAtualizacao}(?:[a-zà-úç]{3,12},\\s*)?\\d{1,2}\\s+de\\s+[a-zà-úç]{3,20}\\s+de\\s+\\d{4}(?:,\\s*\\d{1,2}h\\d{2})?`,
+        'giu'
+      ),
+      ' '
+    )
+    .replace(/\bacess(?:o|os)\s*:\s*\d+\b/gi, ' ')
+    .replace(/\bvisualiza(?:ção|coes|ções)\s*:\s*\d+\b/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
 
 module.exports = { extrairConteudoLimpo };
