@@ -94,10 +94,16 @@ function extrairComCheerio(html, seletorCss) {
 
 function normalizarTextoMonitorado(texto = '') {
   return texto
-    .replace(/\s+/g, ' ')
     // Metadados voláteis comuns em portais:
     // "Última atualização em ...", "Atualizado em ...", "Acessos: 12345"
-    .replace(/\b(?:última\s+atualiza(?:ção|cao)|atualizado\s+em)\b[^|•\n]*/gi, ' ')
+    .replace(
+      /\b(?:última\s+atualiza(?:ção|cao)|atualizado\s+em)\b\s*:?\s*(?:[a-zà-úç]{3,12},\s*)?\d{1,2}[\/.-]\d{1,2}[\/.-]\d{2,4}(?:,\s*\d{1,2}h\d{2})?/giu,
+      ' '
+    )
+    .replace(
+      /\b(?:última\s+atualiza(?:ção|cao)|atualizado\s+em)\b\s*:?\s*(?:[a-zà-úç]{3,12},\s*)?\d{1,2}\s+de\s+[a-zà-úç]{3,20}\s+de\s+\d{4}(?:,\s*\d{1,2}h\d{2})?/giu,
+      ' '
+    )
     .replace(/\bacess(?:o|os)\s*:\s*\d+\b/gi, ' ')
     .replace(/\bvisualiza(?:ção|coes|ções)\s*:\s*\d+\b/gi, ' ')
     .replace(/\s+/g, ' ')
