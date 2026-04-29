@@ -59,7 +59,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const cadastrar = async (nome: string, email: string, senha: string): Promise<string | null> => {
     try {
       const { data: d } = await api.post("/api/auth/cadastro", { nome, email, senha });
-      if (d.sucesso) { setUsuario(d.usuario); return null; }
+      if (d.sucesso) {
+        if (d.token) localStorage.setItem("authToken", d.token);
+        setUsuario(d.usuario);
+        return null;
+      }
       return d.mensagem;
     } catch (err: unknown) {
       return extrairMensagemErro(err, "Erro ao cadastrar.");
@@ -76,6 +80,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const { data: d } = await api.post("/api/auth/login", { email, senha });
       if (d.sucesso) {
+        if (d.token) localStorage.setItem("authToken", d.token);
         setUsuario(d.usuario);
         return { erro: null, role: d.usuario.role ?? "user" };
       }
@@ -87,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const logout = async (): Promise<void> => {
     await api.post("/api/auth/logout").catch(() => {});
+    localStorage.removeItem("authToken");
     setUsuario(null);
   };
 

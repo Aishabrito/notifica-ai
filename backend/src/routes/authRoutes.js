@@ -51,6 +51,7 @@ router.post('/cadastro', async (req, res) => {
 
     res.status(201).json({
       sucesso: true,
+      token,
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
     });
   } catch (err) {
@@ -74,6 +75,7 @@ router.post('/login', async (req, res) => {
     res.cookie('token', token, COOKIE_OPTS);
     res.json({
       sucesso: true,
+      token,
       usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
     });
   } catch (err) {
@@ -93,7 +95,10 @@ router.post('/logout', (_req, res) => {
 // ─── ME (VERIFICAR SESSÃO) ──────────────────────────
 router.get('/me', async (req, res) => {
   try {
-    const token = req.cookies?.token;
+    const cookieToken = req.cookies?.token;
+    const authHeader = req.headers?.authorization;
+    const bearerToken = authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null;
+    const token = cookieToken || bearerToken;
     if (!token) return res.status(401).json({ sucesso: false });
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
