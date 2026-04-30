@@ -6,6 +6,18 @@ const api = axios.create({
   withCredentials: true,
 });
 
+// Attach stored token as Authorization header (fallback for mobile browsers
+// that block cross-site cookies, e.g. iOS Safari ITP).
+// Note: localStorage is used intentionally so the session persists across
+// browser restarts on mobile, matching the 7-day JWT lifetime.
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem("authToken");
+  if (token) {
+    config.headers["Authorization"] = `Bearer ${token}`;
+  }
+  return config;
+});
+
 api.interceptors.response.use(
   (response) => response,
   (error) => {
