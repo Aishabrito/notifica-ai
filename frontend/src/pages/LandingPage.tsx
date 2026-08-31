@@ -86,66 +86,8 @@ function AlertCard({
   );
 }
 
-// ─── Anxiety Bar ─────────────────────────────────────────────────────────────
-function AnxietyBar({ label, val }: { label: string; val: string }) {
-  return (
-    <div className="space-y-2">
-      <div className="flex justify-between font-mono text-[10px] text-neutral-500 uppercase tracking-widest">
-        <span>{label}</span>
-        <span className="text-purple-400 font-bold">{val}</span>
-      </div>
-      <div className="h-1.5 bg-neutral-900 rounded-full overflow-hidden relative border border-white/5">
-        <div
-          className="h-full bg-emerald-400 rounded-full transition-all duration-1000 ease-out meter-bar"
-          style={{ width: '0%' }}
-          data-width={val}
-        />
-        <div className="absolute inset-0 bg-linear-to-r from-transparent via-purple-600/20 to-transparent w-1/3 animate-[scan_2s_linear_infinite]" />
-      </div>
-    </div>
-  );
-}
-
-// ─── Social Proof Counter ─────────────────────────────────────────────────────
-function StatCard({ number, label }: { number: string; label: string }) {
-  return (
-    <div
-      className="p-6 rounded-xl border border-white/5 text-center"
-      style={{ background: 'linear-gradient(135deg, rgba(108,52,131,0.06) 0%, rgba(0,0,0,0) 100%)' }}
-    >
-      <div className="font-mono font-bold text-3xl text-emerald-400 mb-1">{number}</div>
-      <div className="font-mono text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
-    </div>
-  );
-}
-
 // ─── Main Page ────────────────────────────────────────────────────────────────
 export default function LandingPage() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Animate bars when problem section enters viewport
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.querySelectorAll<HTMLElement>('.meter-bar').forEach((bar) => {
-              const target = bar.dataset.width ?? '0%';
-              setTimeout(() => { bar.style.width = target; }, 100);
-            });
-            entry.target.querySelectorAll<HTMLElement>('.reveal-up').forEach((el, i) => {
-              setTimeout(() => el.classList.add('opacity-100', 'translate-y-0'), i * 80);
-            });
-          }
-        });
-      },
-      { threshold: 0.15 }
-    );
-
-    document.querySelectorAll('.observe-section').forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, []);
-
   const desktopCards = [
     { url: 'sisu.mec.gov.br',     msg: '🚨 Lista de espera atualizada!',  color: 'text-purple-400', delay: '0.2s'  },
     { url: 'ufrj.br/editais',     msg: '✓ Sem alterações',                color: 'text-neutral-500', delay: '0.5s' },
@@ -163,18 +105,9 @@ export default function LandingPage() {
           from { opacity: 0; transform: translateX(20px); }
           to   { opacity: 1; transform: translateX(0); }
         }
-        @keyframes scan {
-          from { transform: translateX(-100%); }
-          to   { transform: translateX(400%); }
-        }
         @keyframes pulse-dot {
           0%, 100% { opacity: 1; }
           50%       { opacity: 0.4; }
-        }
-        .reveal-up {
-          opacity: 0;
-          transform: translateY(20px);
-          transition: opacity 0.6s ease, transform 0.6s ease;
         }
       `}</style>
 
@@ -259,92 +192,6 @@ export default function LandingPage() {
                 </div>
               ))}
             </div>
-          </div>
-        </section>
-
-        {/* ── PROBLEMA ─────────────────────────────────────────────────── */}
-        <section className="py-20 md:py-32 px-6 md:px-20 border-t border-white/5 observe-section">
-          <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12 md:gap-20 items-center">
-            <div>
-              <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4 md:mb-6 reveal-up">
-                // o problema
-              </span>
-              <h2 className="font-black text-4xl md:text-7xl tracking-tighter leading-none mb-6 md:mb-8 reveal-up">
-                Cansou de dar{' '}
-                <em className="text-emerald-400 not-italic">F5 na página</em>?
-              </h2>
-              <p className="text-neutral-500 font-light leading-relaxed text-sm md:text-base reveal-up">
-                Enquanto você fica recarregando a página de hora em hora,
-                a vaga some — ou o prazo passa. Não é falta de esforço,
-                é falta de aviso. A gente resolve isso.
-              </p>
-            </div>
-
-            <div
-              className="p-6 md:p-8 rounded-2xl border border-white/5 observe-section"
-              style={{ background: 'linear-gradient(145deg, rgba(108,52,131,0.04) 0%, rgba(255,255,255,0.01) 100%)' }}
-            >
-              <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-600 mb-6">
-                Nível de ansiedade por monitoramento
-              </p>
-              <div className="space-y-5 md:space-y-6">
-                <AnxietyBar label="Lista SISU"  val="97%" />
-                <AnxietyBar label="Concursos"   val="91%" />
-                <AnxietyBar label="Bolsas UFRJ" val="74%" />
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── NÚMEROS / PROVA SOCIAL ────────────────────────────────────── */}
-        <section className="py-20 md:py-28 px-6 md:px-20 border-t border-white/5 observe-section">
-          <div className="max-w-5xl mx-auto">
-            <div className="text-center mb-12">
-              <span className="font-mono text-emerald-400 text-[10px] tracking-[0.3em] uppercase block mb-4 reveal-up">
-                // em números
-              </span>
-              <h2 className="font-black text-4xl md:text-5xl tracking-tighter leading-tight reveal-up">
-                Enquanto você dormia,<br />
-                <span className="text-purple-400">o robô trabalhava.</span>
-              </h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <StatCard number="12.400+" label="Alertas enviados" />
-              <StatCard number="340+"    label="Sites monitorados" />
-              <StatCard number="24/7"    label="Sem pausas" />
-            </div>
-          </div>
-        </section>
-
-        {/* ── CTA FINAL ────────────────────────────────────────────────── */}
-        <section
-          className="border-t border-white/5 py-20 md:py-28 px-6 text-center relative overflow-hidden observe-section"
-          style={{
-            background:
-              'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a',
-          }}
-        >
-          <div className="relative">
-            <h2 className="font-black text-4xl md:text-6xl tracking-tighter leading-none mb-4 reveal-up">
-              Chega de atualizar{' '}
-              <span
-                className="text-transparent"
-                style={{ WebkitTextStroke: '1.5px #6C3483', textShadow: '0 0 15px rgba(108,52,131,0.5)' }}
-              >
-                a página.
-              </span>
-            </h2>
-            <p className="text-neutral-500 text-base md:text-lg font-light mb-8 md:mb-10 max-w-lg mx-auto leading-relaxed reveal-up">
-              Crie seu alerta agora. É grátis, leva 20 segundos e{' '}
-              <strong className="text-purple-400">não precisa instalar nada</strong>.
-              A gente cuida da ansiedade por você.
-            </p>
-            <Link
-              to="/cadastro"
-              className="inline-block w-full sm:w-auto bg-emerald-400 text-black font-black text-sm px-10 md:px-14 py-4 md:py-5 rounded-sm hover:bg-emerald-300 hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(16,185,129,0.35)] transition-all uppercase tracking-widest reveal-up"
-            >
-              Criar alerta grátis →
-            </Link>
           </div>
         </section>
 
