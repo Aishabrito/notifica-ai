@@ -11,7 +11,6 @@ const cron          = require('node-cron');
 const crypto        = require('crypto');
 const rateLimit     = require('express-rate-limit');
 const { URL }       = require('url');
-const dns           = require('dns').promises;
 
 const transportador             = require('./src/utils/mailer');
 const { getHeaders }            = require('./src/utils/headers');
@@ -33,6 +32,7 @@ app.set('trust proxy', 1);
 // ============================================
 app.use(express.json());
 app.use(cookieParser());
+
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
   : [
@@ -45,33 +45,28 @@ const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
 
 app.use(cors({
   origin: (origin, callback) => {
-    // 1. Permite requisições de servidores, Postman ou Health Checks do Render (sem origem)
-    if (!origin) return callback(null, true);
-    
-    // 2. Permite requisições da Vercel e do Localhost
-    if (ALLOWED_ORIGINS.includes(origin)) return callback(null, true);
-    
-    // 3. Bloqueia qualquer outro site "impostor" tentando acessar sua API
-    console.warn(`🚫 CORS bloqueou origem: ${origin}`);
-    callback(new Error('Not allowed by CORS'));
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
   },
   credentials: true,
   methods: ['GET', 'POST', 'PATCH', 'DELETE', 'PUT'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
-console.log('🌐 CORS_ORIGINS permitidas:', ALLOWED_ORIGINS);
-
 // ============================================
 // 🗄️ CONEXÃO MONGODB
 // ============================================
 mongoose.connect(process.env.MONGODB_URI, {
-  serverSelectionTimeoutMS: 30000
+  serverSelectionTimeoutMS: 30000,
 })
   .then(() => {
-    console.log('✅ MongoDB conectado com sucesso!');
+    console.log('MongoDB conectado com sucesso.');
   })
-  .catch((err) => console.error('❌ Erro de conexão MongoDB:', err));
+  .catch((err) => {
+    console.error('Erro de conexão MongoDB:', err.message);
+  });
 
 // ============================================
 // 🚦 RATE LIMITERS
@@ -95,9 +90,8 @@ const limiterAlertasGeral = rateLimit({
 });
 
 // ============================================
-// 🛡️ VALIDAÇÃO DE URL (anti-SSRF SIMPLIFICADA)
+// 🛡️ VALIDAÇÃO DE URL (anti-SSRF)
 // ============================================
-
 const PRIVATE_IPV4_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0)/;
 const PRIVATE_IPV6_REGEX = /^(::1$|fe[89ab][0-9a-f]:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
 
@@ -106,7 +100,6 @@ function isPrivateAddress(address) {
   return PRIVATE_IPV4_REGEX.test(address);
 }
 
-// O "async" precisa estar aqui!
 async function validarUrlPublica(rawUrl) {
   let parsed;
   try {
@@ -121,7 +114,6 @@ async function validarUrlPublica(rawUrl) {
 
   const hostname = parsed.hostname.toLowerCase();
 
-  // Bloqueia redes privadas óbvias (localhost, IPs internos)
   if (
     hostname === 'localhost' ||
     hostname === '0.0.0.0' ||
@@ -131,10 +123,9 @@ async function validarUrlPublica(rawUrl) {
     return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
   }
 
-  // Se chegou até aqui, é uma URL válida. 
-  // Sem dns.lookup, sem bloqueios de domínios .br!
   return { valido: true };
 }
+
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
 // ============================================
@@ -146,37 +137,33 @@ function gerarHash(texto) {
 // 🛣️ ROTAS DA API
 // ============================================
 app.use('/api/auth', authRoutes);
-
-// 👑 ROTA DO PAINEL ADM ADICIONADA AQUI!
 app.use('/api/admin', adminRoutes);
-
-// 💬 ROTAS DE FEEDBACK
 app.use('/api/feedbacks', feedbackRoutes);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
-
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Cadastrar alerta (protegido)
 app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req, res) => {
   const { url, seletorCss } = req.body;
-  const email   = req.usuario.email;
+  const email = req.usuario.email;
 
-  if (!url)
+  if (!url) {
     return res.status(400).json({ sucesso: false, mensagem: 'URL é obrigatória.' });
+  }
 
-  // ── Valida URL pública (anti-SSRF) ────────────────────────────────────────
   const validacao = await validarUrlPublica(url);
-  if (!validacao.valido)
+  if (!validacao.valido) {
     return res.status(400).json({ sucesso: false, mensagem: validacao.motivo });
+  }
 
-  // ── Limite de alertas por usuário ─────────────────────────────────────────
   const totalAlertas = await Alerta.countDocuments({ usuario: req.usuario._id });
-  if (totalAlertas >= LIMITE_MAX_ALERTAS)
+  if (totalAlertas >= LIMITE_MAX_ALERTAS) {
     return res.status(429).json({
       sucesso: false,
       mensagem: `Limite de ${LIMITE_MAX_ALERTAS} alertas atingido. Remova um alerta antes de adicionar outro.`,
     });
+  }
 
   try {
     const resposta = await axios.get(url, {
@@ -189,6 +176,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
     const hashInicial   = gerarHash(conteudoLimpo);
     const $             = cheerio.load(resposta.data);
     const tituloDoSite  = $('title').text().trim() || url;
+
     const novoAlerta = await Alerta.create({
       url,
       email,
@@ -200,8 +188,6 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
 
     const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${novoAlerta._id}`;
 
-    // Envia o e-mail de confirmação de forma desacoplada:
-    // uma falha aqui NÃO desfaz o alerta nem bloqueia a resposta ao usuário.
     transportador.sendMail({
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
@@ -219,40 +205,43 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
         </div>
       `
     }).catch((erroEmail) => {
-      console.error('❌ Erro ao enviar email de confirmação:', erroEmail.message);
+      console.error('Erro ao enviar email de confirmação:', erroEmail.message);
     });
 
-    res.json({ sucesso: true, alerta: novoAlerta });
+    return res.json({ sucesso: true, alerta: novoAlerta });
 
   } catch (err) {
-    // Esse catch pega erros do axios.get (site fora do ar, bloqueio, timeout, etc.)
-    console.error('[Cadastro] ❌ Falha no axios.get:', err.code, err.message);
-    // 400 apenas se a URL for malformada; 502 se o site de destino não respondeu
+    console.error('[Cadastro] Falha na requisição ao site monitorado:', err.code, err.message);
     const status = err.code === 'ERR_INVALID_URL' ? 400 : 502;
-    res.status(status).json({ sucesso: false, mensagem: 'Não foi possível ler este site. Verifique se a URL está correta e acessível.' });
+    return res.status(status).json({
+      sucesso: false,
+      mensagem: 'Não foi possível ler este site. Verifique se a URL está correta e acessível.'
+    });
   }
 });
+
 // Listar alertas do usuário logado (protegido)
 app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
-    res.json({ sucesso: true, alertas });
+    return res.json({ sucesso: true, alertas });
   } catch (err) {
-    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
+    return res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
 });
 
-// Cancelar alerta (protegido — só o dono pode cancelar)
+// Cancelar alerta (protegido)
 app.delete('/api/cancelar-alerta/:id', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
-    if (!alerta)
+    if (!alerta) {
       return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
 
     await alerta.deleteOne();
-    res.json({ sucesso: true, mensagem: 'Alerta removido!' });
+    return res.json({ sucesso: true, mensagem: 'Alerta removido!' });
   } catch (err) {
-    res.status(400).json({ sucesso: false, mensagem: 'Erro ao remover.' });
+    return res.status(400).json({ sucesso: false, mensagem: 'Erro ao remover.' });
   }
 });
 
@@ -260,38 +249,38 @@ app.delete('/api/cancelar-alerta/:id', limiterAlertasGeral, autenticar, async (r
 app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
-    if (!alerta)
+    if (!alerta) {
       return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
 
-    alerta.status         = 'ativo';
+    alerta.status = 'ativo';
     alerta.falhasSeguidas = 0;
-    alerta.ultimoErro     = null;
+    alerta.ultimoErro = null;
     await alerta.save();
 
-    res.json({ sucesso: true, mensagem: 'Alerta reativado!' });
+    return res.json({ sucesso: true, mensagem: 'Alerta reativado!' });
   } catch (err) {
-    res.status(400).json({ sucesso: false, mensagem: 'Erro ao reativar.' });
+    return res.status(400).json({ sucesso: false, mensagem: 'Erro ao reativar.' });
   }
 });
 
 // ============================================
-// 🤖 CRON JOB — roda às 10h e 15h (horário de Brasília)
+// 🤖 CRON JOB — executa às 10h e 15h (Brasília)
 // ============================================
 cron.schedule('0 10,15 * * *', async () => {
   const iniciadoEm = new Date();
-  console.log('🤖 Vigia: Iniciando verificação de rotina...');
 
   let metricas = { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
-  let sucesso   = true;
+  let sucesso = true;
   let erroGlobal = null;
 
   try {
     const alertas = await Alerta.find({ status: 'ativo' });
     metricas = await executarMonitoramento(alertas);
   } catch (errExec) {
-    sucesso    = false;
+    sucesso = false;
     erroGlobal = errExec.message;
-    console.error('❌ Erro durante o monitoramento:', errExec.message);
+    console.error('Erro durante o monitoramento do cron:', errExec.message);
   }
 
   const finalizadoEm = new Date();
@@ -309,16 +298,14 @@ cron.schedule('0 10,15 * * *', async () => {
       finalizadoEm,
     });
   } catch (errLog) {
-    console.error('❌ Erro ao salvar log do cron:', errLog.message);
+    console.error('Erro ao salvar log do cron:', errLog.message);
   }
-
-  console.log('🤖 Vigia: Verificação concluída.');
 }, { timezone: 'America/Sao_Paulo' });
 
 // ============================================
-// 🚀 LANÇAMENTO
+// 🚀 INICIALIZAÇÃO
 // ============================================
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
-  console.log(`🚀 Servidor voando na porta ${PORT}`);
-}); 
+  console.log(`Servidor rodando na porta ${PORT}`);
+});

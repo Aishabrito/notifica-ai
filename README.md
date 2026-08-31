@@ -4,19 +4,20 @@
 
 ## 💡 A história por trás do projeto
 
-Quem já ficou abrindo o site do vestibular ou do concurso a cada 5 minutos esperando um resultado sabe como é ansioso. Eu passei por isso — e resolvi acabar com essa situação de uma vez.
+Quem já ficou abrindo o site do vestibular, edital ou concurso a cada 5 minutos esperando um resultado sabe o quanto isso é desgastante. Eu passei por isso — e resolvi criar uma solução prática e automatizada.
 
-O **Notifica.ai** nasceu de um problema real: a angústia de esperar uma atualização em uma página sem saber quando ela vai acontecer. A solução é simples — você nos diz o site, a gente monitora, e só te avisamos quando algo mudar. Sem ansiedade, sem página aberta, sem perder a vaga.
+O **Notifica.ai** nasceu de um problema real: a angústia de esperar uma atualização em uma página sem saber quando ela vai acontecer. A aplicação monitora URLs cadastradas e notifica os usuários por e-mail no momento exato em que qualquer alteração de conteúdo for detectada.
 
 ---
 
 ## 🚀 O que o Notifica.ai faz
 
-- 🔍 **Monitora qualquer site** automaticamente
-- 📧 **Envia e-mail de alerta** quando detecta mudança no conteúdo
-- 🤖 **Vigia automático** que checa os sites a cada 6 horas
-- ❌ **Cancelamento fácil** direto pelo e-mail, sem precisar de login
-- 🎯 **Feito para** vestibulandos, universitários e concurseiros
+- 🔍 **Monitoramento inteligente:** Web scraping automatizado com suporte a seletores CSS customizados.
+- 🔐 **Autenticação segura:** Cadastro e login com autenticação via JWT armazenado em cookies HTTP-only.
+- 📊 **Painel do Usuário:** Gerenciamento centralizado de alertas (criação, listagem, remoção e reativação).
+- 👑 **Painel Administrativo:** Dashboard robusto com métricas globais, feedbacks e histórico de logs de execução do Vigia.
+- 🤖 **O Vigia (Cron Job):** Rotina diária agendada (às 10h e 15h) para varredura e detecção de mudanças.
+- 📧 **Notificações por e-mail:** Alertas automáticos e e-mails de confirmação transacionais com link direto de cancelamento.
 
 ---
 
@@ -25,71 +26,82 @@ O **Notifica.ai** nasceu de um problema real: a angústia de esperar uma atualiz
 ### Frontend
 | Tecnologia | Função |
 |---|---|
-| React.js + Vite | Interface do usuário |
-| Tailwind CSS | Estilização responsiva |
+| React.js + Vite | Interface SPA rápida e reativa |
+| Tailwind CSS | Estilização moderna e responsiva |
 
 ### Backend
 | Tecnologia | Função |
 |---|---|
-| Node.js + Express | Servidor e API REST |
-| Mongoose | Modelagem e conexão com banco |
-| Axios + Cheerio | Web scraping dos sites monitorados |
-| Resend | Envio de e-mails transacionais |
-| Node-cron | Agendamento do Vigia automático |
+| Node.js + Express | API RESTful e orquestração de serviços |
+| JWT & Cookie-Parser | Autenticação e controle de sessões seguras |
+| Mongoose | Modelagem e persistência no banco de dados |
+| Axios + Cheerio | Extração e sanitização do DOM (Web Scraping) |
+| Resend | Envio de e-mails transacionais com alta entregabilidade |
+| Node-cron | Agendamento automatizado de tarefas em segundo plano |
 
 ### Banco de Dados & Infraestrutura
 | Tecnologia | Função |
 |---|---|
-| MongoDB Atlas | Banco NoSQL na nuvem (gratuito) |
-| Vercel | Deploy do frontend |
-| Render | Deploy do backend |
-| dotenv | Gestão segura de variáveis de ambiente |
+| MongoDB Atlas | Banco de dados NoSQL gerenciado em nuvem |
+| Vercel | Hospedagem e CI/CD do frontend |
+| Render | Hospedagem e deploy contínuo da API backend |
+| Express Rate Limit | Proteção contra abusos e rate limiting de rotas sensíveis |
 
 ---
 
 ## 🏗️ Arquitetura do Projeto
 
-```
 notifica-ai/
-├── frontend/          # React + Vite + Tailwind
+├── frontend/                 # React + Vite + Tailwind
 │   └── src/
-│       └── App.jsx    # Interface principal
+│       ├── components/       # Componentes reutilizáveis
+│       ├── pages/            # Painel do usuário, Admin, Login, Cadastro
+│       └── App.jsx           # Roteamento e layout principal
 │
-└── backend/           # Node.js + Express
-    ├── server.js      # API + Vigia (Cron Job)
-    ├── .env           # Variáveis de ambiente (não versionado)
-    └── .gitignore
-```
+└── backend/                  # Node.js + Express
+├── src/
+│   ├── middleware/       # Autenticação e middlewares customizados
+│   ├── models/           # Schemas (Alerta, Usuário, LogCron, Feedback)
+│   ├── routes/           # Rotas (Auth, Alertas, Admin, Feedbacks)
+│   ├── service/          # Crawler e motor de scraping
+│   └── utils/            # Utilitários (Mailer, sanitização, headers)
+├── server.js             # Ponto de entrada da API + Cron Job
+├── .env                  # Variáveis de ambiente (não versionado)
+└── .gitignore
 
-### Fluxo de funcionamento
 
-```
-Usuário insere URL + e-mail
-        ↓
-Backend faz Web Scraping do site
-        ↓
-Salva alerta no MongoDB
-        ↓
-Envia e-mail de confirmação
-        ↓
-Vigia checa o site a cada 6h
-        ↓
-Se mudou → envia e-mail de alerta
-```
+### Fluxo de Funcionamento
+
+Usuário logado cadastra URL (+ seletor opcional)
+↓
+Backend valida segurança (anti-SSRF) e extrai conteúdo limpo
+↓
+Gera hash MD5 inicial e persiste no MongoDB
+↓
+Dispara e-mail de confirmação com Resend
+↓
+Vigia executa varredura (10h e 15h)
+↓
+Detectou diferença no hash? → Dispara alerta por e-mail e registra log
+
 
 ### O Vigia (Cron Job)
 
-O coração do produto. Um processo agendado que:
-1. Busca todos os alertas ativos no banco
-2. Acessa cada site e gera uma "impressão digital" (hash MD5) do conteúdo
-3. Compara com a impressão digital anterior
-4. Se diferente → dispara o e-mail de alerta e atualiza o hash
+O motor de automação opera em horários programados (10:00 e 15:00 - Horário de Brasília) executando o seguinte ciclo:
+1. Busca todos os alertas ativos no banco de dados.
+2. Executa requisições controladas e gera a "impressão digital" (hash MD5) do conteúdo limpo/seletor.
+3. Compara o hash atual com o estado anterior armazenado.
+4. Se houver divergência, envia o alerta por e-mail, atualiza o hash de referência e persiste as métricas da execução na coleção `LogCron`.
 
 ---
 
-## ⚙️ Contribuindo
+## 🔒 Segurança
 
-Quer rodar o projeto localmente ou contribuir? Abre uma [issue](https://github.com/Aishabrito/notifica-ai/issues) ou me chama no LinkedIn!
+- **Proteção Anti-SSRF:** Bloqueio dinâmico contra requisições direcionadas a IPs privados/internos e localhost.
+- **Rate Limiting:** Restrição de taxa em endpoints críticos para mitigar ataques de força bruta e abusos.
+- **Autenticação:** Tokens JWT trafegados em cookies seguros.
+- **Variáveis de Ambiente:** Isolamento completo de chaves e segredos via `.env`.
+- **Entregabilidade:** E-mails configurados com autenticações SPF, DKIM e DMARC em domínio próprio.
 
 ---
 
@@ -102,29 +114,22 @@ Quer rodar o projeto localmente ou contribuir? Abre uma [issue](https://github.c
 
 ---
 
-## 🔒 Segurança
-
-- Credenciais protegidas via variáveis de ambiente (`.env`)
-- Arquivo `.env` incluído no `.gitignore` — nunca versionado
-- E-mails enviados via Resend com domínio próprio verificado (SPF/DKIM/DMARC)
-
----
-
 ## 🗺️ Roadmap
 
-- [ ] Painel do usuário com login (JWT)
-- [ ] Notificação por WhatsApp
-- [ ] Histórico de mudanças detectadas
-- [ ] Plano premium com checagem a cada 30 minutos
-- [ ] Detecção inteligente de seção específica da página
+- [x] Autenticação de usuários e controle de sessões via JWT
+- [x] Painel administrativo com métricas e logs operacionais
+- [x] Suporte à filtragem por seletor CSS específico
+- [ ] Notificações instantâneas via WhatsApp / Webhook
+- [ ] Histórico visual de mudanças detectadas no DOM
+- [ ] Plano com checagem em intervalos reduzidos (ex: a cada 30 min)
 
 ---
 
-## 👩‍💻 Sobre
+## 👩‍💻 Sobre a Desenvolvedora
 
-Desenvolvido por **Aisha** — estudante de Engenharia Eletrônica e de Computação na UFRJ.
+Desenvolvido por **Aísha Brito** — graduanda em Ciência da Computação no **CEFET/RJ**.
 
-Projeto construído do zero como aplicação full-stack real, desde a ideia até o deploy em produção.
+Projeto arquitetado e desenvolvido do zero como uma aplicação full-stack em produção.
 
 [![LinkedIn](https://img.shields.io/badge/LinkedIn-Aísha_Brito-blue)](https://www.linkedin.com/in/a%C3%ADsha-brito-9567bb226/)
-[![GitHub](https://img.shields.io/badge/GitHub-Aishabrito-black)](https://github.com/Aishabrito)
+[![GitHub](https://img.shields.io/badge/GitHub-Aishabrito-black)](https://github.com/Aisha
