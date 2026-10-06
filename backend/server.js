@@ -4,7 +4,6 @@ require('dotenv').config();
 const express       = require('express');
 const cors          = require('cors');
 const axios         = require('axios');
-const cheerio       = require('cheerio');
 const mongoose      = require('mongoose');
 const cookieParser  = require('cookie-parser');
 const cron          = require('node-cron');
@@ -13,7 +12,7 @@ const rateLimit     = require('express-rate-limit');
 const { URL }       = require('url');
 
 const transportador             = require('./src/utils/mailer');
-const { extrairConteudoLimpo }  = require('./src/utils/extrairConteudo');
+const { OPCOES_DOWNLOAD, interpretarResposta } = require('./src/utils/conteudoPagina');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
 const { gerarHeaders }          = require('./src/service/crawler');
@@ -186,16 +185,13 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
     : obterRegrasPlano(req.usuario).intervaloPadrao;
 
   try {
-    const resposta = await axios.get(url, {
-      headers: gerarHeaders(),
-      timeout: 15000,
-    });
+    const resposta = await axios.get(url, { headers: gerarHeaders(), ...OPCOES_DOWNLOAD });
 
     const seletorLimpo  = seletorCss ? seletorCss.trim() : null;
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, seletorLimpo, url);
-    const hashInicial   = gerarHash(conteudoLimpo);
-    const $             = cheerio.load(resposta.data);
-    const tituloDoSite  = $('title').text().trim() || url;
+    const pagina        = await interpretarResposta(resposta, { url, seletorCss: seletorLimpo });
+    const hashInicial   = gerarHash(pagina.texto);
+    const nomeArquivo   = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+    const tituloDoSite  = pagina.titulo || (pagina.tipo === 'pdf' && nomeArquivo) || url;
 
     const novoAlerta = await Alerta.create({
       url,
@@ -203,6 +199,10 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       titulo: tituloDoSite,
       seletorCss: seletorLimpo,
       hashConteudo: hashInicial,
+      // Primeira versão guardada: a próxima mudança já pode ser resumida
+      ultimoConteudo: pagina.texto.slice(0, 200000),
+      linksPdf: pagina.linksPdf,
+      tipoConteudo: pagina.tipo,
       usuario: req.usuario._id,
       intervaloHoras,
       proximaVerificacao: new Date(Date.now() + intervaloHoras * 60 * 60 * 1000),
@@ -230,7 +230,8 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       console.error('Erro ao enviar email de confirmação:', erroEmail.message);
     });
 
-    return res.json({ sucesso: true, alerta: novoAlerta });
+    const { ultimoConteudo, linksPdf, ...alertaPublico } = novoAlerta.toObject();
+    return res.json({ sucesso: true, titulo: tituloDoSite, alerta: alertaPublico });
 
   } catch (err) {
     console.error('[Cadastro] Falha na requisição ao site monitorado:', err.code, err.message);

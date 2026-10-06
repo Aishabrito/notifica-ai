@@ -17,13 +17,15 @@ const transportador = {
     if (callback) callback(null, true);
   },
 
-  async sendMail({ from, to, subject, html, text }) {
+  // attachments: [{ filename, content }] — content em Buffer ou string base64
+  async sendMail({ from, to, subject, html, text, attachments }) {
     const { data, error } = await resend.emails.send({
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
       html,
       text,
+      ...(attachments?.length ? { attachments } : {}),
     });
 
     if (error) {

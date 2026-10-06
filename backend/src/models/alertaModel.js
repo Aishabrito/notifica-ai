@@ -21,6 +21,11 @@ const alertaSchema = new mongoose.Schema({
   // reservou o alerta pode verificá-lo (ver service/agendador.js)
   travadoAte:         { type: Date, default: null },
   travaId:            { type: String, default: null },
+  // Última versão do texto monitorado e links de PDF da página, usados para
+  // descobrir O QUE mudou (resumo com IA). select:false: nunca vão para a API.
+  ultimoConteudo:     { type: String, default: null, select: false },
+  linksPdf:           { type: [String], default: undefined, select: false },
+  tipoConteudo:       { type: String, enum: ['html', 'pdf', null], default: null },
 }, { timestamps: { createdAt: 'criadoEm', updatedAt: 'atualizadoEm' } });
 
 // Consulta do cron: alertas ativos com checagem vencida

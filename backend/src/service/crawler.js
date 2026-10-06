@@ -1,10 +1,13 @@
 const axios         = require('axios');
 const crypto        = require('crypto');
 const transportador = require('../utils/mailer');
-const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
+const { OPCOES_DOWNLOAD, interpretarResposta } = require('../utils/conteudoPagina');
+const { escaparHtml } = require('../utils/html');
+const { gerarIcs }    = require('../utils/ics');
+const { resumirMudanca } = require('./resumoMudanca');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
-const { intervaloEfetivo } = require('../config/planos');
+const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
 const { gerarLinkCancelamento } = require('../utils/linkCancelamento');
 
 // ============================================
@@ -12,6 +15,7 @@ const { gerarLinkCancelamento } = require('../utils/linkCancelamento');
 // ============================================
 const LIMITE_FALHAS = 3;
 const CONCORRENCIA  = 5; // verificações simultâneas por rodada
+const MAX_SNAPSHOT  = 200000; // caracteres do texto guardado para comparar versões
 const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
 
 // ============================================
@@ -82,7 +86,7 @@ function criarBuscador() {
 
     const anterior   = filaPorHost.get(host);
     const requisicao = (anterior ? anterior.then(() => jitter()) : Promise.resolve())
-      .then(() => axios.get(url, { headers, timeout: 15000 }));
+      .then(() => axios.get(url, { headers, ...OPCOES_DOWNLOAD }));
 
     // A fila segue mesmo se a requisição falhar
     filaPorHost.set(host, requisicao.catch(() => {}));
@@ -113,27 +117,56 @@ function intercalarPorHost(alertas) {
 // ============================================
 // 📧 E-MAIL DE MUDANÇA (para o usuário)
 // ============================================
-async function enviarEmailMudanca(alerta) {
+// resumo: gerado pela IA (só Pro). Sem resumo, vai o aviso genérico.
+async function enviarEmailMudanca(alerta, { resumo = null, ehPro = false } = {}) {
   const urlCancelamento = gerarLinkCancelamento(alerta._id);
+  const site = escaparHtml(alerta.titulo || alerta.url);
+  const url  = escaparHtml(alerta.url);
+
+  const corpoResumo = resumo ? `
+    <h2>${escaparHtml(resumo.titulo)}</h2>
+    <p style="font-size:15px;line-height:1.5;">${escaparHtml(resumo.resumo)}</p>
+    ${resumo.datas.length ? `
+      <p><b>📅 Datas importantes</b> (o arquivo anexo adiciona à sua agenda):</p>
+      <ul>${resumo.datas.map((d) => `<li>${escaparHtml(new Date(`${d.data}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' }))} — ${escaparHtml(d.descricao)}</li>`).join('')}</ul>` : ''}
+    <p style="font-size:12px;color:#666;">Resumo gerado por IA. Confira sempre o documento oficial.</p>
+  ` : `
+    <h2>Mudança detectada!</h2>
+    <p>O site que você está monitorando foi atualizado.</p>
+    ${ehPro ? '' : '<p style="font-size:13px;color:#6b21a8;">💎 No plano Pro você recebe um resumo do que mudou, feito por IA, e as datas direto na sua agenda.</p>'}
+  `;
+
+  const attachments = resumo?.datas.length
+    ? [{
+        filename: 'prazos.ics',
+        content: Buffer.from(gerarIcs(resumo.datas, {
+          titulo: alerta.titulo || alerta.url,
+          url: alerta.url,
+          uidBase: `${alerta._id}-${Date.now()}`,
+        })).toString('base64'),
+      }]
+    : undefined;
 
   try {
-      await transportador.sendMail({
-        from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
-        to: alerta.email,
-        subject: `🚨 Atualização detectada — ${alerta.titulo || alerta.url}`,
-        html: `
-          <h2>Mudança detectada!</h2>
-          <p>O site que você está monitorando foi atualizado.</p>
-          <p><b>Site:</b> ${alerta.titulo || alerta.url}</p>
-          <p><b>URL:</b> <a href="${alerta.url}">${alerta.url}</a></p>
-          <hr>
-          <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
-        `,
-      });
-      console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
+    await transportador.sendMail({
+      from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
+      to: alerta.email,
+      subject: resumo
+        ? `🚨 ${resumo.titulo} — ${alerta.titulo || alerta.url}`.slice(0, 180)
+        : `🚨 Atualização detectada — ${alerta.titulo || alerta.url}`,
+      html: `
+        ${corpoResumo}
+        <p><b>Site:</b> ${site}</p>
+        <p><b>URL:</b> <a href="${url}">${url}</a></p>
+        <hr>
+        <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
+      `,
+      attachments,
+    });
+    console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
   } catch (erro) {
-      console.error(`[Crawler] ❌ Erro ao enviar email na função enviarEmailMudanca:`, erro);
-      throw erro;
+    console.error('[Crawler] ❌ Erro ao enviar email na função enviarEmailMudanca:', erro.message);
+    throw erro;
   }
 }
 
@@ -178,68 +211,106 @@ async function enviarEmailADM(alerta, erro) {
 // ============================================
 async function verificarAlerta(alerta, buscarPagina) {
   try {
-    const resposta = await buscarPagina(alerta.url, gerarHeaders(alerta._id));
+    const headers = gerarHeaders(alerta._id);
+    const resposta = await buscarPagina(alerta.url, headers);
+    const pagina = await interpretarResposta(resposta, { url: alerta.url, seletorCss: alerta.seletorCss });
+    const hashAtual = gerarHash(pagina.texto);
 
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss, alerta.url);
-    const hashAtual     = gerarHash(conteudoLimpo);
+    const hashAnterior    = alerta.hashConteudo;
+    const textoAnterior   = alerta.ultimoConteudo;
+    const linksAnteriores = alerta.linksPdf; // undefined = nunca guardados
+    const tipoAnterior    = alerta.tipoConteudo;
 
-    // ✅ SUCESSO — reseta contador de falhas
-    if (alerta.falhasSeguidas > 0) {
-      alerta.falhasSeguidas = 0;
-      alerta.ultimoErro     = null;
+    // ✅ SUCESSO — reseta falhas e guarda a versão atual para a próxima comparação
+    if (alerta.falhasSeguidas > 0) console.log(`[Crawler] ✅ ${alerta.url} — contador de falhas resetado`);
+    alerta.falhasSeguidas    = 0;
+    alerta.ultimoErro        = null;
+    alerta.ultimaVerificacao = new Date();
+    alerta.hashConteudo      = hashAtual;
+    alerta.ultimoConteudo    = pagina.texto.slice(0, MAX_SNAPSHOT);
+    alerta.linksPdf          = pagina.linksPdf;
+    alerta.tipoConteudo      = pagina.tipo;
+
+    if (!hashAnterior) {
       await alerta.save();
-      console.log(`[Crawler] ✅ ${alerta.url} — contador de falhas resetado`);
+      console.log(`[Crawler] 💾 Hash inicial salvo para: ${alerta.url}`);
+      return 'ok';
     }
 
-    // Verifica se houve mudança de conteúdo
-    if (alerta.hashConteudo && alerta.hashConteudo !== hashAtual) {
-      console.log(`[Crawler] 🔔 Mudança detectada em: ${alerta.url}`);
-
-      const hashAnterior  = alerta.hashConteudo;
-      alerta.hashConteudo = hashAtual;
-      alerta.ultimaVerificacao = new Date();
+    if (hashAnterior === hashAtual) {
       await alerta.save();
+      console.log(`[Crawler] ✔️  Sem mudanças em: ${alerta.url}`);
+      return 'ok';
+    }
 
-      let emailEnviado = false;
+    // PDFs monitorados antes desta versão tinham o hash calculado sobre os
+    // bytes lidos como texto; a primeira leitura com o texto real só refaz a base.
+    if (pagina.tipo === 'pdf' && tipoAnterior !== 'pdf' && !textoAnterior) {
+      await alerta.save();
+      console.log(`[Crawler] 💾 Base de PDF atualizada para: ${alerta.url}`);
+      return 'ok';
+    }
 
+    // 🔔 MUDANÇA
+    console.log(`[Crawler] 🔔 Mudança detectada em: ${alerta.url}`);
+    const ehPro = obterTipoPlanoEfetivo(alerta.usuario) === 'pro';
+
+    let resumo = null;
+    let linksNovos = [];
+    if (ehPro) {
+      linksNovos = Array.isArray(linksAnteriores)
+        ? pagina.linksPdf.filter((link) => !linksAnteriores.includes(link))
+        : [];
+      resumo = await resumirMudanca({
+        textoAnterior,
+        textoAtual: pagina.texto,
+        hashAnterior,
+        hashNovo: hashAtual,
+        titulo: alerta.titulo,
+        url: alerta.url,
+        linksNovos,
+        baixarTextoPdf: async (link) => {
+          const p = await interpretarResposta(await buscarPagina(link, headers), { url: link });
+          return p.tipo === 'pdf' ? p.texto : null;
+        },
+      });
+    }
+
+    await alerta.save();
+
+    // Pro: a IA classificou como irrelevante (contador, banner...) → não incomoda
+    const notificar = !(resumo && resumo.relevante === false);
+    let emailEnviado = false;
+
+    if (notificar) {
       try {
-        await enviarEmailMudanca(alerta);
+        await enviarEmailMudanca(alerta, { resumo, ehPro });
         emailEnviado = true;
         alerta.ultimaNotificacao = new Date();
         await alerta.save();
-        console.log(`[Crawler] 📧 E-mail enviado para: ${alerta.email}`);
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
       }
-
-      // Salva registro no histórico de mudanças
-      try {
-        await Mudanca.create({
-          alertaId:        alerta._id,
-          hashAnterior,
-          hashNovo:        hashAtual,
-          emailNotificado: alerta.email,
-          emailEnviado,
-        });
-      } catch (erroMudanca) {
-        console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
-      }
-
-      return 'mudanca';
-
-    } else if (!alerta.hashConteudo) {
-      // Primeiro acesso — salva o hash inicial
-      alerta.hashConteudo = hashAtual;
-      alerta.ultimaVerificacao = new Date();
-      await alerta.save();
-      console.log(`[Crawler] 💾 Hash inicial salvo para: ${alerta.url}`);
     } else {
-      alerta.ultimaVerificacao = new Date();
-      await alerta.save();
-      console.log(`[Crawler] ✔️  Sem mudanças em: ${alerta.url}`);
+      console.log(`[Crawler] 🔕 Mudança irrelevante em ${alerta.url} — sem e-mail`);
     }
 
-    return 'ok';
+    // Salva registro no histórico de mudanças
+    try {
+      await Mudanca.create({
+        alertaId:        alerta._id,
+        hashAnterior,
+        hashNovo:        hashAtual,
+        emailNotificado: alerta.email,
+        emailEnviado,
+        resumo:          resumo ?? undefined,
+        pdfsNovos:       linksNovos.length ? linksNovos : undefined,
+      });
+    } catch (erroMudanca) {
+      console.error('[Crawler] ❌ Falha ao salvar histórico de mudança:', erroMudanca.message);
+    }
+
+    return 'mudanca';
 
   } catch (erro) {
     // ❌ FALHA — incrementa contador

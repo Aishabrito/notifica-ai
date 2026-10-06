@@ -17,6 +17,7 @@
     "cheerio": "^1.2.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.6",
+    "diff": "^9.0.0",
     "dotenv": "^17.3.1",
     "express": "^4.22.1",
     "express-rate-limit": "^8.3.2",
@@ -27,6 +28,7 @@
     "mongoose": "^9.2.4",
     "node-cron": "^4.2.1",
     "nodemailer": "^8.0.1",
+    "pdf-parse": "^2.4.5",
     "resend": "^6.11.0"
   }
 }
