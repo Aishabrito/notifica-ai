@@ -19,6 +19,9 @@ const { autenticar }            = require('./src/middleware/authMiddleware');
 const { executarMonitoramento, gerarHeaders } = require('./src/service/crawler');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
+const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
+const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
+const { processarPlanosExpirados } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
 const {
   verificarLimitePlano,
@@ -39,6 +42,11 @@ app.set('trust proxy', 1);
 // ============================================
 app.use(express.json());
 app.use(cookieParser());
+
+// Link de cancelamento dos e-mails: página servida pelo próprio backend.
+// Fica antes do CORS porque o POST do formulário vem da origem do backend,
+// que não está na lista de origens do frontend.
+app.use('/cancelar', cancelamentoRoutes);
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -197,7 +205,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       proximaVerificacao: new Date(Date.now() + intervaloHoras * 60 * 60 * 1000),
     });
 
-    const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${novoAlerta._id}`;
+    const urlCancelamento = gerarLinkCancelamento(novoAlerta._id);
 
     transportador.sendMail({
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
@@ -272,6 +280,7 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
     }
 
     alerta.status = 'ativo';
+    alerta.motivoPausa = null;
     alerta.proximaVerificacao = new Date();
     alerta.falhasSeguidas = 0;
     alerta.ultimoErro = null;
@@ -367,6 +376,17 @@ cron.schedule('*/5 * * * *', async () => {
     });
   } catch (errLog) {
     console.error('Erro ao salvar log do cron:', errLog.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// ============================================
+// 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
+// ============================================
+cron.schedule('0 3 * * *', async () => {
+  try {
+    await processarPlanosExpirados();
+  } catch (err) {
+    console.error('[Plano] Erro no job de planos expirados:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

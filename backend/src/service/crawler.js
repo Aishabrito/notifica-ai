@@ -5,6 +5,7 @@ const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo } = require('../config/planos');
+const { gerarLinkCancelamento } = require('../utils/linkCancelamento');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
@@ -61,7 +62,7 @@ function jitter(minMs = 1000, maxMs = 5000) {
 // 📧 E-MAIL DE MUDANÇA (para o usuário)
 // ============================================
 async function enviarEmailMudanca(alerta) {
-  const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${alerta._id}`;
+  const urlCancelamento = gerarLinkCancelamento(alerta._id);
 
   try {
       await transportador.sendMail({
@@ -207,6 +208,7 @@ async function verificarAlerta(alerta) {
     // 🔴 REGRA DE 3: pausa e avisa a ADM
     if (alerta.falhasSeguidas >= LIMITE_FALHAS) {
       alerta.status = 'pausado';
+      alerta.motivoPausa = 'falhas';
       console.error(`[Crawler] 🔴 ${alerta.url} — PAUSADO após ${LIMITE_FALHAS} falhas seguidas`);
 
       try {

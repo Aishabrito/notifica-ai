@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from "react";
 import { Search, ChevronDown, ChevronUp, ExternalLink } from "lucide-react";
 import { UserRecord, AlertRecord } from "./types";
+import api from "../../../services/Api";
 
 // ─── Helpers ───────────────────────────────────────────────────────────
 const AVATAR_COLORS = ["bg-blue-100 text-blue-700", "bg-violet-100 text-violet-700", "bg-teal-100 text-teal-700", "bg-pink-100 text-pink-700", "bg-amber-100 text-amber-700"];
@@ -24,6 +25,21 @@ function StatusBadge({ status }: { status: AlertRecord["status"] }) {
   return <span className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${map[status]}`}>{status}</span>;
 }
 
+function PlanoBadge({ user }: { user: UserRecord }) {
+  const pro = user.plano === "pro";
+  const validade = user.planoValidoAte ? ` até ${new Date(user.planoValidoAte).toLocaleDateString("pt-BR")}` : "";
+  return (
+    <span
+      title={pro ? `${user.planoOrigem === "cortesia" ? "Cortesia" : "Assinatura"}${validade}` : undefined}
+      className={`inline-flex items-center text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+        pro ? "bg-violet-50 text-violet-700 border-violet-200" : "bg-slate-50 text-slate-500 border-slate-200"
+      }`}
+    >
+      {pro ? (user.planoOrigem === "cortesia" ? "pro · cortesia" : "pro") : "free"}
+    </span>
+  );
+}
+
 // ─── Componente Principal ─────────────────────────────────────────────────────
 // Adicionada a prop onRefresh para satisfazer o contrato do Dashboard
 export default function TabelaUsuarios({ 
@@ -37,6 +53,33 @@ export default function TabelaUsuarios({
 }) {
   const [query, setQuery] = useState("");
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [salvando, setSalvando] = useState<string | null>(null);
+
+  const alterarPlano = async (user: UserRecord, tipo: "free" | "pro") => {
+    let dias: number | undefined;
+    if (tipo === "pro") {
+      const resposta = window.prompt(`Pro de cortesia para ${user.email}.\nPor quantos dias? (deixe vazio para sem expiração)`, "30");
+      if (resposta === null) return;
+      if (resposta.trim()) {
+        dias = Number(resposta);
+        if (!Number.isInteger(dias) || dias <= 0) return window.alert("Informe um número inteiro de dias.");
+      }
+    } else if (!window.confirm(`Voltar ${user.email} para o Free? Alertas acima do limite serão pausados.`)) {
+      return;
+    }
+
+    setSalvando(user._id);
+    try {
+      const { data } = await api.patch(`/api/admin/usuarios/${user._id}/plano`, { tipo, dias });
+      window.alert(data.mensagem);
+      onRefresh?.();
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
+      window.alert(msg ?? "Erro ao alterar plano.");
+    } finally {
+      setSalvando(null);
+    }
+  };
 
   const filtered = useMemo(() => {
     const listaSegura = users ?? [];
@@ -68,6 +111,7 @@ export default function TabelaUsuarios({
           <thead>
             <tr className="bg-slate-50 border-b border-slate-100 text-slate-500">
               <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-wider">Usuário</th>
+              <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-wider">Plano</th>
               <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-wider">Alertas</th>
               <th className="px-5 py-3 text-left text-[10px] font-semibold uppercase tracking-wider" />
             </tr>
@@ -75,7 +119,7 @@ export default function TabelaUsuarios({
           <tbody className="divide-y divide-slate-50">
             {filtered.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-5 py-10 text-center text-slate-400 text-xs">
+                <td colSpan={4} className="px-5 py-10 text-center text-slate-400 text-xs">
                   Nenhum usuário encontrado para esta busca.
                 </td>
               </tr>
@@ -95,6 +139,20 @@ export default function TabelaUsuarios({
                           <span className="text-xs font-medium text-slate-700">{user.email}</span>
                         </div>
                       </td>
+                      <td className="px-5 py-3.5">
+                        <div className="flex items-center gap-2">
+                          <PlanoBadge user={user} />
+                          {!(user.plano === "pro" && user.planoOrigem === "mercadopago") && (
+                            <button
+                              disabled={salvando === user._id}
+                              onClick={(e) => { e.stopPropagation(); alterarPlano(user, user.plano === "pro" ? "free" : "pro"); }}
+                              className="text-[10px] text-indigo-600 hover:underline disabled:opacity-50"
+                            >
+                              {user.plano === "pro" ? "remover" : "dar pro"}
+                            </button>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-5 py-3.5 text-xs text-slate-600 font-mono">{user.alertas}</td>
                       <td className="px-5 py-3.5 text-slate-400 text-right">
                         {isExp ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
@@ -102,7 +160,7 @@ export default function TabelaUsuarios({
                     </tr>
                     {isExp && (
                       <tr className="bg-slate-50/70">
-                        <td colSpan={3} className="px-5 py-3">
+                        <td colSpan={4} className="px-5 py-3">
                           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm space-y-2 animate-in fade-in slide-in-from-top-1">
                             <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-2">Monitoramentos de {user.email}</p>
                             {userAlerts.length === 0 ? (
