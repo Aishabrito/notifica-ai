@@ -10,6 +10,7 @@ interface Usuario {
     tipo: "free" | "pro";
     status: "ativo" | "cancelado";
     validoAte: string | null;
+    origem?: "mercadopago" | "cortesia" | null;
   };
   role: "user" | "admin";
 }

@@ -34,6 +34,48 @@ export default function Home() {
   const [url, setUrl]                 = useState("");
   const [emailManual, setEmailManual] = useState("");
   const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
+  // Limite de alertas ativos vindo do backend (null = ilimitado, plano Pro)
+  const [limite, setLimite]           = useState<number | null>(3);
+  const [assinando, setAssinando]     = useState(false);
+
+  const carregarPlano = async () => {
+    try {
+      const { data: d } = await api.get("/api/plano");
+      if (d.sucesso) setLimite(d.uso.limiteAlertas);
+    } catch (err) {
+      console.error("Erro ao carregar plano:", err);
+    }
+  };
+
+  const handleUpgrade = async () => {
+    setAssinando(true);
+    try {
+      const { data: d } = await api.post("/api/assinatura/criar");
+      if (d.sucesso && d.initPoint) {
+        window.location.href = d.initPoint;
+        return;
+      }
+      throw new Error(d.mensagem);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
+      setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível iniciar o pagamento." });
+      setAssinando(false);
+    }
+  };
+
+  // Volta do checkout do Mercado Pago: o Pro é ativado pelo webhook,
+  // que pode levar alguns segundos — recarrega o plano em seguida.
+  useEffect(() => {
+    if (!usuario) return;
+    carregarPlano();
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("assinatura") === "retorno") {
+      setStatusMsg({ tipo: "sucesso", texto: "Pagamento recebido! Seu plano Pro será ativado em instantes." });
+      window.history.replaceState({}, "", window.location.pathname);
+      const t = setTimeout(carregarPlano, 5000);
+      return () => clearTimeout(t);
+    }
+  }, [usuario]);
 
   const emailAtivo = usuario?.email || emailManual;
 
@@ -122,7 +164,7 @@ export default function Home() {
   };
 
   const ativos = alertas.filter((a) => a.status === "ativo").length;
-  const LIMITE = 3;
+  const LIMITE = limite ?? Infinity;
 
   return (
     <div
@@ -162,17 +204,20 @@ export default function Home() {
           <div className="flex justify-between mb-4 items-center flex-wrap gap-2">
             <h2 className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">Configurar Novo Vigia</h2>
             <span className={`font-mono text-[9px] ${ativos >= LIMITE ? "text-red-400" : "text-neutral-600"}`}>
-              {ativos}/{LIMITE} DISPONÍVEIS
+              {limite === null ? `${ativos} ATIVOS · PRO ILIMITADO` : `${ativos}/${limite} DISPONÍVEIS`}
             </span>
           </div>
 
           {ativos >= LIMITE ? (
             <div className="text-center py-4">
               <p className="text-sm text-neutral-500 mb-3">
-                Limite de <strong className="text-white">3 alertas</strong> atingido no plano gratuito.
+                Limite de <strong className="text-white">{limite} alertas</strong> atingido no plano gratuito.
               </p>
-              <button className="font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
-                Fazer upgrade →
+              <button
+                onClick={handleUpgrade}
+                disabled={assinando}
+                className="disabled:opacity-60 font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
+                {assinando ? "Abrindo pagamento..." : "Fazer upgrade →"}
               </button>
             </div>
           ) : (
@@ -211,16 +256,17 @@ export default function Home() {
                 />
               )}
 
-              {statusMsg.texto && (
-                <p className={`font-mono text-[10px] ${
-                  statusMsg.tipo === "sucesso" ? "text-emerald-400" :
-                  statusMsg.tipo === "erro"    ? "text-red-400" :
-                  "text-purple-400"
-                }`}>
-                  {statusMsg.tipo === "sucesso" ? "✓" : "●"} {statusMsg.texto}
-                </p>
-              )}
             </form>
+          )}
+
+          {statusMsg.texto && (
+            <p className={`mt-3 font-mono text-[10px] ${
+              statusMsg.tipo === "sucesso" ? "text-emerald-400" :
+              statusMsg.tipo === "erro"    ? "text-red-400" :
+              "text-purple-400"
+            }`}>
+              {statusMsg.tipo === "sucesso" ? "✓" : "●"} {statusMsg.texto}
+            </p>
           )}
         </div>
 

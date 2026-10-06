@@ -21,6 +21,7 @@ const { executarRodada }        = require('./src/service/agendador');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
+const { assinaturaRouter, webhookRouter } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
 const { processarPlanosExpirados } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
@@ -159,6 +160,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/plano', planoRoutes);
+app.use('/api/assinatura', assinaturaRouter);
+app.use('/api/webhooks', webhookRouter);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
