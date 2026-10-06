@@ -12,6 +12,12 @@ const alertaSchema = new mongoose.Schema({
   ultimoErro:        { type: String, default: null },
   ultimaVerificacao: { type: Date, default: null },
   ultimaNotificacao: { type: Date, default: null },
+  // Frequência de checagem em horas (Free: 24 · Pro: 6, 1 ou 0.25 = 15min)
+  intervaloHoras:     { type: Number, default: 24 },
+  proximaVerificacao: { type: Date, default: Date.now },
 }, { timestamps: { createdAt: 'criadoEm', updatedAt: 'atualizadoEm' } });
+
+// Consulta do cron: alertas ativos com checagem vencida
+alertaSchema.index({ status: 1, proximaVerificacao: 1 });
 
 module.exports = mongoose.models.Alerta || mongoose.model('Alerta', alertaSchema);

@@ -4,6 +4,7 @@ const transportador = require('../utils/mailer');
 const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
+const { intervaloEfetivo } = require('../config/planos');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
@@ -236,6 +237,12 @@ async function executarMonitoramento(alertas) {
   let alertasComErro    = 0;
 
   for (const alerta of alertas) {
+    // Agenda a próxima checagem antes de verificar: todos os caminhos de
+    // verificarAlerta salvam o documento, então o campo é persistido junto.
+    // alerta.usuario vem populado pelo cron (pode ser null em alertas antigos).
+    const horas = intervaloEfetivo(alerta, alerta.usuario);
+    alerta.proximaVerificacao = new Date(Date.now() + horas * 60 * 60 * 1000);
+
     const resultado = await verificarAlerta(alerta);
     if (resultado === 'mudanca') alertasComMudanca += 1;
     if (resultado === 'erro')    alertasComErro    += 1;
@@ -246,4 +253,4 @@ async function executarMonitoramento(alertas) {
   return { alertasVerificados: alertas.length, alertasComMudanca, alertasComErro };
 }
 
-module.exports = { executarMonitoramento };
+module.exports = { executarMonitoramento, gerarHeaders };

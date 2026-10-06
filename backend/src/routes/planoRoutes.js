@@ -1,0 +1,44 @@
+const express = require('express');
+const Alerta  = require('../models/alertaModel');
+const { autenticar } = require('../middleware/authMiddleware');
+const { obterTipoPlanoEfetivo, obterRegrasPlano } = require('../config/planos');
+
+const router = express.Router();
+
+// ─── STATUS DO PLANO + USO (para a UI) ─────────────
+router.get('/', autenticar, async (req, res) => {
+  try {
+    const usuario = req.usuario;
+    const regras  = obterRegrasPlano(usuario);
+
+    const [alertasAtivos, alertasTotal] = await Promise.all([
+      Alerta.countDocuments({ usuario: usuario._id, status: 'ativo' }),
+      Alerta.countDocuments({ usuario: usuario._id }),
+    ]);
+
+    res.json({
+      sucesso: true,
+      plano: {
+        tipo:      usuario.plano?.tipo ?? 'free',
+        status:    usuario.plano?.status ?? 'ativo',
+        validoAte: usuario.plano?.validoAte ?? null,
+        efetivo:   obterTipoPlanoEfetivo(usuario),
+        nome:      regras.nome,
+      },
+      uso: {
+        alertasAtivos,
+        alertasTotal,
+        limiteAlertas: regras.maxAlertasAtivos, // null = ilimitado
+      },
+      recursos: {
+        intervalosPermitidos: regras.intervalosPermitidos,
+        intervaloPadrao:      regras.intervaloPadrao,
+      },
+    });
+  } catch (err) {
+    console.error('[Plano] Erro ao buscar plano:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados do plano.' });
+  }
+});
+
+module.exports = router;

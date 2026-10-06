@@ -8,6 +8,7 @@ const Mudanca  = require('../models/Mudanca');
 const LogCron  = require('../models/LogCron');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
+const { obterTipoPlanoEfetivo } = require('../config/planos');
 
 // ============================================================
 // 📊 DASHBOARD PRINCIPAL
@@ -23,27 +24,9 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
     ]);
 
-    // 1. Lógica para calcular a Próxima Execução Real (Brasília)
-    const agora = new Date();
-    const horaBrasilia = parseInt(new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      hour: "numeric",
-      hour12: false,
-    }).format(agora));
-
-    let proxima = new Date();
-    proxima.setMinutes(0);
-    proxima.setSeconds(0);
-    proxima.setMilliseconds(0);
-
-    if (horaBrasilia < 10) {
-      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
-    } else if (horaBrasilia < 15) {
-      proxima.setHours(15 + (agora.getHours() - horaBrasilia));
-    } else {
-      proxima.setDate(proxima.getDate() + 1);
-      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
-    }
+    // 1. Próxima execução: o cron roda a cada 5 minutos
+    const CINCO_MIN = 5 * 60 * 1000;
+    const proxima = new Date(Math.ceil((Date.now() + 1) / CINCO_MIN) * CINCO_MIN);
 
     // --- Processamento dos dados para o Front ---
     const contagemPorUsuario = {};
@@ -56,6 +39,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       _id:      String(u._id),
       email:    u.email,
       role:     u.role,
+      plano:    obterTipoPlanoEfetivo(u),
       criadoEm: u.criadoEm,
       alertas:  contagemPorUsuario[String(u._id)] ?? 0,
     }));
@@ -66,6 +50,8 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       email:             a.email,
       url:               a.url,
       status:            a.status,
+      intervaloHoras:    a.intervaloHoras ?? 24,
+      proximaVerificacao: a.proximaVerificacao ?? null,
       criadoEm:          a.criadoEm ?? a.createdAt,
       ultimaVerificacao: a.ultimaVerificacao,
     }));
