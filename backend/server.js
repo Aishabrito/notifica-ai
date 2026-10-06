@@ -16,7 +16,8 @@ const transportador             = require('./src/utils/mailer');
 const { extrairConteudoLimpo }  = require('./src/utils/extrairConteudo');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
-const { executarMonitoramento, gerarHeaders } = require('./src/service/crawler');
+const { gerarHeaders }          = require('./src/service/crawler');
+const { executarRodada }        = require('./src/service/agendador');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
@@ -29,7 +30,6 @@ const {
   validarIntervalo,
 } = require('./src/middleware/planoMiddleware');
 const Alerta                    = require('./src/models/alertaModel');
-const LogCron                   = require('./src/models/LogCron');
 const adminRoutes               = require('./src/routes/adminRoutes');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
@@ -318,66 +318,7 @@ app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async 
 // ============================================
 // 🤖 CRON JOB — a cada 5 min, verifica alertas com checagem vencida
 // ============================================
-const LOTE_MAX_ALERTAS = 200;
-let cronEmExecucao = false;
-
-cron.schedule('*/5 * * * *', async () => {
-  // Uma rodada pode passar de 5 min (jitter entre requisições); evita sobreposição
-  if (cronEmExecucao) {
-    console.log('[Cron] Rodada anterior ainda em execução — pulando.');
-    return;
-  }
-  cronEmExecucao = true;
-
-  const iniciadoEm = new Date();
-
-  let metricas = { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
-  let sucesso = true;
-  let erroGlobal = null;
-
-  try {
-    const alertas = await Alerta.find({
-      status: 'ativo',
-      $or: [
-        { proximaVerificacao: { $lte: iniciadoEm } },
-        { proximaVerificacao: { $exists: false } }, // alertas criados antes da Fase 1
-        { proximaVerificacao: null },
-      ],
-    })
-      .sort({ proximaVerificacao: 1 })
-      .limit(LOTE_MAX_ALERTAS)
-      .populate('usuario', 'plano');
-
-    metricas = await executarMonitoramento(alertas);
-  } catch (errExec) {
-    sucesso = false;
-    erroGlobal = errExec.message;
-    console.error('Erro durante o monitoramento do cron:', errExec.message);
-  } finally {
-    cronEmExecucao = false;
-  }
-
-  // Rodadas vazias (a maioria, a cada 5 min) não poluem o histórico
-  if (sucesso && metricas.alertasVerificados === 0) return;
-
-  const finalizadoEm = new Date();
-  const tempoDuracao = finalizadoEm - iniciadoEm;
-
-  try {
-    await LogCron.create({
-      alertasVerificados: metricas.alertasVerificados,
-      mudancasDetectadas: metricas.alertasComMudanca,
-      alertasComErro:     metricas.alertasComErro,
-      tempoDuracao,
-      sucesso,
-      erroGlobal,
-      iniciadoEm,
-      finalizadoEm,
-    });
-  } catch (errLog) {
-    console.error('Erro ao salvar log do cron:', errLog.message);
-  }
-}, { timezone: 'America/Sao_Paulo' });
+cron.schedule('*/5 * * * *', executarRodada, { timezone: 'America/Sao_Paulo' });
 
 // ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
