@@ -8,42 +8,42 @@ const Mudanca  = require('../models/Mudanca');
 const LogCron  = require('../models/LogCron');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
+const { obterTipoPlanoEfetivo } = require('../config/planos');
+const { aplicarDowngrade, reativarAlertasPausadosPorPlano } = require('../service/planoService');
+
+// Meia-noite de hoje no horário de Brasília (UTC-3, sem horário de verão desde 2019)
+function inicioDoDiaBrasilia() {
+  const ymd = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
+  return new Date(`${ymd}T00:00:00-03:00`);
+}
 
 // ============================================================
 // 📊 DASHBOARD PRINCIPAL
 // ============================================================
 router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   try {
-    const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes] = await Promise.all([
+    const hoje = inicioDoDiaBrasilia();
+    const [usuariosRaw, alertasRaw, alertasPausados, alertasComErro, feedbacks, logsRecentes, totaisHoje, emailsHoje] = await Promise.all([
       Usuario.find({}).select('-senha -codigoReset -codigoResetExpira').sort({ criadoEm: -1 }).lean(),
       Alerta.find({}).sort({ criadoEm: -1 }).lean(),
       Alerta.countDocuments({ status: 'pausado' }),
       Alerta.countDocuments({ falhasSeguidas: { $gt: 0 }, status: { $ne: 'pausado' } }),
       Feedback.find({}).sort({ criadoEm: -1 }).lean(),
-      LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean()
+      LogCron.find({}).sort({ dataExecucao: -1 }).limit(10).lean(),
+      // O cron roda a cada 5 min: os totais do dia são a soma de todas as rodadas
+      LogCron.aggregate([
+        { $match: { dataExecucao: { $gte: hoje } } },
+        { $group: { _id: null, verificados: { $sum: '$alertasVerificados' }, mudancas: { $sum: '$mudancasDetectadas' } } },
+      ]),
+      Mudanca.aggregate([
+        { $match: { detectadaEm: { $gte: hoje } } },
+        { $group: { _id: null, total: { $sum: 1 }, enviados: { $sum: { $cond: ['$emailEnviado', 1, 0] } } } },
+      ]),
     ]);
 
-    // 1. Lógica para calcular a Próxima Execução Real (Brasília)
-    const agora = new Date();
-    const horaBrasilia = parseInt(new Intl.DateTimeFormat("en-US", {
-      timeZone: "America/Sao_Paulo",
-      hour: "numeric",
-      hour12: false,
-    }).format(agora));
-
-    let proxima = new Date();
-    proxima.setMinutes(0);
-    proxima.setSeconds(0);
-    proxima.setMilliseconds(0);
-
-    if (horaBrasilia < 10) {
-      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
-    } else if (horaBrasilia < 15) {
-      proxima.setHours(15 + (agora.getHours() - horaBrasilia));
-    } else {
-      proxima.setDate(proxima.getDate() + 1);
-      proxima.setHours(10 + (agora.getHours() - horaBrasilia));
-    }
+    // 1. Próxima execução: o cron roda a cada 5 minutos
+    const CINCO_MIN = 5 * 60 * 1000;
+    const proxima = new Date(Math.ceil((Date.now() + 1) / CINCO_MIN) * CINCO_MIN);
 
     // --- Processamento dos dados para o Front ---
     const contagemPorUsuario = {};
@@ -56,6 +56,9 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       _id:      String(u._id),
       email:    u.email,
       role:     u.role,
+      plano:    obterTipoPlanoEfetivo(u),
+      planoOrigem:    u.plano?.origem ?? null,
+      planoValidoAte: u.plano?.validoAte ?? null,
       criadoEm: u.criadoEm,
       alertas:  contagemPorUsuario[String(u._id)] ?? 0,
     }));
@@ -66,6 +69,8 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       email:             a.email,
       url:               a.url,
       status:            a.status,
+      intervaloHoras:    a.intervaloHoras ?? 24,
+      proximaVerificacao: a.proximaVerificacao ?? null,
       criadoEm:          a.criadoEm ?? a.createdAt,
       ultimaVerificacao: a.ultimaVerificacao,
     }));
@@ -75,10 +80,12 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       status: ultimoLog?.sucesso === false ? 'degradado' : 'operacional',
       ultimaExecucao: ultimoLog?.dataExecucao || new Date(),
       proximaExecucao: proxima,
-      totalVerificacoesHoje: ultimoLog?.alertasVerificados || 0,
-      mudancasDetectadasHoje: ultimoLog?.mudancasDetectadas || 0,
-      emailsEnviadosHoje: 0,
-      taxaSucessoEmail: 100,
+      totalVerificacoesHoje: totaisHoje[0]?.verificados ?? 0,
+      mudancasDetectadasHoje: totaisHoje[0]?.mudancas ?? 0,
+      emailsEnviadosHoje: emailsHoje[0]?.enviados ?? 0,
+      taxaSucessoEmail: emailsHoje[0]?.total
+        ? Math.round((emailsHoje[0].enviados / emailsHoje[0].total) * 100)
+        : 100,
       logs: logsRecentes.map(l => ({
         _id: String(l._id),
         tipo: l.sucesso ? 'sucesso' : 'erro',
@@ -118,8 +125,8 @@ router.patch('/alertas/:id/status', autenticar, isAdmin, async (req, res) => {
     }
 
     const alerta = await Alerta.findByIdAndUpdate(
-      req.params.id, 
-      { status }, 
+      req.params.id,
+      { status, motivoPausa: status === 'pausado' ? 'admin' : null },
       { new: true }
     );
 
@@ -135,6 +142,62 @@ router.patch('/alertas/:id/status', autenticar, isAdmin, async (req, res) => {
   } catch (err) {
     console.error('Erro ao atualizar status do alerta:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao atualizar alerta.' });
+  }
+});
+
+// ============================================================
+// 💎 OVERRIDE DE PLANO (Pro de cortesia / beta testers)
+// ============================================================
+// Body: { tipo: 'pro', dias?: number }  → Pro de cortesia (sem "dias" = sem expiração)
+//       { tipo: 'free' }                → volta para o Free e pausa o excedente
+router.patch('/usuarios/:id/plano', autenticar, isAdmin, async (req, res) => {
+  try {
+    const { tipo, dias } = req.body;
+    if (!['free', 'pro'].includes(tipo)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Tipo de plano inválido.' });
+    }
+    if (dias !== undefined && dias !== null && !(Number.isInteger(dias) && dias > 0)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Dias deve ser um número inteiro positivo.' });
+    }
+
+    const usuario = await Usuario.findById(req.params.id).select('-senha');
+    if (!usuario) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Usuário não encontrado.' });
+    }
+
+    if (tipo === 'free') {
+      // Não mexe em assinatura paga: ela precisa ser cancelada no Mercado Pago
+      if (usuario.plano?.origem === 'mercadopago' && obterTipoPlanoEfetivo(usuario) === 'pro') {
+        return res.status(409).json({
+          sucesso: false,
+          mensagem: 'Este usuário tem uma assinatura paga ativa. Cancele pelo Mercado Pago.',
+        });
+      }
+      const { alertasPausados } = await aplicarDowngrade(usuario, { notificar: false });
+      return res.json({ sucesso: true, mensagem: `Plano alterado para Free. ${alertasPausados} alerta(s) pausado(s).` });
+    }
+
+    if (usuario.plano?.origem === 'mercadopago' && obterTipoPlanoEfetivo(usuario) === 'pro') {
+      return res.status(409).json({ sucesso: false, mensagem: 'Este usuário já tem uma assinatura paga ativa.' });
+    }
+
+    usuario.plano = {
+      tipo: 'pro',
+      status: 'ativo',
+      validoAte: dias ? new Date(Date.now() + dias * 24 * 60 * 60 * 1000) : null,
+      origem: 'cortesia',
+      mpAssinaturaId: null,
+    };
+    await usuario.save();
+    const reativados = await reativarAlertasPausadosPorPlano(usuario._id);
+
+    res.json({
+      sucesso: true,
+      mensagem: `Pro de cortesia concedido${dias ? ` por ${dias} dia(s)` : ''}. ${reativados} alerta(s) reativado(s).`,
+    });
+  } catch (err) {
+    console.error('Erro ao alterar plano:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao alterar plano.' });
   }
 });
 

@@ -13,6 +13,9 @@ export interface UserRecord {
   role: "user" | "admin";
   criadoEm: string;
   alertas: number;
+  plano: "free" | "pro";
+  planoOrigem: "mercadopago" | "cortesia" | null;
+  planoValidoAte: string | null;
 }
 
 export interface AlertRecord {

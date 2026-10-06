@@ -4,11 +4,14 @@ const transportador = require('../utils/mailer');
 const { extrairConteudoLimpo } = require('../utils/extrairConteudo');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
+const { intervaloEfetivo } = require('../config/planos');
+const { gerarLinkCancelamento } = require('../utils/linkCancelamento');
 
 // ============================================
 // ⚙️ CONFIGURAÇÕES
 // ============================================
 const LIMITE_FALHAS = 3;
+const CONCORRENCIA  = 5; // verificações simultâneas por rodada
 const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
 
 // ============================================
@@ -57,10 +60,61 @@ function jitter(minMs = 1000, maxMs = 5000) {
 }
 
 // ============================================
+// 🌐 BUSCA DE PÁGINAS (uma rodada)
+// ============================================
+// Cada rodada cria um buscador próprio que:
+//  - baixa cada URL uma vez só, mesmo que várias pessoas monitorem o mesmo link.
+//    A chave inclui o User-Agent porque cada alerta usa sempre o mesmo UA
+//    (ver gerarHeaders): compartilhar o HTML entre UAs diferentes poderia
+//    gerar falsos positivos em sites que servem HTML diferente por navegador.
+//  - espera um intervalo aleatório entre requisições ao MESMO site, mas
+//    permite buscar sites diferentes em paralelo.
+function criarBuscador() {
+  const cache       = new Map(); // `${url}|${ua}` -> Promise<resposta>
+  const filaPorHost = new Map(); // host -> Promise da última requisição
+
+  return function buscarPagina(url, headers) {
+    const chave = `${url}|${headers['User-Agent']}`;
+    if (cache.has(chave)) return cache.get(chave);
+
+    let host;
+    try { host = new URL(url).hostname; } catch { host = url; }
+
+    const anterior   = filaPorHost.get(host);
+    const requisicao = (anterior ? anterior.then(() => jitter()) : Promise.resolve())
+      .then(() => axios.get(url, { headers, timeout: 15000 }));
+
+    // A fila segue mesmo se a requisição falhar
+    filaPorHost.set(host, requisicao.catch(() => {}));
+    cache.set(chave, requisicao);
+    return requisicao;
+  };
+}
+
+// Intercala os alertas por site (A1, B1, C1, A2, B2...) para que os
+// workers não fiquem todos parados na fila do mesmo host.
+function intercalarPorHost(alertas) {
+  const grupos = new Map();
+  for (const alerta of alertas) {
+    let host;
+    try { host = new URL(alerta.url).hostname; } catch { host = alerta.url; }
+    if (!grupos.has(host)) grupos.set(host, []);
+    grupos.get(host).push(alerta);
+  }
+
+  const filas = [...grupos.values()];
+  const resultado = [];
+  for (let i = 0; resultado.length < alertas.length; i++) {
+    for (const fila of filas) if (fila[i]) resultado.push(fila[i]);
+  }
+  return resultado;
+}
+
+// ============================================
 // 📧 E-MAIL DE MUDANÇA (para o usuário)
 // ============================================
 async function enviarEmailMudanca(alerta) {
-  const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${alerta._id}`;
+  const urlCancelamento = gerarLinkCancelamento(alerta._id);
 
   try {
       await transportador.sendMail({
@@ -122,12 +176,9 @@ async function enviarEmailADM(alerta, erro) {
 // ============================================
 // 🤖 VERIFICAÇÃO DE UM ALERTA
 // ============================================
-async function verificarAlerta(alerta) {
+async function verificarAlerta(alerta, buscarPagina) {
   try {
-    const resposta = await axios.get(alerta.url, {
-      headers: gerarHeaders(alerta._id),
-      timeout: 15000,
-    });
+    const resposta = await buscarPagina(alerta.url, gerarHeaders(alerta._id));
 
     const conteudoLimpo = extrairConteudoLimpo(resposta.data, alerta.seletorCss, alerta.url);
     const hashAtual     = gerarHash(conteudoLimpo);
@@ -206,6 +257,7 @@ async function verificarAlerta(alerta) {
     // 🔴 REGRA DE 3: pausa e avisa a ADM
     if (alerta.falhasSeguidas >= LIMITE_FALHAS) {
       alerta.status = 'pausado';
+      alerta.motivoPausa = 'falhas';
       console.error(`[Crawler] 🔴 ${alerta.url} — PAUSADO após ${LIMITE_FALHAS} falhas seguidas`);
 
       try {
@@ -224,7 +276,7 @@ async function verificarAlerta(alerta) {
 // ============================================
 // 🚀 EXECUÇÃO DO MONITORAMENTO
 // ============================================
-async function executarMonitoramento(alertas) {
+async function executarMonitoramento(alertas, { concorrencia = CONCORRENCIA } = {}) {
   if (!alertas || alertas.length === 0) {
     console.log('[Crawler] Nenhum alerta ativo para verificar.');
     return { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
@@ -232,18 +284,42 @@ async function executarMonitoramento(alertas) {
 
   console.log(`[Crawler] Iniciando verificação de ${alertas.length} alerta(s)...`);
 
+  const buscarPagina = criarBuscador();
+  const fila = intercalarPorHost(alertas);
   let alertasComMudanca = 0;
   let alertasComErro    = 0;
 
-  for (const alerta of alertas) {
-    const resultado = await verificarAlerta(alerta);
-    if (resultado === 'mudanca') alertasComMudanca += 1;
-    if (resultado === 'erro')    alertasComErro    += 1;
-    await jitter();
+  async function worker() {
+    while (fila.length > 0) {
+      const alerta = fila.shift();
+
+      // Agenda a próxima checagem e libera a reserva antes de verificar:
+      // todos os caminhos de verificarAlerta salvam o documento, então os
+      // campos são persistidos junto. alerta.usuario vem populado pelo
+      // agendador (pode ser null em alertas antigos).
+      const horas = intervaloEfetivo(alerta, alerta.usuario);
+      alerta.proximaVerificacao = new Date(Date.now() + horas * 60 * 60 * 1000);
+      alerta.travadoAte = null;
+
+      let resultado;
+      try {
+        resultado = await verificarAlerta(alerta, buscarPagina);
+      } catch (err) {
+        // Falha inesperada (ex: banco fora do ar ao salvar): não derruba a rodada.
+        // A reserva expira sozinha e o alerta volta a ser verificado depois.
+        console.error(`[Crawler] ❌ Erro inesperado em ${alerta.url}:`, err.message);
+        resultado = 'erro';
+      }
+      if (resultado === 'mudanca') alertasComMudanca += 1;
+      if (resultado === 'erro')    alertasComErro    += 1;
+    }
   }
+
+  const workers = Math.max(1, Math.min(concorrencia, fila.length));
+  await Promise.all(Array.from({ length: workers }, worker));
 
   console.log('[Crawler] ✅ Verificação concluída.');
   return { alertasVerificados: alertas.length, alertasComMudanca, alertasComErro };
 }
 
-module.exports = { executarMonitoramento };
+module.exports = { executarMonitoramento, gerarHeaders };

@@ -13,13 +13,24 @@ const rateLimit     = require('express-rate-limit');
 const { URL }       = require('url');
 
 const transportador             = require('./src/utils/mailer');
-const { getHeaders }            = require('./src/utils/headers');
 const { extrairConteudoLimpo }  = require('./src/utils/extrairConteudo');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
-const { executarMonitoramento } = require('./src/service/crawler');
+const { gerarHeaders }          = require('./src/service/crawler');
+const { executarRodada }        = require('./src/service/agendador');
+const Usuario                   = require('./src/models/Usuario');
+const planoRoutes               = require('./src/routes/planoRoutes');
+const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
+const { assinaturaRouter, webhookRouter } = require('./src/routes/assinaturaRoutes');
+const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
+const { processarPlanosExpirados } = require('./src/service/planoService');
+const { obterRegrasPlano }      = require('./src/config/planos');
+const {
+  verificarLimitePlano,
+  checarLimiteAlertas,
+  validarIntervalo,
+} = require('./src/middleware/planoMiddleware');
 const Alerta                    = require('./src/models/alertaModel');
-const LogCron                   = require('./src/models/LogCron');
 const adminRoutes               = require('./src/routes/adminRoutes');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
@@ -32,6 +43,11 @@ app.set('trust proxy', 1);
 // ============================================
 app.use(express.json());
 app.use(cookieParser());
+
+// Link de cancelamento dos e-mails: página servida pelo próprio backend.
+// Fica antes do CORS porque o POST do formulário vem da origem do backend,
+// que não está na lista de origens do frontend.
+app.use('/cancelar', cancelamentoRoutes);
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -61,8 +77,14 @@ app.use(cors({
 mongoose.connect(process.env.MONGODB_URI, {
   serverSelectionTimeoutMS: 30000,
 })
-  .then(() => {
+  .then(async () => {
     console.log('MongoDB conectado com sucesso.');
+    try {
+      const migrados = await Usuario.migrarPlanosLegados();
+      if (migrados > 0) console.log(`[Plano] ${migrados} usuário(s) migrados para o novo formato de plano.`);
+    } catch (errMigracao) {
+      console.error('[Plano] Falha na migração de planos legados:', errMigracao.message);
+    }
   })
   .catch((err) => {
     console.error('Erro de conexão MongoDB:', err.message);
@@ -71,8 +93,6 @@ mongoose.connect(process.env.MONGODB_URI, {
 // ============================================
 // 🚦 RATE LIMITERS
 // ============================================
-const LIMITE_MAX_ALERTAS = 5;
-
 const limiterCadastrarAlerta = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 10,
@@ -139,12 +159,15 @@ function gerarHash(texto) {
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
+app.use('/api/plano', planoRoutes);
+app.use('/api/assinatura', assinaturaRouter);
+app.use('/api/webhooks', webhookRouter);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
 
 // Cadastrar alerta (protegido)
-app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req, res) => {
+app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarLimitePlano, async (req, res) => {
   const { url, seletorCss } = req.body;
   const email = req.usuario.email;
 
@@ -157,17 +180,14 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
     return res.status(400).json({ sucesso: false, mensagem: validacao.motivo });
   }
 
-  const totalAlertas = await Alerta.countDocuments({ usuario: req.usuario._id });
-  if (totalAlertas >= LIMITE_MAX_ALERTAS) {
-    return res.status(429).json({
-      sucesso: false,
-      mensagem: `Limite de ${LIMITE_MAX_ALERTAS} alertas atingido. Remova um alerta antes de adicionar outro.`,
-    });
-  }
+  // verificarLimitePlano já validou intervaloHoras contra o plano, se enviado
+  const intervaloHoras = req.body.intervaloHoras !== undefined
+    ? Number(req.body.intervaloHoras)
+    : obterRegrasPlano(req.usuario).intervaloPadrao;
 
   try {
     const resposta = await axios.get(url, {
-      headers: getHeaders(),
+      headers: gerarHeaders(),
       timeout: 15000,
     });
 
@@ -184,9 +204,11 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, async (req
       seletorCss: seletorLimpo,
       hashConteudo: hashInicial,
       usuario: req.usuario._id,
+      intervaloHoras,
+      proximaVerificacao: new Date(Date.now() + intervaloHoras * 60 * 60 * 1000),
     });
 
-    const urlCancelamento = `${process.env.BASE_URL}/api/cancelar-alerta/${novoAlerta._id}`;
+    const urlCancelamento = gerarLinkCancelamento(novoAlerta._id);
 
     transportador.sendMail({
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
@@ -253,7 +275,16 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
       return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
     }
 
+    if (alerta.status !== 'ativo') {
+      const erroLimite = await checarLimiteAlertas(req.usuario);
+      if (erroLimite) {
+        return res.status(403).json({ sucesso: false, codigo: 'LIMITE_PLANO', mensagem: erroLimite });
+      }
+    }
+
     alerta.status = 'ativo';
+    alerta.motivoPausa = null;
+    alerta.proximaVerificacao = new Date();
     alerta.falhasSeguidas = 0;
     alerta.ultimoErro = null;
     await alerta.save();
@@ -264,41 +295,42 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
   }
 });
 
-// ============================================
-// 🤖 CRON JOB — executa às 10h e 15h (Brasília)
-// ============================================
-cron.schedule('0 10,15 * * *', async () => {
-  const iniciadoEm = new Date();
-
-  let metricas = { alertasVerificados: 0, alertasComMudanca: 0, alertasComErro: 0 };
-  let sucesso = true;
-  let erroGlobal = null;
-
+// Alterar frequência de checagem (protegido) — opções dependem do plano
+app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
-    const alertas = await Alerta.find({ status: 'ativo' });
-    metricas = await executarMonitoramento(alertas);
-  } catch (errExec) {
-    sucesso = false;
-    erroGlobal = errExec.message;
-    console.error('Erro durante o monitoramento do cron:', errExec.message);
+    const { intervaloHoras } = req.body;
+    const erroIntervalo = validarIntervalo(req.usuario, intervaloHoras);
+    if (erroIntervalo) return res.status(403).json(erroIntervalo);
+
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+    if (!alerta) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
+
+    alerta.intervaloHoras = Number(intervaloHoras);
+    const base = alerta.ultimaVerificacao ? alerta.ultimaVerificacao.getTime() : Date.now();
+    alerta.proximaVerificacao = new Date(base + alerta.intervaloHoras * 60 * 60 * 1000);
+    await alerta.save();
+
+    return res.json({ sucesso: true, mensagem: 'Frequência atualizada!', alerta });
+  } catch (err) {
+    return res.status(400).json({ sucesso: false, mensagem: 'Erro ao atualizar frequência.' });
   }
+});
 
-  const finalizadoEm = new Date();
-  const tempoDuracao = finalizadoEm - iniciadoEm;
+// ============================================
+// 🤖 CRON JOB — a cada 5 min, verifica alertas com checagem vencida
+// ============================================
+cron.schedule('*/5 * * * *', executarRodada, { timezone: 'America/Sao_Paulo' });
 
+// ============================================
+// 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
+// ============================================
+cron.schedule('0 3 * * *', async () => {
   try {
-    await LogCron.create({
-      alertasVerificados: metricas.alertasVerificados,
-      mudancasDetectadas: metricas.alertasComMudanca,
-      alertasComErro:     metricas.alertasComErro,
-      tempoDuracao,
-      sucesso,
-      erroGlobal,
-      iniciadoEm,
-      finalizadoEm,
-    });
-  } catch (errLog) {
-    console.error('Erro ao salvar log do cron:', errLog.message);
+    await processarPlanosExpirados();
+  } catch (err) {
+    console.error('[Plano] Erro no job de planos expirados:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

@@ -6,7 +6,12 @@ interface Usuario {
   id: string;
   nome: string;
   email: string;
-  plano: "gratuito" | "premium";
+  plano: {
+    tipo: "free" | "pro";
+    status: "ativo" | "cancelado";
+    validoAte: string | null;
+    origem?: "mercadopago" | "cortesia" | null;
+  };
   role: "user" | "admin";
 }
 
