@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
@@ -87,6 +87,65 @@ function AlertCard({
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
+
+function Planos() {
+  // Preço vem do backend (mesma fonte do checkout); sem resposta, mostra só "Pro"
+  const [preco, setPreco] = useState<number | null>(null);
+  useEffect(() => {
+    fetch(`${API_URL}/api/mp-config`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => setPreco(d?.cartao?.valor ?? null))
+      .catch(() => {});
+  }, []);
+
+  const planos = [
+    {
+      nome: 'Grátis', preco: 'R$ 0', destaque: false, cta: 'Criar conta grátis',
+      itens: ['3 alertas ativos', 'Checagem a cada 6 horas', 'Aviso por e-mail'],
+    },
+    {
+      nome: 'Pro', destaque: true, cta: 'Testar 7 dias grátis',
+      preco: preco ? `${preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês` : 'Pro',
+      itens: [
+        'Alertas ilimitados',
+        'Checagem até a cada 15 minutos',
+        'Resumo do que mudou, feito por IA',
+        'Prazos direto na sua agenda',
+        'Radar: seu nome no Diário Oficial',
+        'Alertas no Telegram',
+      ],
+    },
+  ];
+
+  return (
+    <section id="planos" className="px-6 md:px-20 py-20 md:py-28 border-t border-white/5">
+      <p className="font-mono text-[10px] text-purple-400 tracking-[0.3em] uppercase mb-3">// planos</p>
+      <h2 className="font-black text-4xl md:text-5xl tracking-tighter mb-3">Comece grátis. Vire Pro quando precisar.</h2>
+      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix, sem precisar de conta no Mercado Pago. Cancele quando quiser.</p>
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
+        {planos.map((p) => (
+          <div key={p.nome} className={`rounded-2xl p-8 border ${p.destaque ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10'}`}>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 mb-2">{p.nome}</p>
+            <p className="text-3xl font-black mb-6">{p.preco}</p>
+            <ul className="space-y-2 mb-8">
+              {p.itens.map((i) => (
+                <li key={i} className="text-sm text-neutral-300 flex gap-2"><span className="text-emerald-400">✓</span>{i}</li>
+              ))}
+            </ul>
+            <Link
+              to="/cadastro"
+              className={`inline-block font-mono text-xs font-bold px-6 py-3 rounded-lg uppercase tracking-widest ${p.destaque ? 'bg-emerald-400 text-black hover:bg-emerald-300' : 'border border-white/20 hover:border-white/40'}`}
+            >
+              {p.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const desktopCards = [
     { url: 'sisu.mec.gov.br',     msg: '🚨 Lista de espera atualizada!',  color: 'text-purple-400', delay: '0.2s'  },
@@ -194,6 +253,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <Planos />
 
         <Footer />
       </div>

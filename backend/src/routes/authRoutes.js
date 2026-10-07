@@ -5,6 +5,8 @@ const rateLimit  = require('express-rate-limit');
 const transportador = require('../utils/mailer');
 const Usuario    = require('../models/Usuario');
 const { emailBoasVindas } = require('../utils/emailBoasVindas');
+const { autenticar } = require('../middleware/authMiddleware');
+const { gerarLinkVerificacao } = require('../utils/verificacaoEmail');
 
 const router = express.Router();
 
@@ -30,6 +32,8 @@ router.post('/cadastro', async (req, res) => {
 
     if (!nome || !email || !senha)
       return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
+    if (String(senha).length < 8)
+      return res.status(400).json({ sucesso: false, mensagem: 'A senha precisa ter pelo menos 8 caracteres.' });
 
     const emailExiste = await Usuario.findOne({ email });
     if (emailExiste)
@@ -43,7 +47,7 @@ router.post('/cadastro', async (req, res) => {
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
       subject: '🎉 Bem-vinda ao Notifica.ai!',
-      html: emailBoasVindas(nome),
+      html: emailBoasVindas(nome, gerarLinkVerificacao(usuario)),
     }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 
     res.cookie('token', token, COOKIE_OPTS);
@@ -52,7 +56,7 @@ router.post('/cadastro', async (req, res) => {
     res.status(201).json({
       sucesso: true,
       token,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user', emailVerificado: Boolean(usuario.emailVerificado) },
     });
   } catch (err) {
     console.error('❌ ERRO NO CADASTRO:', err);
@@ -76,7 +80,7 @@ router.post('/login', async (req, res) => {
     res.json({
       sucesso: true,
       token,
-      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user' },
+      usuario: { id: usuario._id, nome: usuario.nome, email: usuario.email, plano: usuario.plano, role: usuario.role ?? 'user', emailVerificado: Boolean(usuario.emailVerificado) },
     });
   } catch (err) {
     console.error('❌ ERRO NO LOGIN:', err);
@@ -113,10 +117,46 @@ router.get('/me', async (req, res) => {
         email: usuario.email,
         plano: usuario.plano,
         role: usuario.role ?? 'user',
+        emailVerificado: Boolean(usuario.emailVerificado),
       },
     });
   } catch {
     res.status(401).json({ sucesso: false });
+  }
+});
+
+// ─── CONFIRMAR E-MAIL (envia o link) ───────────────
+const verificacaoLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { sucesso: false, mensagem: 'Muitos pedidos. Aguarde um pouco e tente novamente.' },
+});
+
+router.post('/verificar-email', verificacaoLimiter, autenticar, async (req, res) => {
+  try {
+    if (req.usuario.emailVerificado) {
+      return res.json({ sucesso: true, jaVerificado: true, mensagem: 'Seu e-mail já está confirmado.' });
+    }
+    const link = gerarLinkVerificacao(req.usuario);
+    await transportador.sendMail({
+      from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+      to: req.usuario.email,
+      subject: 'Confirme seu e-mail no Notifica.ai',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+          <h2>Confirme seu e-mail</h2>
+          <p>Clique no botão abaixo para confirmar que este e-mail é seu. O link vale por 48 horas.</p>
+          <p><a href="${link}" style="display:inline-block;background:#10b981;color:#000;padding:12px 20px;border-radius:8px;font-weight:bold;text-decoration:none;">Confirmar e-mail</a></p>
+          <p style="font-size:12px;color:#666;">Se você não pediu isso, ignore esta mensagem.</p>
+        </div>
+      `,
+    });
+    res.json({ sucesso: true, mensagem: 'Enviamos um link de confirmação para o seu e-mail.' });
+  } catch (err) {
+    console.error('[Auth] Erro ao enviar verificação de e-mail:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Não foi possível enviar o e-mail agora.' });
   }
 });
 

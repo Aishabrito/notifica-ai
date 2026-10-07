@@ -10,10 +10,24 @@ const usuarioSchema = new mongoose.Schema({
     status:    { type: String, enum: ['ativo', 'cancelado'], default: 'ativo' },
     validoAte: { type: Date, default: null }, // null = sem expiração
     // Quem concedeu o Pro: assinatura paga ou cortesia dada pelo admin
-    origem:         { type: String, enum: ['mercadopago', 'cortesia', null], default: null },
+    origem:         { type: String, enum: ['mercadopago', 'pix', 'cortesia', 'teste', null], default: null },
     mpAssinaturaId: { type: String, default: null }, // preapproval_id do Mercado Pago
+    // Pix não renova sozinho: data do último lembrete de renovação enviado
+    lembreteRenovacaoEm: { type: Date, default: null },
   },
   role:     { type: String, enum: ['user', 'admin'], default: 'user' },
+  // Confirmação de e-mail (obrigatória para o Radar do Diário Oficial)
+  emailVerificado:   { type: Boolean, default: false },
+  emailVerificadoEm: { type: Date, default: null },
+  // Teste grátis do Pro: só uma vez por conta
+  testeGratisUsadoEm: { type: Date, default: null },
+  // Alertas no Telegram (Pro). Só o hash do código de conexão é guardado.
+  telegram: {
+    chatId:       { type: String, default: null },
+    conectadoEm:  { type: Date, default: null },
+    codigoHash:   { type: String, default: null },
+    codigoExpira: { type: Date, default: null },
+  },
   criadoEm: { type: Date, default: Date.now },
 
   // Recuperação de senha via código OTP

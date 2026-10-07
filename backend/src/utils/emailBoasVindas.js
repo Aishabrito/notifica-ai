@@ -1,5 +1,8 @@
 
-const emailBoasVindas = (nome) => `
+const { escaparHtml } = require('./html');
+
+// linkVerificacao: link de confirmação de e-mail (utils/verificacaoEmail)
+const emailBoasVindas = (nome, linkVerificacao = null) => `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -29,7 +32,7 @@ const emailBoasVindas = (nome) => `
               <p style="font-family:monospace;font-size:10px;color:#a855f7;text-transform:uppercase;letter-spacing:4px;margin:0 0 16px;">// bem-vinda</p>
 
               <h1 style="font-size:28px;font-weight:900;color:#f5f2eb;margin:0 0 16px;letter-spacing:-1px;line-height:1.1;">
-                Olá, ${nome}.<br/>
+                Olá, ${escaparHtml(nome)}.<br/>
                 <span style="color:#10b981;">Você está dentro.</span>
               </h1>
 
@@ -41,7 +44,7 @@ const emailBoasVindas = (nome) => `
 
               <!-- COMO FUNCIONA -->
               <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:32px;">
-                ${["Cole o link da página que quer monitorar", "A gente checa de hora em hora, todo dia", "Mudou? E-mail na hora. Sem spam."].map((item, i) => `
+                ${["Cole o link da página que quer monitorar", "A gente checa sozinho, todo dia — de 6 em 6 horas no plano grátis", "Mudou? E-mail na hora. Sem spam."].map((item, i) => `
                 <tr>
                   <td style="padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.05);">
                     <span style="font-family:monospace;font-size:11px;color:#10b981;margin-right:12px;">0${i + 1}</span>
@@ -49,6 +52,17 @@ const emailBoasVindas = (nome) => `
                   </td>
                 </tr>`).join('')}
               </table>
+
+              ${linkVerificacao ? `
+              <!-- CONFIRMAR E-MAIL -->
+              <p style="font-size:13px;color:#a3a3a3;line-height:1.6;margin:0 0 12px;">
+                Antes de tudo, confirme que este e-mail é seu — é para cá que vão os seus alertas:
+              </p>
+              <a href="${linkVerificacao}"
+                 style="display:inline-block;background:#a855f7;color:#fff;font-weight:700;font-size:13px;padding:14px 32px;border-radius:8px;text-decoration:none;margin-bottom:24px;">
+                Confirmar meu e-mail
+              </a>
+              <br/>` : ''}
 
               <!-- CTA -->
               <a href="https://notifica.dev.br/dashboard"

@@ -15,12 +15,18 @@ const alertaSchema = new mongoose.Schema({
   ultimaVerificacao: { type: Date, default: null },
   ultimaNotificacao: { type: Date, default: null },
   // Frequência de checagem em horas (Free: 24 · Pro: 6, 1 ou 0.25 = 15min)
-  intervaloHoras:     { type: Number, default: 24 },
+  // null = padrão do plano do dono (ver config/planos.js)
+  intervaloHoras:     { type: Number, default: null },
   proximaVerificacao: { type: Date, default: Date.now },
   // Reserva do crawler: enquanto travadoAte > agora, só a instância que
   // reservou o alerta pode verificá-lo (ver service/agendador.js)
   travadoAte:         { type: Date, default: null },
   travaId:            { type: String, default: null },
+  // Última versão do texto monitorado e links de PDF da página, usados para
+  // descobrir O QUE mudou (resumo com IA). select:false: nunca vão para a API.
+  ultimoConteudo:     { type: String, default: null, select: false },
+  linksPdf:           { type: [String], default: undefined, select: false },
+  tipoConteudo:       { type: String, enum: ['html', 'pdf', null], default: null },
 }, { timestamps: { createdAt: 'criadoEm', updatedAt: 'atualizadoEm' } });
 
 // Consulta do cron: alertas ativos com checagem vencida

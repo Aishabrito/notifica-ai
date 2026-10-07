@@ -1,10 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Activity, Users, Bell, BellOff, MessageSquare, 
-  LogOut, ArrowLeft, RefreshCw, AlertCircle 
-} from "lucide-react";
+import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
 import { DashboardDados } from "./components/types"; 
@@ -168,6 +165,32 @@ export default function AdminDashboard() {
             </>
           )}
         </div>
+
+        {/* ── Receita e Pro ── */}
+        {dados?.receita && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              icon={Wallet} label="Receita recorrente" value={Math.round(dados.receita.mrrCartao)}
+              accent="text-emerald-700" iconBg="bg-emerald-50 text-emerald-500"
+              sub={`R$/mês · ${dados.receita.assinantesCartao} assinante(s) no cartão`}
+            />
+            <StatCard
+              icon={Gem} label="Pix (30 dias)" value={Math.round(dados.receita.pixRecebido30d)}
+              accent="text-sky-700" iconBg="bg-sky-50 text-sky-500"
+              sub={`R$ · ${dados.receita.proPix} Pro via Pix ativos`}
+            />
+            <StatCard
+              icon={TrendingUp} label="Conversão" value={dados.receita.conversao}
+              accent="text-violet-700" iconBg="bg-violet-50 text-violet-500"
+              sub={`% pagantes · ${dados.receita.cortesias} cortesia(s)`}
+            />
+            <StatCard
+              icon={Newspaper} label="Radar DO" value={dados.radar?.monitoresAtivos ?? 0}
+              accent="text-amber-700" iconBg="bg-amber-50 text-amber-500"
+              sub={`nomes ativos · ${dados.radar?.ocorrencias30d ?? 0} publicações em 30 dias`}
+            />
+          </div>
+        )}
 
         {/* ── Seleção de Abas ── */}
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit mb-6 shadow-sm">

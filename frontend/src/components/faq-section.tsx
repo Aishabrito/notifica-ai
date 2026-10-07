@@ -5,10 +5,10 @@ import { Reveal, Label } from "./reveal";
 const FAQ_ITEMS: FaqItem[] = [
   { q: "Precisa instalar alguma coisa?",             a: "Não. Nenhuma extensão, nenhum aplicativo. Você cola o link e o seu e-mail — é o único passo. Funciona em qualquer navegador, em qualquer dispositivo." },
   { q: "Funciona com SISU, PROUNI e Diário Oficial?", a: "Sim. Sites do governo e portais de concurso são exatamente o tipo de página que o Notifica.ai monitora melhor. Se você consegue abrir no navegador sem fazer login, a gente monitora." },
-  { q: "Com que frequência a página é verificada?",  a: "No plano gratuito, de 6 em 6 horas — quatro vezes por dia, todo dia. No plano premium, a cada 30 minutos. Para listas de espera com prazo de 2 dias, o premium é o mais indicado." },
+  { q: "Com que frequência a página é verificada?",  a: "No plano gratuito, de 6 em 6 horas — quatro vezes por dia, todo dia. No plano Pro, você escolhe: a cada 6 horas, 1 hora ou 15 minutos. Para listas de espera com prazo de 2 dias, o Pro é o mais indicado." },
   { q: "Como cancelo um alerta?",                    a: "Todo e-mail tem um link de cancelamento no rodapé. Um clique e acabou — sem login, sem formulário, sem burocracia." },
   { q: "E se o site não mudar por semanas?",         a: "Você não recebe nenhum e-mail. Só avisamos quando algo muda de verdade — sem spam, sem notificações desnecessárias." },
-  { q: "Posso monitorar mais de um site?",           a: "No plano gratuito você tem 3 alertas ativos — dá para monitorar lista do SISU, resultado de concurso e edital de bolsa ao mesmo tempo. No premium os alertas são ilimitados." },
+  { q: "Posso monitorar mais de um site?",           a: "No plano gratuito você tem 3 alertas ativos — dá para monitorar lista do SISU, resultado de concurso e edital de bolsa ao mesmo tempo. No Pro os alertas são ilimitados — e você ainda recebe um resumo do que mudou, feito por IA." },
 ];
 
 export const FaqSection = () => {
