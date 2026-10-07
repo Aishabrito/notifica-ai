@@ -1,6 +1,7 @@
 const transportador = require('../utils/mailer');
 const Usuario       = require('../models/Usuario');
 const Alerta        = require('../models/alertaModel');
+const MonitorRadar  = require('../models/MonitorRadar');
 const { PLANOS, obterTipoPlanoEfetivo } = require('../config/planos');
 const { escaparHtml } = require('../utils/html');
 
@@ -30,6 +31,9 @@ async function aplicarDowngrade(usuario, { notificar = true } = {}) {
     );
   }
 
+  // Radar do Diário Oficial é só do Pro
+  await MonitorRadar.updateMany({ usuario: usuario._id, ativo: true }, { ativo: false, motivoPausa: 'plano' });
+
   if (notificar) {
     enviarEmailDowngrade(usuario, excedentes).catch((err) =>
       console.error('[Plano] Falha ao enviar e-mail de downgrade:', err.message)
@@ -47,6 +51,7 @@ async function reativarAlertasPausadosPorPlano(usuarioId) {
     { usuario: usuarioId, status: 'pausado', motivoPausa: 'plano' },
     { status: 'ativo', motivoPausa: null, proximaVerificacao: new Date() }
   );
+  await MonitorRadar.updateMany({ usuario: usuarioId, ativo: false, motivoPausa: 'plano' }, { ativo: true, motivoPausa: null });
   return resultado.modifiedCount;
 }
 

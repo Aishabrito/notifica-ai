@@ -6,6 +6,8 @@ const Alerta  = require('../models/alertaModel');
 const Feedback = require('../models/Feedback');
 const Mudanca  = require('../models/Mudanca');
 const LogCron  = require('../models/LogCron');
+const MonitorRadar    = require('../models/MonitorRadar');
+const OcorrenciaRadar = require('../models/OcorrenciaRadar');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
@@ -94,9 +96,16 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }))
     };
 
+    const [radarMonitores, radarOcorrencias30d] = await Promise.all([
+      MonitorRadar.countDocuments({ ativo: true }),
+      OcorrenciaRadar.countDocuments({ criadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
+    ]);
+
     res.json({
       sucesso: true,
       dados: {
+        // Só contagens: nomes monitorados são dados sensíveis e não aparecem aqui
+        radar: { monitoresAtivos: radarMonitores, ocorrencias30d: radarOcorrencias30d },
         totalUsers:      usuariosRaw.length,
         totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
         alertasPausados,

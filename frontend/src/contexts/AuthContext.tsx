@@ -13,6 +13,7 @@ interface Usuario {
     origem?: "mercadopago" | "cortesia" | null;
   };
   role: "user" | "admin";
+  emailVerificado?: boolean;
 }
 
 interface AuthContextType {

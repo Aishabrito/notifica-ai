@@ -20,6 +20,9 @@ const { executarRodada }        = require('./src/service/agendador');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
+const verificacaoRoutes         = require('./src/routes/verificacaoRoutes');
+const radarRoutes               = require('./src/routes/radarRoutes');
+const { executarRadar }         = require('./src/service/radar/radarService');
 const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
 const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
@@ -48,6 +51,7 @@ app.use(cookieParser());
 // Fica antes do CORS porque o POST do formulário vem da origem do backend,
 // que não está na lista de origens do frontend.
 app.use('/cancelar', cancelamentoRoutes);
+app.use('/verificar-email', verificacaoRoutes);
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -160,6 +164,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/plano', planoRoutes);
+app.use('/api/radar', radarRoutes);
 app.get('/api/mp-config', mpConfigHandler);
 app.use('/api/assinatura', assinaturaRouter);
 app.use('/api/webhooks', webhookRouter);
@@ -343,6 +348,18 @@ app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async 
 // 🤖 CRON JOB — a cada 5 min, verifica alertas com checagem vencida
 // ============================================
 cron.schedule('*/5 * * * *', executarRodada, { timezone: 'America/Sao_Paulo' });
+
+// ============================================
+// 📰 CRON DO RADAR — 07h40 e 19h40 (Brasília)
+// ============================================
+// Diários costumam sair de madrugada/manhã; a 2ª rodada pega edições extras.
+cron.schedule('40 7,19 * * *', async () => {
+  try {
+    await executarRadar();
+  } catch (err) {
+    console.error('[Radar] Erro na rodada agendada:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
 
 // ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas

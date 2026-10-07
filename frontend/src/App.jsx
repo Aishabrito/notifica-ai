@@ -15,6 +15,7 @@ import { PrivateRoute } from './components/private-route';
 import AdminRoute     from './components/AdminRoute';
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Planos         from './pages/Planos';
+import Radar          from './pages/Radar';
 
 export default function App() {
   return (
@@ -35,6 +36,11 @@ export default function App() {
               </PrivateRoute>
             } />
 
+            <Route path="/radar" element={
+              <PrivateRoute>
+                <Radar />
+              </PrivateRoute>
+            } />
             <Route path="/planos" element={
               <PrivateRoute>
                 <Planos />

@@ -16,6 +16,9 @@ const usuarioSchema = new mongoose.Schema({
     lembreteRenovacaoEm: { type: Date, default: null },
   },
   role:     { type: String, enum: ['user', 'admin'], default: 'user' },
+  // Confirmação de e-mail (obrigatória para o Radar do Diário Oficial)
+  emailVerificado:   { type: Boolean, default: false },
+  emailVerificadoEm: { type: Date, default: null },
   criadoEm: { type: Date, default: Date.now },
 
   // Recuperação de senha via código OTP
