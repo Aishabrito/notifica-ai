@@ -6,7 +6,7 @@ const MonitorRadar    = require('../models/MonitorRadar');
 const OcorrenciaRadar = require('../models/OcorrenciaRadar');
 const { cifrar, decifrar, criptografiaConfigurada } = require('../utils/cripto');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
-const { CIDADES_RADAR, RADAR, cidadePorId } = require('../config/radar');
+const { cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId } = require('../config/radar');
 const { processarMonitor, decifrarMonitor, DRIVERS } = require('../service/radar/radarService');
 
 const router = express.Router();
@@ -67,7 +67,7 @@ router.get('/', limiterRadar, autenticar, async (req, res) => {
       ehPro: obterTipoPlanoEfetivo(req.usuario) === 'pro',
       emailVerificado: Boolean(req.usuario.emailVerificado),
       limite: RADAR.maxNomesPorUsuario(),
-      cidades: CIDADES_RADAR,
+      cidades: cidadesDisponiveis(),
       monitores: monitores.map(monitorParaApi),
     });
   } catch (err) {
@@ -110,7 +110,7 @@ router.post('/', limiterRadar, autenticar, exigirRadarDisponivel, async (req, re
     }
 
     const cidades = Array.isArray(req.body?.cidades) ? [...new Set(req.body.cidades.map(String))] : [];
-    if (cidades.length === 0 || cidades.some((id) => !cidadePorId(id))) {
+    if (cidades.length === 0 || cidades.some((id) => !cidadeDisponivel(id))) {
       return res.status(400).json({ sucesso: false, mensagem: 'Escolha ao menos uma cidade da lista.' });
     }
 
@@ -211,7 +211,7 @@ router.get('/cobertura', limiterRadar, autenticar, async (_req, res) => {
     if (!coberturaCache.dados || Date.now() - coberturaCache.em > 6 * 60 * 60 * 1000) {
       const driver = DRIVERS[0];
       const dados = [];
-      for (const cidade of CIDADES_RADAR) {
+      for (const cidade of cidadesDisponiveis()) {
         let ultima = null;
         try { ultima = await driver.ultimaPublicacao(cidade.id); } catch { ultima = null; }
         dados.push({ ...cidade, fonte: driver.nome, ultimaPublicacao: ultima });

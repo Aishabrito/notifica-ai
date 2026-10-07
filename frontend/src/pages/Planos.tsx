@@ -15,6 +15,7 @@ interface MpConfig {
 interface PlanoInfo {
   plano: { tipo: string; status: string; validoAte: string | null; efetivo: "free" | "pro"; origem: string | null; assinaturaId: string | null };
   uso: { alertasAtivos: number; limiteAlertas: number | null };
+  testeGratis?: { disponivel: boolean; dias: number; exigeEmailVerificado: boolean };
 }
 interface PixGerado {
   pagamentoId: string; valor: number; dias: number;
@@ -215,6 +216,30 @@ export default function Planos() {
     setTimeout(() => setCopiado(false), 2000);
   };
 
+  // ─── Teste grátis ──────────────────────────────────────────────────────
+  const iniciarTeste = async () => {
+    if (isSubmitting) return;
+    setIsSubmitting(true);
+    try {
+      const { data } = await api.post("/api/assinatura/teste-gratis");
+      setEstado({ tipo: "sucesso", texto: data.mensagem });
+      await carregarPlano();
+    } catch (err) {
+      setEstado({ tipo: "erro", texto: mensagemErro(err, "Não foi possível iniciar o teste. Tente novamente.") });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const enviarConfirmacao = async () => {
+    try {
+      const { data } = await api.post("/api/auth/verificar-email");
+      setEstado({ tipo: "sucesso", texto: data.mensagem });
+    } catch (err) {
+      setEstado({ tipo: "erro", texto: mensagemErro(err, "Não foi possível enviar o e-mail.") });
+    }
+  };
+
   // ─── Gerenciar assinatura (pausar / reativar / cancelar) ──────────────
   const acaoAssinatura = async (acao: "pause" | "reactivate" | "cancel") => {
     if (!info?.plano.assinaturaId || isSubmitting) return;
@@ -279,8 +304,30 @@ export default function Planos() {
                 {info.plano.origem === "pix" && (
                   <p className="text-sm text-neutral-400">Pago via Pix · válido até <strong className="text-white">{dataBR(info.plano.validoAte)}</strong>. Renove abaixo quando quiser — os dias se somam.</p>
                 )}
+                {info.plano.origem === "teste" && (
+                  <p className="text-sm text-neutral-400">Teste grátis até <strong className="text-white">{dataBR(info.plano.validoAte)}</strong>. Gostou? Assine abaixo — a primeira cobrança só acontece quando o teste acabar.</p>
+                )}
                 {info.plano.origem === "cortesia" && (
                   <p className="text-sm text-neutral-400">Pro de cortesia{info.plano.validoAte ? <> até <strong className="text-white">{dataBR(info.plano.validoAte)}</strong></> : " sem data para acabar"}.</p>
+                )}
+              </section>
+            )}
+
+            {/* TESTE GRÁTIS */}
+            {info?.testeGratis?.disponivel && (
+              <section className="border border-emerald-400/30 bg-emerald-400/5 rounded-2xl p-6 mb-8 flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                  <h2 className="text-xl font-black">Teste o Pro grátis por {info.testeGratis.dias} dias</h2>
+                  <p className="text-sm text-neutral-400">Sem cartão, sem compromisso. No fim, sua conta volta ao gratuito sozinha.</p>
+                </div>
+                {info.testeGratis.exigeEmailVerificado ? (
+                  <button onClick={enviarConfirmacao} className="font-mono text-xs border border-amber-400 text-amber-400 font-bold px-5 py-2.5 rounded-lg">
+                    Confirmar e-mail para liberar
+                  </button>
+                ) : (
+                  <button disabled={isSubmitting} onClick={iniciarTeste} className="font-mono text-xs bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
+                    Começar teste grátis →
+                  </button>
                 )}
               </section>
             )}

@@ -1,11 +1,14 @@
 // ============================================
 // 📰 RADAR DO DIÁRIO OFICIAL — CONFIGURAÇÃO
 // ============================================
-// Cidades atendidas (código IBGE de 7 dígitos). Começamos pela região
-// metropolitana do Rio; para incluir outra cidade basta adicioná-la aqui
-// (e conferir em GET /api/radar/cobertura se o Querido Diário tem os diários).
+// Cidades que o Radar sabe atender (código IBGE de 7 dígitos). Para incluir
+// outra, adicione aqui e confira em GET /api/radar/cobertura se a fonte tem
+// os diários dela.
+// Quais ficam DISPONÍVEIS para os usuários é escolhido em RADAR_CIDADES
+// (ids separados por vírgula). Ex.: só o Rio → RADAR_CIDADES=3304557.
+// Sem a variável, todas as da lista ficam disponíveis.
 
-const CIDADES_RADAR = [
+const TODAS_CIDADES = [
   { id: '3304557', nome: 'Rio de Janeiro', uf: 'RJ' },
   { id: '3303302', nome: 'Niterói', uf: 'RJ' },
   { id: '3304904', nome: 'São Gonçalo', uf: 'RJ' },
@@ -21,6 +24,15 @@ const RADAR = {
   versaoConsentimento: 'radar-v1',
 };
 
-const cidadePorId = (id) => CIDADES_RADAR.find((c) => c.id === id) ?? null;
+function cidadesDisponiveis() {
+  const escolhidas = String(process.env.RADAR_CIDADES ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+  const validas = TODAS_CIDADES.filter((c) => escolhidas.includes(c.id));
+  return validas.length ? validas : TODAS_CIDADES;
+}
 
-module.exports = { CIDADES_RADAR, RADAR, cidadePorId };
+// Nome de qualquer cidade conhecida (mesmo que não esteja mais disponível,
+// para monitores antigos continuarem mostrando o nome)
+const cidadePorId = (id) => TODAS_CIDADES.find((c) => c.id === id) ?? null;
+const cidadeDisponivel = (id) => cidadesDisponiveis().some((c) => c.id === id);
+
+module.exports = { TODAS_CIDADES, cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId };

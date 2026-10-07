@@ -99,7 +99,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     };
 
     // Receita: assinantes no cartão × preço mensal + Pix recebido nos últimos 30 dias
-    const proPorOrigem = { mercadopago: 0, pix: 0, cortesia: 0 };
+    const proPorOrigem = { mercadopago: 0, pix: 0, cortesia: 0, teste: 0 };
     for (const u of usuariosRaw) {
       if (obterTipoPlanoEfetivo(u) !== 'pro') continue;
       const origem = u.plano?.origem;
@@ -117,6 +117,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       assinantesCartao: proPorOrigem.mercadopago,
       proPix: proPorOrigem.pix,
       cortesias: proPorOrigem.cortesia,
+      emTesteGratis: proPorOrigem.teste,
       mrrCartao: Math.round(proPorOrigem.mercadopago * precoMensal * 100) / 100,
       pixRecebido30d: Math.round((pix30d[0]?.total ?? 0) * 100) / 100,
       conversao: usuariosRaw.length ? Math.round((pagantes / usuariosRaw.length) * 1000) / 10 : 0,

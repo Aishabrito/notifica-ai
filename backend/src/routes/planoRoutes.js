@@ -25,13 +25,18 @@ router.get('/', autenticar, async (req, res) => {
         validoAte: usuario.plano?.validoAte ?? null,
         efetivo:   obterTipoPlanoEfetivo(usuario),
         nome:      regras.nome,
-        origem:    usuario.plano?.origem ?? null, // mercadopago (cartão) | pix | cortesia
+        origem:    usuario.plano?.origem ?? null, // mercadopago (cartão) | pix | cortesia | teste
         assinaturaId: usuario.plano?.origem === 'mercadopago' ? usuario.plano.mpAssinaturaId : null,
       },
       uso: {
         alertasAtivos,
         alertasTotal,
         limiteAlertas: regras.maxAlertasAtivos, // null = ilimitado
+      },
+      testeGratis: {
+        disponivel: !usuario.testeGratisUsadoEm && obterTipoPlanoEfetivo(usuario) === 'free',
+        dias: Math.min(30, Math.max(1, Number(process.env.TESTE_GRATIS_DIAS || 7))),
+        exigeEmailVerificado: !usuario.emailVerificado,
       },
       canais: {
         telegram: { disponivel: telegramConfigurado(), conectado: Boolean(usuario.telegram?.chatId) },

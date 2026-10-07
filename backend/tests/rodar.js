@@ -14,6 +14,7 @@ const SUITES = [
   'teste-radar.js',      // Radar do Diário Oficial, criptografia, verificação de e-mail
   'teste-telegram.js',   // bot do Telegram
   'teste-ssrf.js',       // proteção contra acesso à rede interna
+  'teste-conta.js',      // confirmação de e-mail, teste grátis, Minha conta, cidades do Radar
 ];
 
 let falhas = 0;

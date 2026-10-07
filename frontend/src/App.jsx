@@ -16,6 +16,7 @@ import AdminRoute     from './components/AdminRoute';
 import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Planos         from './pages/Planos';
 import Radar          from './pages/Radar';
+import Conta          from './pages/Conta';
 
 export default function App() {
   return (
@@ -39,6 +40,11 @@ export default function App() {
             <Route path="/radar" element={
               <PrivateRoute>
                 <Radar />
+              </PrivateRoute>
+            } />
+            <Route path="/conta" element={
+              <PrivateRoute>
+                <Conta />
               </PrivateRoute>
             } />
             <Route path="/planos" element={

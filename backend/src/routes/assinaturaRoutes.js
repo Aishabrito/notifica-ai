@@ -3,6 +3,8 @@ const express   = require('express');
 const rateLimit = require('express-rate-limit');
 const { autenticar } = require('../middleware/authMiddleware');
 const Transacao = require('../models/Transacao');
+const Usuario   = require('../models/Usuario');
+const { reativarAlertasPausadosPorPlano } = require('../service/planoService');
 const mp = require('../service/mercadoPago');
 const { SUBSCRIPTION_OFFERS, PIX_OFFERS, resolveOffer, resolvePixOffer } = require('../config/ofertas');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
@@ -182,6 +184,44 @@ router.post('/subscriptions/:id/:acao', limiterAssinatura, autenticar, exigirMer
   } catch (err) {
     console.error(`[Assinatura] Erro na ação ${req.params.acao}:`, err.message);
     res.status(502).json({ sucesso: false, mensagem: 'Não foi possível concluir agora. Tente novamente.' });
+  }
+});
+
+// ─── TESTE GRÁTIS (uma vez por conta, sem cartão) ──
+// Exige e-mail confirmado para dificultar contas descartáveis.
+const diasTesteGratis = () => Math.min(30, Math.max(1, Number(process.env.TESTE_GRATIS_DIAS || 7)));
+
+router.post('/teste-gratis', limiterAssinatura, autenticar, umaPorVez, async (req, res) => {
+  try {
+    if (obterTipoPlanoEfetivo(req.usuario) === 'pro') {
+      return res.status(409).json({ sucesso: false, mensagem: 'Você já é Pro. 🙂' });
+    }
+    if (req.usuario.testeGratisUsadoEm) {
+      return res.status(409).json({ sucesso: false, mensagem: 'O teste grátis já foi usado nesta conta.' });
+    }
+    if (!req.usuario.emailVerificado) {
+      return res.status(403).json({ sucesso: false, codigo: 'EMAIL_NAO_VERIFICADO', mensagem: 'Confirme seu e-mail para liberar o teste grátis.' });
+    }
+
+    const dias = diasTesteGratis();
+    // Atômico: duas requisições simultâneas não geram dois testes
+    const usuario = await Usuario.findOneAndUpdate(
+      { _id: req.usuario._id, testeGratisUsadoEm: null },
+      {
+        $set: {
+          testeGratisUsadoEm: new Date(),
+          plano: { tipo: 'pro', status: 'ativo', validoAte: new Date(Date.now() + dias * 24 * 60 * 60 * 1000), origem: 'teste', mpAssinaturaId: null, lembreteRenovacaoEm: null },
+        },
+      },
+      { new: true }
+    );
+    if (!usuario) return res.status(409).json({ sucesso: false, mensagem: 'O teste grátis já foi usado nesta conta.' });
+
+    await reativarAlertasPausadosPorPlano(usuario._id);
+    res.json({ sucesso: true, validoAte: usuario.plano.validoAte, mensagem: `Pronto! Você tem ${dias} dias de Pro grátis.` });
+  } catch (err) {
+    console.error('[Assinatura] Erro ao iniciar teste grátis:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Não foi possível iniciar o teste agora.' });
   }
 });
 

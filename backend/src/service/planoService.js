@@ -15,6 +15,7 @@ const DIAS_AVISO_RENOVACAO = 3;
 // Mantém ativos os alertas mais recentes até o limite do Free;
 // o resto fica pausado com motivoPausa 'plano' para voltar no upgrade.
 async function aplicarDowngrade(usuario, { notificar = true } = {}) {
+  const eraTeste = usuario.plano?.origem === 'teste';
   usuario.plano = { ...PLANO_FREE };
   await usuario.save();
 
@@ -35,7 +36,7 @@ async function aplicarDowngrade(usuario, { notificar = true } = {}) {
   await MonitorRadar.updateMany({ usuario: usuario._id, ativo: true }, { ativo: false, motivoPausa: 'plano' });
 
   if (notificar) {
-    enviarEmailDowngrade(usuario, excedentes).catch((err) =>
+    enviarEmailDowngrade(usuario, excedentes, { eraTeste }).catch((err) =>
       console.error('[Plano] Falha ao enviar e-mail de downgrade:', err.message)
     );
   }
@@ -81,7 +82,7 @@ async function processarPlanosExpirados() {
 // ============================================
 // 📧 E-MAIL DE DOWNGRADE
 // ============================================
-async function enviarEmailDowngrade(usuario, excedentes) {
+async function enviarEmailDowngrade(usuario, excedentes, { eraTeste = false } = {}) {
   const listaPausados = excedentes.length > 0
     ? `
       <p>Como o plano gratuito permite até <b>${PLANOS.free.maxAlertasAtivos} alertas ativos</b>,
@@ -93,10 +94,10 @@ async function enviarEmailDowngrade(usuario, excedentes) {
   await transportador.sendMail({
     from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
     to: usuario.email,
-    subject: 'Seu plano Pro do Notifica.ai terminou',
+    subject: eraTeste ? 'Seu teste grátis do Notifica.ai Pro terminou' : 'Seu plano Pro do Notifica.ai terminou',
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px;">
-        <h2>Seu plano Pro terminou</h2>
+        <h2>${eraTeste ? 'Seu teste grátis terminou' : 'Seu plano Pro terminou'}</h2>
         <p>Olá, ${escaparHtml(usuario.nome)}! Sua conta voltou para o plano gratuito.</p>
         ${listaPausados}
       </div>
@@ -112,7 +113,7 @@ async function enviarLembretesRenovacao() {
   const limite = new Date(agora.getTime() + DIAS_AVISO_RENOVACAO * DIA_MS);
   const usuarios = await Usuario.find({
     'plano.tipo': 'pro',
-    'plano.origem': 'pix',
+    'plano.origem': { $in: ['pix', 'teste'] },
     'plano.validoAte': { $gt: agora, $lte: limite },
     'plano.lembreteRenovacaoEm': null,
   }).select('nome email plano');
@@ -122,14 +123,19 @@ async function enviarLembretesRenovacao() {
     try {
       const dias = Math.max(1, Math.ceil((new Date(usuario.plano.validoAte) - agora) / DIA_MS));
       const linkPlanos = `${process.env.FRONTEND_URL || 'https://notifica.dev.br'}/planos`;
+      const teste = usuario.plano.origem === 'teste';
       await transportador.sendMail({
         from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
         to: usuario.email,
-        subject: `⏰ Seu Pro do Notifica.ai vence em ${dias} dia(s)`,
+        subject: teste
+          ? `⏰ Seu teste grátis do Pro acaba em ${dias} dia(s)`
+          : `⏰ Seu Pro do Notifica.ai vence em ${dias} dia(s)`,
         html: `
           <div style="font-family: Arial, sans-serif; padding: 20px;">
-            <h2>Seu plano Pro vence em ${dias} dia(s)</h2>
-            <p>Olá, ${escaparHtml(usuario.nome)}! Pagamentos via Pix não renovam sozinhos.</p>
+            <h2>${teste ? `Seu teste grátis acaba em ${dias} dia(s)` : `Seu plano Pro vence em ${dias} dia(s)`}</h2>
+            <p>Olá, ${escaparHtml(usuario.nome)}! ${teste
+              ? 'Depois disso sua conta volta ao plano gratuito, e alertas acima de 3 ficam pausados.'
+              : 'Pagamentos via Pix não renovam sozinhos.'}</p>
             <p>Para continuar com alertas ilimitados, checagens rápidas e resumos com IA,
             renove em <a href="${linkPlanos}">${linkPlanos}</a> — por Pix de novo ou no
             cartão (aí renova automaticamente).</p>

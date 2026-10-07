@@ -47,9 +47,9 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <Link to="/dashboard" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Painel</Link>
               <Link to="/radar" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Radar DO</Link>
               <Link to="/planos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Planos</Link>
-              <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-50">
+              <Link to="/conta" className="font-mono text-xs text-neutral-500 hover:text-white tracking-wide truncate max-w-50" title="Minha conta">
                 {usuario?.email}
-              </span>
+              </Link>
               <button
                 onClick={handleLogout}
                 className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors border border-neutral-800 hover:border-neutral-600 px-4 py-2 rounded-lg"
@@ -84,6 +84,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <Link to="/dashboard" onClick={fecharMenu} className="font-mono text-sm text-white">Painel</Link>
               <Link to="/radar" onClick={fecharMenu} className="font-mono text-sm text-white">Radar do Diário Oficial</Link>
               <Link to="/planos" onClick={fecharMenu} className="font-mono text-sm text-white">Planos</Link>
+              <Link to="/conta" onClick={fecharMenu} className="font-mono text-sm text-white">Minha conta</Link>
               <button
                 onClick={() => { fecharMenu(); handleLogout(); }}
                 className="w-full text-left font-mono text-xs text-red-400 tracking-wide py-2"

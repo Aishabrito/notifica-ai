@@ -7,7 +7,7 @@ require('../../models/Usuario'); // registra o modelo usado no populate('usuario
 const { cifrar, decifrar } = require('../../utils/cripto');
 const { escaparHtml } = require('../../utils/html');
 const { obterTipoPlanoEfetivo } = require('../../config/planos');
-const { RADAR, cidadePorId } = require('../../config/radar');
+const { RADAR, cidadePorId, cidadeDisponivel } = require('../../config/radar');
 const queridoDiario = require('./queridoDiario');
 
 // Fontes consultadas. Novas fontes (DOU, DOERJ...) entram nesta lista.
@@ -141,6 +141,10 @@ async function processarMonitor(monitor, { manual = false } = {}) {
   // concurso publicam só a inscrição)
   const termos = [dados.nome, dados.inscricao && dados.inscricao.length >= 4 ? dados.inscricao : null].filter(Boolean);
 
+  // Só consulta cidades ainda disponíveis (RADAR_CIDADES pode ter mudado)
+  const cidades = monitor.cidades.filter(cidadeDisponivel);
+  if (cidades.length === 0) return { novas: 0, resultados: 0, erros: 0 };
+
   const novas = [];
   let resultados = 0;
   let erros = 0;
@@ -148,7 +152,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
   for (const driver of DRIVERS) {
     for (const termo of termos) {
       try {
-        const publicacoes = await driver.buscar({ termo, cidades: monitor.cidades, desde });
+        const publicacoes = await driver.buscar({ termo, cidades, desde });
         resultados += publicacoes.length;
         let novasNesta = 0;
 
@@ -177,14 +181,14 @@ async function processarMonitor(monitor, { manual = false } = {}) {
 
         await LogRadar.create({
           monitor: monitor._id, usuario: monitor.usuario._id ?? monitor.usuario, driver: driver.id,
-          cidades: monitor.cidades, desde, resultados: publicacoes.length, novas: novasNesta, manual,
+          cidades, desde, resultados: publicacoes.length, novas: novasNesta, manual,
         });
       } catch (err) {
         erros += 1;
         console.error(`[Radar] Falha no driver ${driver.id} (monitor ${monitor._id}):`, err.message);
         await LogRadar.create({
           monitor: monitor._id, usuario: monitor.usuario._id ?? monitor.usuario, driver: driver.id,
-          cidades: monitor.cidades, desde, sucesso: false, erro: String(err.message).slice(0, 300), manual,
+          cidades, desde, sucesso: false, erro: String(err.message).slice(0, 300), manual,
         }).catch(() => {});
       }
       await new Promise((r) => setTimeout(r, PAUSA_ENTRE_CONSULTAS_MS));

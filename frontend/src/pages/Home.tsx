@@ -55,6 +55,17 @@ export default function Home() {
   const [historico, setHistorico]     = useState<Record<string, Mudanca[]>>({});
   const [telegram, setTelegram]       = useState<{ disponivel: boolean; conectado: boolean } | null>(null);
   const [linkTelegram, setLinkTelegram] = useState<string | null>(null);
+  const [verificacaoEnviada, setVerificacaoEnviada] = useState(false);
+
+  const reenviarVerificacao = async () => {
+    try {
+      await api.post("/api/auth/verificar-email");
+      setVerificacaoEnviada(true);
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
+      setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível enviar o e-mail de confirmação." });
+    }
+  };
 
   const carregarPlano = async () => {
     try {
@@ -238,6 +249,20 @@ export default function Home() {
             </button>
           )}
         </div>
+
+        {/* E-MAIL NÃO CONFIRMADO */}
+        {usuario && usuario.emailVerificado === false && (
+          <div className="mb-6 flex items-center justify-between gap-4 flex-wrap border border-amber-400/30 bg-amber-400/5 rounded-xl px-5 py-4">
+            <p className="text-xs text-neutral-300">
+              ✉️ Confirme seu e-mail para garantir que os alertas cheguem — e liberar o teste grátis do Pro e o Radar.
+            </p>
+            {verificacaoEnviada ? (
+              <span className="font-mono text-[10px] text-emerald-400">link enviado — confira sua caixa de entrada</span>
+            ) : (
+              <button onClick={reenviarVerificacao} className="font-mono text-[10px] uppercase tracking-widest text-amber-400 hover:text-amber-300">[ reenviar link ]</button>
+            )}
+          </div>
+        )}
 
         {/* CANAIS: TELEGRAM */}
         {usuario && telegram?.disponivel && (

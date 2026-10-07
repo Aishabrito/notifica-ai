@@ -32,6 +32,8 @@ router.post('/cadastro', async (req, res) => {
 
     if (!nome || !email || !senha)
       return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
+    if (String(senha).length < 8)
+      return res.status(400).json({ sucesso: false, mensagem: 'A senha precisa ter pelo menos 8 caracteres.' });
 
     const emailExiste = await Usuario.findOne({ email });
     if (emailExiste)
@@ -45,7 +47,7 @@ router.post('/cadastro', async (req, res) => {
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
       subject: '🎉 Bem-vinda ao Notifica.ai!',
-      html: emailBoasVindas(nome),
+      html: emailBoasVindas(nome, gerarLinkVerificacao(usuario)),
     }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 
     res.cookie('token', token, COOKIE_OPTS);
