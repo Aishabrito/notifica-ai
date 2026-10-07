@@ -44,6 +44,8 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
         <div className="hidden md:flex items-center gap-8">
           {logado ? (
             <>
+              <Link to="/dashboard" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Painel</Link>
+              <Link to="/planos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Planos</Link>
               <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-50">
                 {usuario?.email}
               </span>
@@ -78,6 +80,8 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <span className="font-mono text-xs text-neutral-500 tracking-wide border-b border-neutral-800 pb-4">
                 {usuario?.email}
               </span>
+              <Link to="/dashboard" onClick={fecharMenu} className="font-mono text-sm text-white">Painel</Link>
+              <Link to="/planos" onClick={fecharMenu} className="font-mono text-sm text-white">Planos</Link>
               <button
                 onClick={() => { fecharMenu(); handleLogout(); }}
                 className="w-full text-left font-mono text-xs text-red-400 tracking-wide py-2"

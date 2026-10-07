@@ -24,6 +24,8 @@ router.get('/', autenticar, async (req, res) => {
         validoAte: usuario.plano?.validoAte ?? null,
         efetivo:   obterTipoPlanoEfetivo(usuario),
         nome:      regras.nome,
+        origem:    usuario.plano?.origem ?? null, // mercadopago (cartão) | pix | cortesia
+        assinaturaId: usuario.plano?.origem === 'mercadopago' ? usuario.plano.mpAssinaturaId : null,
       },
       uso: {
         alertasAtivos,

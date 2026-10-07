@@ -20,9 +20,9 @@ const { executarRodada }        = require('./src/service/agendador');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
-const { assinaturaRouter, webhookRouter } = require('./src/routes/assinaturaRoutes');
+const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
-const { processarPlanosExpirados } = require('./src/service/planoService');
+const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
 const {
   verificarLimitePlano,
@@ -30,6 +30,7 @@ const {
   validarIntervalo,
 } = require('./src/middleware/planoMiddleware');
 const Alerta                    = require('./src/models/alertaModel');
+const Mudanca                   = require('./src/models/Mudanca');
 const adminRoutes               = require('./src/routes/adminRoutes');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
@@ -159,6 +160,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/plano', planoRoutes);
+app.get('/api/mp-config', mpConfigHandler);
 app.use('/api/assinatura', assinaturaRouter);
 app.use('/api/webhooks', webhookRouter);
 
@@ -296,6 +298,24 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
   }
 });
 
+// Histórico de mudanças de um alerta (protegido) — com o resumo da IA quando houver
+app.get('/api/alertas/:id/historico', limiterAlertasGeral, autenticar, async (req, res) => {
+  try {
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id }).select('_id').lean();
+    if (!alerta) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
+    const mudancas = await Mudanca.find({ alertaId: alerta._id })
+      .sort({ detectadaEm: -1 })
+      .limit(50)
+      .select('detectadaEm emailEnviado resumo pdfsNovos')
+      .lean();
+    return res.json({ sucesso: true, mudancas });
+  } catch (err) {
+    return res.status(400).json({ sucesso: false, mensagem: 'Erro ao buscar histórico.' });
+  }
+});
+
 // Alterar frequência de checagem (protegido) — opções dependem do plano
 app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
@@ -332,6 +352,11 @@ cron.schedule('0 3 * * *', async () => {
     await processarPlanosExpirados();
   } catch (err) {
     console.error('[Plano] Erro no job de planos expirados:', err.message);
+  }
+  try {
+    await enviarLembretesRenovacao();
+  } catch (err) {
+    console.error('[Plano] Erro no job de lembretes de renovação:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

@@ -4,7 +4,9 @@ const Alerta        = require('../models/alertaModel');
 const { PLANOS, obterTipoPlanoEfetivo } = require('../config/planos');
 const { escaparHtml } = require('../utils/html');
 
-const PLANO_FREE = { tipo: 'free', status: 'ativo', validoAte: null, origem: null, mpAssinaturaId: null };
+const PLANO_FREE = { tipo: 'free', status: 'ativo', validoAte: null, origem: null, mpAssinaturaId: null, lembreteRenovacaoEm: null };
+const DIA_MS = 24 * 60 * 60 * 1000;
+const DIAS_AVISO_RENOVACAO = 3;
 
 // ============================================
 // ⬇️ DOWNGRADE — volta para o Free e pausa o excedente
@@ -97,4 +99,46 @@ async function enviarEmailDowngrade(usuario, excedentes) {
   });
 }
 
-module.exports = { aplicarDowngrade, reativarAlertasPausadosPorPlano, processarPlanosExpirados };
+// ============================================
+// ⏰ LEMBRETE DE RENOVAÇÃO (Pix não renova sozinho)
+// ============================================
+async function enviarLembretesRenovacao() {
+  const agora  = new Date();
+  const limite = new Date(agora.getTime() + DIAS_AVISO_RENOVACAO * DIA_MS);
+  const usuarios = await Usuario.find({
+    'plano.tipo': 'pro',
+    'plano.origem': 'pix',
+    'plano.validoAte': { $gt: agora, $lte: limite },
+    'plano.lembreteRenovacaoEm': null,
+  }).select('nome email plano');
+
+  let enviados = 0;
+  for (const usuario of usuarios) {
+    try {
+      const dias = Math.max(1, Math.ceil((new Date(usuario.plano.validoAte) - agora) / DIA_MS));
+      const linkPlanos = `${process.env.FRONTEND_URL || 'https://notifica.dev.br'}/planos`;
+      await transportador.sendMail({
+        from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+        to: usuario.email,
+        subject: `⏰ Seu Pro do Notifica.ai vence em ${dias} dia(s)`,
+        html: `
+          <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Seu plano Pro vence em ${dias} dia(s)</h2>
+            <p>Olá, ${escaparHtml(usuario.nome)}! Pagamentos via Pix não renovam sozinhos.</p>
+            <p>Para continuar com alertas ilimitados, checagens rápidas e resumos com IA,
+            renove em <a href="${linkPlanos}">${linkPlanos}</a> — por Pix de novo ou no
+            cartão (aí renova automaticamente).</p>
+          </div>
+        `,
+      });
+      usuario.plano.lembreteRenovacaoEm = agora;
+      await usuario.save();
+      enviados += 1;
+    } catch (err) {
+      console.error(`[Plano] Falha ao enviar lembrete de renovação para ${usuario.email}:`, err.message);
+    }
+  }
+  return { lembretesEnviados: enviados };
+}
+
+module.exports = { aplicarDowngrade, reativarAlertasPausadosPorPlano, processarPlanosExpirados, enviarLembretesRenovacao };

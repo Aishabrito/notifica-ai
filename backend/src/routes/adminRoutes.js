@@ -167,18 +167,18 @@ router.patch('/usuarios/:id/plano', autenticar, isAdmin, async (req, res) => {
 
     if (tipo === 'free') {
       // Não mexe em assinatura paga: ela precisa ser cancelada no Mercado Pago
-      if (usuario.plano?.origem === 'mercadopago' && obterTipoPlanoEfetivo(usuario) === 'pro') {
+      if (['mercadopago', 'pix'].includes(usuario.plano?.origem) && obterTipoPlanoEfetivo(usuario) === 'pro') {
         return res.status(409).json({
           sucesso: false,
-          mensagem: 'Este usuário tem uma assinatura paga ativa. Cancele pelo Mercado Pago.',
+          mensagem: 'Este usuário tem um plano pago ativo (cartão ou Pix). Cancele pelo Mercado Pago ou aguarde o vencimento.',
         });
       }
       const { alertasPausados } = await aplicarDowngrade(usuario, { notificar: false });
       return res.json({ sucesso: true, mensagem: `Plano alterado para Free. ${alertasPausados} alerta(s) pausado(s).` });
     }
 
-    if (usuario.plano?.origem === 'mercadopago' && obterTipoPlanoEfetivo(usuario) === 'pro') {
-      return res.status(409).json({ sucesso: false, mensagem: 'Este usuário já tem uma assinatura paga ativa.' });
+    if (['mercadopago', 'pix'].includes(usuario.plano?.origem) && obterTipoPlanoEfetivo(usuario) === 'pro') {
+      return res.status(409).json({ sucesso: false, mensagem: 'Este usuário já tem um plano pago ativo (cartão ou Pix).' });
     }
 
     usuario.plano = {

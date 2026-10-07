@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import api from "../services/Api";
@@ -11,7 +11,19 @@ interface Alerta {
   titulo: string;
   status: "ativo" | "pausado";
   criadoEm: string;
+  intervaloHoras?: number;
+  ultimaVerificacao?: string | null;
 }
+
+interface Mudanca {
+  _id: string;
+  detectadaEm: string;
+  emailEnviado: boolean;
+  resumo?: { relevante: boolean; titulo: string; resumo: string; datas: { data: string; descricao: string }[] };
+  pdfsNovos?: string[];
+}
+
+const rotuloIntervalo = (h: number) => (h >= 24 ? "1x por dia" : h >= 1 ? `a cada ${h}h` : `a cada ${Math.round(h * 60)} min`);
 
 const StatusDot = ({ status }: { status: "ativo" | "pausado" }) => (
   <span className={`inline-flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${
@@ -36,46 +48,50 @@ export default function Home() {
   const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
   // Limite de alertas ativos vindo do backend (null = ilimitado, plano Pro)
   const [limite, setLimite]           = useState<number | null>(3);
-  const [assinando, setAssinando]     = useState(false);
+  const [ehPro, setEhPro]             = useState(false);
+  const [intervalos, setIntervalos]   = useState<number[]>([24]);
+  const [historicoAberto, setHistoricoAberto] = useState<string | null>(null);
+  const [historico, setHistorico]     = useState<Record<string, Mudanca[]>>({});
 
   const carregarPlano = async () => {
     try {
       const { data: d } = await api.get("/api/plano");
-      if (d.sucesso) setLimite(d.uso.limiteAlertas);
+      if (d.sucesso) {
+        setLimite(d.uso.limiteAlertas);
+        setEhPro(d.plano.efetivo === "pro");
+        setIntervalos(d.recursos.intervalosPermitidos);
+      }
     } catch (err) {
       console.error("Erro ao carregar plano:", err);
     }
   };
 
-  const handleUpgrade = async () => {
-    setAssinando(true);
+  useEffect(() => {
+    if (usuario) carregarPlano();
+  }, [usuario]);
+
+  const alterarFrequencia = async (id: string, intervaloHoras: number) => {
     try {
-      const { data: d } = await api.post("/api/assinatura/criar");
-      if (d.sucesso && d.initPoint) {
-        window.location.href = d.initPoint;
-        return;
-      }
-      throw new Error(d.mensagem);
+      await api.patch(`/api/alertas/${id}/frequencia`, { intervaloHoras });
+      setAlertas((prev) => prev.map((a) => (a._id === id ? { ...a, intervaloHoras } : a)));
+      setStatusMsg({ tipo: "sucesso", texto: `Frequência atualizada: ${rotuloIntervalo(intervaloHoras)}.` });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
-      setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível iniciar o pagamento." });
-      setAssinando(false);
+      setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível alterar a frequência." });
     }
   };
 
-  // Volta do checkout do Mercado Pago: o Pro é ativado pelo webhook,
-  // que pode levar alguns segundos — recarrega o plano em seguida.
-  useEffect(() => {
-    if (!usuario) return;
-    carregarPlano();
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("assinatura") === "retorno") {
-      setStatusMsg({ tipo: "sucesso", texto: "Pagamento recebido! Seu plano Pro será ativado em instantes." });
-      window.history.replaceState({}, "", window.location.pathname);
-      const t = setTimeout(carregarPlano, 5000);
-      return () => clearTimeout(t);
+  const alternarHistorico = async (id: string) => {
+    if (historicoAberto === id) return setHistoricoAberto(null);
+    setHistoricoAberto(id);
+    if (historico[id]) return;
+    try {
+      const { data: d } = await api.get(`/api/alertas/${id}/historico`);
+      setHistorico((prev) => ({ ...prev, [id]: d.mudancas }));
+    } catch {
+      setHistorico((prev) => ({ ...prev, [id]: [] }));
     }
-  }, [usuario]);
+  };
 
   const emailAtivo = usuario?.email || emailManual;
 
@@ -185,6 +201,11 @@ export default function Home() {
             <p className="text-neutral-500 text-sm mt-2">
               Você tem <strong className="text-emerald-400">{ativos} monitoramento{ativos !== 1 ? "s" : ""}</strong> ativo{ativos !== 1 ? "s" : ""} no momento.
             </p>
+            {usuario && (
+              <Link to="/planos" className={`inline-block mt-3 font-mono text-[10px] uppercase tracking-widest px-2.5 py-1 rounded-full border ${ehPro ? "text-purple-300 border-purple-500/40 bg-purple-500/10" : "text-neutral-500 border-neutral-800 hover:text-white"}`}>
+                {ehPro ? "💎 Plano Pro" : "Plano gratuito · conhecer o Pro →"}
+              </Link>
+            )}
           </div>
           {usuario && (
             <button
@@ -214,11 +235,11 @@ export default function Home() {
                 Limite de <strong className="text-white">{limite} alertas</strong> atingido no plano gratuito.
               </p>
               <button
-                onClick={handleUpgrade}
-                disabled={assinando}
-                className="disabled:opacity-60 font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
-                {assinando ? "Abrindo pagamento..." : "Fazer upgrade →"}
+                onClick={() => navigate("/planos")}
+                className="font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
+                Fazer upgrade →
               </button>
+              <p className="text-[11px] text-neutral-600 mt-2">Cartão ou Pix — sem precisar de conta no Mercado Pago.</p>
             </div>
           ) : (
             <form onSubmit={handleCadastrar} className="space-y-3">
@@ -300,6 +321,27 @@ export default function Home() {
                       {alerta.titulo}
                     </h3>
                     <p className="font-mono text-[11px] text-neutral-500 truncate">{alerta.url}</p>
+                    {usuario && (
+                      <div className="flex items-center gap-3 flex-wrap pt-1">
+                        <label className="font-mono text-[10px] text-neutral-600 flex items-center gap-2">
+                          Checagem:
+                          <select
+                            value={alerta.intervaloHoras ?? 24}
+                            disabled={!ehPro}
+                            onChange={(e) => alterarFrequencia(alerta._id, Number(e.target.value))}
+                            className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-neutral-300 disabled:opacity-60"
+                          >
+                            {Array.from(new Set([...intervalos, alerta.intervaloHoras ?? 24])).sort((a, b) => b - a).map((h) => (
+                              <option key={h} value={h}>{rotuloIntervalo(h)}</option>
+                            ))}
+                          </select>
+                        </label>
+                        {!ehPro && <Link to="/planos" className="font-mono text-[10px] text-purple-400 hover:text-purple-300">até a cada 15 min no Pro →</Link>}
+                        <button onClick={() => alternarHistorico(alerta._id)} className="font-mono text-[10px] text-neutral-500 hover:text-white">
+                          {historicoAberto === alerta._id ? "fechar histórico" : "histórico de mudanças"}
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <button
                     onClick={() => handleCancelar(alerta._id)}
@@ -308,6 +350,38 @@ export default function Home() {
                     [ remover ]
                   </button>
                 </div>
+
+                {historicoAberto === alerta._id && (
+                  <div className="mt-4 border-t border-white/5 pt-4 space-y-3">
+                    {!historico[alerta._id] ? (
+                      <p className="font-mono text-[10px] text-neutral-600">Carregando…</p>
+                    ) : historico[alerta._id].length === 0 ? (
+                      <p className="font-mono text-[10px] text-neutral-600">Nenhuma mudança detectada ainda.</p>
+                    ) : (
+                      historico[alerta._id].map((m) => (
+                        <div key={m._id} className="border-l-2 border-purple-500/30 pl-3">
+                          <p className="font-mono text-[10px] text-neutral-600">
+                            {new Date(m.detectadaEm).toLocaleString("pt-BR")}
+                            {m.resumo && !m.resumo.relevante && " · irrelevante (sem e-mail)"}
+                          </p>
+                          {m.resumo ? (
+                            <>
+                              <p className="text-sm font-bold text-neutral-200">{m.resumo.titulo}</p>
+                              <p className="text-xs text-neutral-400">{m.resumo.resumo}</p>
+                              {m.resumo.datas.length > 0 && (
+                                <p className="text-[11px] text-emerald-400 mt-1">
+                                  📅 {m.resumo.datas.map((d) => `${new Date(`${d.data}T12:00:00Z`).toLocaleDateString("pt-BR", { timeZone: "UTC" })} — ${d.descricao}`).join(" · ")}
+                                </p>
+                              )}
+                            </>
+                          ) : (
+                            <p className="text-xs text-neutral-500">Página atualizada.{!ehPro && " No Pro, a IA resume o que mudou."}</p>
+                          )}
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
             ))
           )}

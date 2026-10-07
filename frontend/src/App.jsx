@@ -14,6 +14,7 @@ import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/private-route';
 import AdminRoute     from './components/AdminRoute';
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+import Planos         from './pages/Planos';
 
 export default function App() {
   return (
@@ -31,6 +32,12 @@ export default function App() {
             <Route path="/dashboard" element={
               <PrivateRoute>
                 <Home />
+              </PrivateRoute>
+            } />
+
+            <Route path="/planos" element={
+              <PrivateRoute>
+                <Planos />
               </PrivateRoute>
             } />
 
