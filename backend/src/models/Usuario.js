@@ -19,6 +19,13 @@ const usuarioSchema = new mongoose.Schema({
   // Confirmação de e-mail (obrigatória para o Radar do Diário Oficial)
   emailVerificado:   { type: Boolean, default: false },
   emailVerificadoEm: { type: Date, default: null },
+  // Alertas no Telegram (Pro). Só o hash do código de conexão é guardado.
+  telegram: {
+    chatId:       { type: String, default: null },
+    conectadoEm:  { type: Date, default: null },
+    codigoHash:   { type: String, default: null },
+    codigoExpira: { type: Date, default: null },
+  },
   criadoEm: { type: Date, default: Date.now },
 
   // Recuperação de senha via código OTP

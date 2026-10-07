@@ -198,7 +198,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
   }
 
   if (novas.length > 0) {
-    const usuario = monitor.usuario?.email ? monitor.usuario : await require('../../models/Usuario').findById(monitor.usuario).select('nome email');
+    const usuario = monitor.usuario?.email ? monitor.usuario : await require('../../models/Usuario').findById(monitor.usuario).select('nome email plano telegram');
     try {
       await enviarEmailOcorrencias(usuario, dados, novas);
       await OcorrenciaRadar.updateMany({ _id: { $in: novas.map((n) => n._id) } }, { notificadoEm: new Date() });
@@ -223,7 +223,7 @@ async function executarRadar() {
   rodadaEmExecucao = true;
   const totais = { monitores: 0, novas: 0, erros: 0 };
   try {
-    const monitores = await MonitorRadar.find({ ativo: true }).populate('usuario', 'nome email plano');
+    const monitores = await MonitorRadar.find({ ativo: true }).populate('usuario', 'nome email plano telegram');
     for (const monitor of monitores) {
       if (!monitor.usuario || obterTipoPlanoEfetivo(monitor.usuario) !== 'pro') continue;
       try {

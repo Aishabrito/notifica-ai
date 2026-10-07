@@ -5,6 +5,7 @@ const { OPCOES_DOWNLOAD, interpretarResposta } = require('../utils/conteudoPagin
 const { escaparHtml } = require('../utils/html');
 const { gerarIcs }    = require('../utils/ics');
 const { resumirMudanca } = require('./resumoMudanca');
+const { notificarMudanca } = require('./telegram');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -291,6 +292,8 @@ async function verificarAlerta(alerta, buscarPagina) {
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
       }
+      // Telegram (Pro que conectou): não bloqueia nem depende do e-mail
+      notificarMudanca(alerta.usuario, alerta, resumo).catch(() => {});
     } else {
       console.log(`[Crawler] 🔕 Mudança irrelevante em ${alerta.url} — sem e-mail`);
     }

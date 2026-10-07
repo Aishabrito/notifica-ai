@@ -22,7 +22,9 @@ const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
 const verificacaoRoutes         = require('./src/routes/verificacaoRoutes');
 const radarRoutes               = require('./src/routes/radarRoutes');
-const { executarRadar }         = require('./src/service/radar/radarService');
+const { executarRadar, aoEncontrarOcorrencias } = require('./src/service/radar/radarService');
+const { telegramRouter, webhookTelegramRouter } = require('./src/routes/telegramRoutes');
+const telegram                  = require('./src/service/telegram');
 const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
 const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
@@ -83,6 +85,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(async () => {
     console.log('MongoDB conectado com sucesso.');
+    telegram.configurarWebhook();
     try {
       const migrados = await Usuario.migrarPlanosLegados();
       if (migrados > 0) console.log(`[Plano] ${migrados} usuário(s) migrados para o novo formato de plano.`);
@@ -168,6 +171,11 @@ app.use('/api/radar', radarRoutes);
 app.get('/api/mp-config', mpConfigHandler);
 app.use('/api/assinatura', assinaturaRouter);
 app.use('/api/webhooks', webhookRouter);
+app.use('/api/webhooks', webhookTelegramRouter);
+app.use('/api/telegram', telegramRouter);
+
+// Publicações do Radar também vão para o Telegram de quem conectou
+aoEncontrarOcorrencias(telegram.notificarOcorrencias);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));

@@ -54,7 +54,7 @@ async function reservarAlertasVencidos(limite = LOTE_MAX_ALERTAS) {
 
   return Alerta.find({ travaId })
     .select('+ultimoConteudo +linksPdf') // versão anterior, para o resumo com IA
-    .populate('usuario', 'plano');
+    .populate('usuario', 'nome plano telegram');
 }
 
 // ============================================

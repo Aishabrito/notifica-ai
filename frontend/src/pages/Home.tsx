@@ -52,6 +52,8 @@ export default function Home() {
   const [intervalos, setIntervalos]   = useState<number[]>([24]);
   const [historicoAberto, setHistoricoAberto] = useState<string | null>(null);
   const [historico, setHistorico]     = useState<Record<string, Mudanca[]>>({});
+  const [telegram, setTelegram]       = useState<{ disponivel: boolean; conectado: boolean } | null>(null);
+  const [linkTelegram, setLinkTelegram] = useState<string | null>(null);
 
   const carregarPlano = async () => {
     try {
@@ -60,6 +62,7 @@ export default function Home() {
         setLimite(d.uso.limiteAlertas);
         setEhPro(d.plano.efetivo === "pro");
         setIntervalos(d.recursos.intervalosPermitidos);
+        setTelegram(d.canais?.telegram ?? null);
       }
     } catch (err) {
       console.error("Erro ao carregar plano:", err);
@@ -79,6 +82,23 @@ export default function Home() {
       const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
       setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível alterar a frequência." });
     }
+  };
+
+  const conectarTelegram = async () => {
+    try {
+      const { data: d } = await api.post("/api/telegram/conectar");
+      setLinkTelegram(d.link);
+      window.open(d.link, "_blank", "noopener");
+    } catch (err: unknown) {
+      const msg = (err as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem;
+      setStatusMsg({ tipo: "erro", texto: msg ?? "Não foi possível gerar o link do Telegram." });
+    }
+  };
+
+  const desconectarTelegram = async () => {
+    await api.delete("/api/telegram").catch(() => {});
+    setLinkTelegram(null);
+    await carregarPlano();
   };
 
   const alternarHistorico = async (id: string) => {
@@ -216,6 +236,33 @@ export default function Home() {
             </button>
           )}
         </div>
+
+        {/* CANAIS: TELEGRAM */}
+        {usuario && telegram?.disponivel && (
+          <div className="mb-6 flex items-center justify-between gap-4 flex-wrap border border-white/5 rounded-xl px-5 py-4 bg-neutral-900/30">
+            <div>
+              <p className="text-sm font-bold">📲 Alertas no Telegram</p>
+              <p className="text-xs text-neutral-500">
+                {!ehPro ? "Receba os avisos no celular na hora — exclusivo do Pro."
+                  : telegram.conectado ? "Conectado: seus alertas chegam no Telegram e no e-mail."
+                  : linkTelegram ? "Toque em \"Iniciar\" no Telegram e depois volte aqui."
+                  : "Receba os avisos no celular na hora, além do e-mail."}
+              </p>
+            </div>
+            {!ehPro ? (
+              <Link to="/planos" className="font-mono text-[10px] uppercase tracking-widest text-purple-400 hover:text-purple-300">conhecer o Pro →</Link>
+            ) : telegram.conectado ? (
+              <button onClick={desconectarTelegram} className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-red-400">[ desconectar ]</button>
+            ) : linkTelegram ? (
+              <div className="flex gap-3">
+                <a href={linkTelegram} target="_blank" rel="noopener noreferrer" className="font-mono text-[10px] uppercase tracking-widest text-sky-400">abrir de novo</a>
+                <button onClick={carregarPlano} className="font-mono text-[10px] uppercase tracking-widest text-emerald-400">[ já conectei ]</button>
+              </div>
+            ) : (
+              <button onClick={conectarTelegram} className="font-mono text-xs bg-sky-500 text-white font-bold px-4 py-2 rounded-lg hover:bg-sky-400">Conectar Telegram</button>
+            )}
+          </div>
+        )}
 
         {/* FORM */}
         <div

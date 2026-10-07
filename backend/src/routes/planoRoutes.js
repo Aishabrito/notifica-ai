@@ -2,6 +2,7 @@ const express = require('express');
 const Alerta  = require('../models/alertaModel');
 const { autenticar } = require('../middleware/authMiddleware');
 const { obterTipoPlanoEfetivo, obterRegrasPlano } = require('../config/planos');
+const { telegramConfigurado } = require('../service/telegram');
 
 const router = express.Router();
 
@@ -31,6 +32,9 @@ router.get('/', autenticar, async (req, res) => {
         alertasAtivos,
         alertasTotal,
         limiteAlertas: regras.maxAlertasAtivos, // null = ilimitado
+      },
+      canais: {
+        telegram: { disponivel: telegramConfigurado(), conectado: Boolean(usuario.telegram?.chatId) },
       },
       recursos: {
         intervalosPermitidos: regras.intervalosPermitidos,
