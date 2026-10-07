@@ -6,6 +6,7 @@ const { escaparHtml } = require('../utils/html');
 const { gerarIcs }    = require('../utils/ics');
 const { resumirMudanca } = require('./resumoMudanca');
 const { notificarMudanca } = require('./telegram');
+const { validarUrlPublica } = require('../utils/urlPublica');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -271,6 +272,9 @@ async function verificarAlerta(alerta, buscarPagina) {
         url: alerta.url,
         linksNovos,
         baixarTextoPdf: async (link) => {
+          // O link veio do HTML da página monitorada: pode apontar para qualquer lugar
+          const validacao = await validarUrlPublica(link);
+          if (!validacao.valido) throw new Error(`link ignorado (${validacao.motivo})`);
           const p = await interpretarResposta(await buscarPagina(link, headers), { url: link });
           return p.tipo === 'pdf' ? p.texto : null;
         },

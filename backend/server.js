@@ -9,10 +9,10 @@ const cookieParser  = require('cookie-parser');
 const cron          = require('node-cron');
 const crypto        = require('crypto');
 const rateLimit     = require('express-rate-limit');
-const { URL }       = require('url');
 
 const transportador             = require('./src/utils/mailer');
 const { OPCOES_DOWNLOAD, interpretarResposta } = require('./src/utils/conteudoPagina');
+const { validarUrlPublica }     = require('./src/utils/urlPublica');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
 const { gerarHeaders }          = require('./src/service/crawler');
@@ -115,43 +115,6 @@ const limiterAlertasGeral = rateLimit({
   legacyHeaders: false,
   message: { sucesso: false, mensagem: 'Muitas requisições. Tente novamente em breve.' },
 });
-
-// ============================================
-// 🛡️ VALIDAÇÃO DE URL (anti-SSRF)
-// ============================================
-const PRIVATE_IPV4_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0)/;
-const PRIVATE_IPV6_REGEX = /^(::1$|fe[89ab][0-9a-f]:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
-
-function isPrivateAddress(address) {
-  if (address.includes(':')) return PRIVATE_IPV6_REGEX.test(address);
-  return PRIVATE_IPV4_REGEX.test(address);
-}
-
-async function validarUrlPublica(rawUrl) {
-  let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return { valido: false, motivo: 'URL inválida.' };
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return { valido: false, motivo: 'Apenas URLs http:// e https:// são permitidas.' };
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  if (
-    hostname === 'localhost' ||
-    hostname === '0.0.0.0' ||
-    hostname === '::1' ||
-    isPrivateAddress(hostname)
-  ) {
-    return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
-  }
-
-  return { valido: true };
-}
 
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES

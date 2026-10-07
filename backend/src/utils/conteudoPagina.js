@@ -1,6 +1,7 @@
 const cheerio = require('cheerio');
 const { PDFParse } = require('pdf-parse');
 const { extrairConteudoLimpo } = require('./extrairConteudo');
+const { hostProibido } = require('./urlPublica');
 
 const MAX_LINKS_PDF = 200;
 
@@ -10,6 +11,11 @@ const OPCOES_DOWNLOAD = {
   responseType: 'arraybuffer',
   timeout: 20000,
   maxContentLength: 25 * 1024 * 1024,
+  maxRedirects: 5,
+  // Um site público não pode nos redirecionar para a rede interna (anti-SSRF)
+  beforeRedirect: (opcoes) => {
+    if (hostProibido(opcoes.hostname)) throw new Error('Redirecionamento para endereço interno bloqueado.');
+  },
 };
 
 function ehPdf(resposta, buffer) {
