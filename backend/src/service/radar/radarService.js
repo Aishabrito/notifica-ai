@@ -7,11 +7,13 @@ require('../../models/Usuario'); // registra o modelo usado no populate('usuario
 const { cifrar, decifrar } = require('../../utils/cripto');
 const { escaparHtml } = require('../../utils/html');
 const { obterTipoPlanoEfetivo } = require('../../config/planos');
-const { RADAR, cidadePorId, cidadeDisponivel } = require('../../config/radar');
+const { RADAR, cidadeDisponivel, nomeDiario } = require('../../config/radar');
 const queridoDiario = require('./queridoDiario');
+const dou = require('./dou');
 
-// Fontes consultadas. Novas fontes (DOU, DOERJ...) entram nesta lista.
-const DRIVERS = [queridoDiario];
+// Fontes consultadas; cada uma diz quais "cidades" atende (suporta).
+// Novas fontes (DOERJ...) entram nesta lista.
+const DRIVERS = [queridoDiario, dou];
 
 const DIA_MS = 24 * 60 * 60 * 1000;
 const PAUSA_ENTRE_CONSULTAS_MS = 1000; // educação com a API pública
@@ -75,14 +77,13 @@ function destacar(trecho, termos) {
 
 async function enviarEmailOcorrencias(usuario, dados, ocorrencias) {
   const itens = ocorrencias.map((o) => {
-    const cidade = cidadePorId(o.cidadeId)?.nome ?? o.cidadeId;
     const data = new Date(`${o.dataPublicacao}T12:00:00Z`).toLocaleDateString('pt-BR', { timeZone: 'UTC' });
     const selo = o.confirmacao === 'nome+documento' ? '✅ nome e documento conferem'
       : o.confirmacao === 'inscricao' ? '🔢 encontrado pelo número de inscrição'
       : '⚠️ encontrado pelo nome — confira se é você (pode haver homônimos)';
     return `
       <div style="border-left:3px solid #10b981;padding:8px 12px;margin:16px 0;">
-        <p style="margin:0 0 4px;"><b>Diário Oficial de ${escaparHtml(cidade)}</b> · ${escaparHtml(data)}${o.edicao ? ` · edição ${escaparHtml(o.edicao)}` : ''}</p>
+        <p style="margin:0 0 4px;"><b>${escaparHtml(nomeDiario(o.cidadeId))}</b> · ${escaparHtml(data)}${o.edicao ? ` · edição ${escaparHtml(o.edicao)}` : ''}</p>
         <p style="margin:0 0 8px;font-size:12px;color:#555;">${selo}</p>
         ${o.trechos.map((t) => `<p style="font-size:13px;color:#333;background:#f6f6f6;padding:8px;border-radius:6px;">…${destacar(t, [dados.nome, dados.inscricao])}…</p>`).join('')}
         <p><a href="${escaparHtml(o.url)}">Abrir o diário oficial</a></p>
@@ -94,7 +95,7 @@ async function enviarEmailOcorrencias(usuario, dados, ocorrencias) {
     from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
     to: usuario.email,
     subject: ocorrencias.length === 1
-      ? `📰 Você foi citado(a) no Diário Oficial de ${cidadePorId(ocorrencias[0].cidadeId)?.nome ?? 'sua cidade'}`
+      ? `📰 Você foi citado(a) no ${nomeDiario(ocorrencias[0].cidadeId)}`
       : `📰 Você foi citado(a) em ${ocorrencias.length} publicações de Diário Oficial`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 640px;">
@@ -132,10 +133,15 @@ const chaveOcorrencia = (driver, url, data) =>
  */
 async function processarMonitor(monitor, { manual = false } = {}) {
   const dados = decifrarMonitor(monitor);
-  const desdeMs = monitor.ultimaBuscaEm
-    ? new Date(monitor.ultimaBuscaEm).getTime() - RADAR.diasSobreposicao * DIA_MS
-    : Date.now() - RADAR.diasBuscaInicial * DIA_MS;
-  const desde = new Date(desdeMs).toISOString().slice(0, 10);
+  // Janela de cada fonte: desde a última busca bem-sucedida nela (menos a
+  // sobreposição), ou os últimos 30 dias na primeira vez
+  const desdePara = (driver) => {
+    const ultima = monitor.buscasPorFonte?.get(driver.id) ?? monitor.ultimaBuscaEm;
+    const ms = ultima
+      ? new Date(ultima).getTime() - RADAR.diasSobreposicao * DIA_MS
+      : Date.now() - RADAR.diasBuscaInicial * DIA_MS;
+    return new Date(ms).toISOString().slice(0, 10);
+  };
 
   // Busca pelo nome e, se houver, pelo número de inscrição (muitas listas de
   // concurso publicam só a inscrição)
@@ -150,9 +156,14 @@ async function processarMonitor(monitor, { manual = false } = {}) {
   let erros = 0;
 
   for (const driver of DRIVERS) {
+    const cidadesDriver = cidades.filter(driver.suporta);
+    if (cidadesDriver.length === 0) continue;
+    const desde = desdePara(driver);
+    let errosDriver = 0;
+
     for (const termo of termos) {
       try {
-        const publicacoes = await driver.buscar({ termo, cidades, desde });
+        const publicacoes = await driver.buscar({ termo, cidades: cidadesDriver, desde });
         resultados += publicacoes.length;
         let novasNesta = 0;
 
@@ -181,25 +192,29 @@ async function processarMonitor(monitor, { manual = false } = {}) {
 
         await LogRadar.create({
           monitor: monitor._id, usuario: monitor.usuario._id ?? monitor.usuario, driver: driver.id,
-          cidades, desde, resultados: publicacoes.length, novas: novasNesta, manual,
+          cidades: cidadesDriver, desde, resultados: publicacoes.length, novas: novasNesta, manual,
         });
       } catch (err) {
         erros += 1;
+        errosDriver += 1;
         console.error(`[Radar] Falha no driver ${driver.id} (monitor ${monitor._id}):`, err.message);
         await LogRadar.create({
           monitor: monitor._id, usuario: monitor.usuario._id ?? monitor.usuario, driver: driver.id,
-          cidades, desde, sucesso: false, erro: String(err.message).slice(0, 300), manual,
+          cidades: cidadesDriver, desde, sucesso: false, erro: String(err.message).slice(0, 300), manual,
         }).catch(() => {});
       }
       await new Promise((r) => setTimeout(r, PAUSA_ENTRE_CONSULTAS_MS));
     }
+
+    // Só avança a janela desta fonte se todas as consultas nela deram certo
+    if (errosDriver === 0) {
+      if (!monitor.buscasPorFonte) monitor.buscasPorFonte = new Map();
+      monitor.buscasPorFonte.set(driver.id, new Date());
+    }
   }
 
-  // Só avança a janela se todas as consultas deram certo (senão repete depois)
-  if (erros === 0) {
-    monitor.ultimaBuscaEm = new Date();
-    await monitor.save();
-  }
+  if (erros === 0) monitor.ultimaBuscaEm = new Date();
+  await monitor.save();
 
   if (novas.length > 0) {
     const usuario = monitor.usuario?.email ? monitor.usuario : await require('../../models/Usuario').findById(monitor.usuario).select('nome email plano telegram');

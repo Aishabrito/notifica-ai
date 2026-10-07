@@ -11,9 +11,14 @@ const axios = require('axios');
 const ID = 'querido-diario';
 const API = () => process.env.QUERIDO_DIARIO_API || 'https://api.queridodiario.ok.org.br';
 
+// Diários municipais: códigos IBGE de 7 dígitos
+const suporta = (cidadeId) => /^\d{7}$/.test(cidadeId);
+
 async function buscar({ termo, cidades, desde }) {
+  const municipios = cidades.filter(suporta);
+  if (municipios.length === 0) return [];
   const params = new URLSearchParams();
-  cidades.forEach((id) => params.append('territory_ids', id));
+  municipios.forEach((id) => params.append('territory_ids', id));
   // Aspas = frase exata na sintaxe "simple query string" do OpenSearch
   params.set('querystring', `"${String(termo).replace(/["\\]/g, ' ').trim()}"`);
   params.set('published_since', desde);
@@ -44,4 +49,4 @@ async function ultimaPublicacao(cidadeId) {
   return data?.gazettes?.[0]?.date ? String(data.gazettes[0].date).slice(0, 10) : null;
 }
 
-module.exports = { id: ID, nome: 'Querido Diário', buscar, ultimaPublicacao };
+module.exports = { id: ID, nome: 'Querido Diário', suporta, buscar, ultimaPublicacao };

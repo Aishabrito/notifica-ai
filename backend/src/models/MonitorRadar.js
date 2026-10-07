@@ -12,6 +12,9 @@ const monitorRadarSchema = new mongoose.Schema({
   ativo:            { type: Boolean, default: true },
   motivoPausa:      { type: String, enum: ['plano', null], default: null },
   ultimaBuscaEm:    { type: Date, default: null },
+  // Última busca bem-sucedida em cada fonte (ex.: 'querido-diario', 'dou'):
+  // se uma fonte cair, as outras continuam avançando normalmente
+  buscasPorFonte:   { type: Map, of: Date, default: undefined },
   consentimento: {
     aceitoEm: { type: Date, required: true },
     versao:   { type: String, required: true },

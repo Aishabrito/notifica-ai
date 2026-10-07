@@ -10,7 +10,7 @@ interface Monitor {
   cidades: Cidade[]; ativo: boolean; motivoPausa: string | null; ultimaBuscaEm: string | null;
 }
 interface Ocorrencia {
-  id: string; monitorId: string; cidade: string; dataPublicacao: string; url: string;
+  id: string; monitorId: string; cidade: string; diario?: string; dataPublicacao: string; url: string;
   edicao: string | null; confirmacao: "nome" | "nome+documento" | "inscricao"; trechos: string[];
 }
 interface EstadoRadar {
@@ -208,7 +208,7 @@ export default function Radar() {
                   </label>
                 </div>
                 <fieldset>
-                  <legend className="text-xs text-neutral-400 mb-2">Diários oficiais das cidades</legend>
+                  <legend className="text-xs text-neutral-400 mb-2">Onde procurar (diários municipais e o Diário Oficial da União)</legend>
                   <div className="flex flex-wrap gap-2">
                     {estado.cidades.map((c) => (
                       <button type="button" key={c.id} onClick={() => alternarCidade(c.id)} aria-pressed={form.cidades.includes(c.id)} className={`font-mono text-xs px-3 py-1.5 rounded-full border ${form.cidades.includes(c.id) ? "border-emerald-400 text-emerald-400 bg-emerald-400/10" : "border-neutral-800 text-neutral-500"}`}>
@@ -247,7 +247,7 @@ export default function Radar() {
                   ocorrencias.map((o) => (
                     <article key={o.id} className="border-l-2 border-emerald-400/40 bg-neutral-900/30 rounded-r-xl p-4">
                       <div className="flex justify-between gap-3 flex-wrap mb-2">
-                        <p className="font-bold text-sm">Diário Oficial de {o.cidade} · {dataBR(o.dataPublicacao)}{o.edicao && <span className="text-neutral-500 font-normal"> · ed. {o.edicao}</span>}</p>
+                        <p className="font-bold text-sm">{o.diario ?? `Diário Oficial de ${o.cidade}`} · {dataBR(o.dataPublicacao)}{o.edicao && <span className="text-neutral-500 font-normal"> · ed. {o.edicao}</span>}</p>
                         <span className={`font-mono text-[10px] border rounded-full px-2 py-0.5 ${SELO[o.confirmacao].cor}`}>{SELO[o.confirmacao].texto}</span>
                       </div>
                       {o.trechos.map((t, i) => <p key={i} className="text-xs text-neutral-400 bg-black/30 rounded p-2 mb-1">…{t}…</p>)}

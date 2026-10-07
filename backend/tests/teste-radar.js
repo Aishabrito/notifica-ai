@@ -40,7 +40,7 @@ const qd = http.createServer((req, res) => {
   // ── plano e verificação de e-mail
   const free = await Usuario.create({ nome: 'Free', email: 'free@x.com', senha: '12345678' });
   let r = await call('GET', '/api/radar', jwt.sign({ id: free._id }, 'x'));
-  ok(r.status === 200 && r.data.ehPro === false && r.data.cidades.length === 6 && r.data.disponivel, 'GET /api/radar: Free vê o radar como exclusivo do Pro + 6 cidades');
+  ok(r.status === 200 && r.data.ehPro === false && r.data.cidades.length === 7 && r.data.disponivel, 'GET /api/radar: Free vê o radar como exclusivo do Pro + 6 cidades e o DOU');
   r = await call('POST', '/api/radar', jwt.sign({ id: free._id }, 'x'), { nome: 'Maria da Silva', cidades: ['3304557'], consentimento: true });
   ok(r.status === 403 && r.data.codigo === 'LIMITE_PLANO', 'Free não cadastra nome');
 
@@ -140,7 +140,7 @@ const qd = http.createServer((req, res) => {
   ok(r.data.dados.radar.monitoresAtivos === 2 && r.data.dados.radar.ocorrencias30d === 3 && !JSON.stringify(r.data).includes('Silva'), 'admin vê só contagens do Radar, nunca os nomes');
 
   r = await call('GET', '/api/radar/cobertura', t);
-  ok(r.status === 200 && r.data.cobertura.length === 6 && r.data.cobertura[0].ultimaPublicacao === '2026-10-06', 'cobertura: data do diário mais recente por cidade');
+  ok(r.status === 200 && r.data.cobertura.length === 7 && r.data.cobertura[0].ultimaPublicacao === '2026-10-06' && r.data.cobertura.find(c => c.id === 'DOU').fonte === 'Diário Oficial da União', 'cobertura: data do diário mais recente por cidade');
 
   // ── exclusão
   r = await call('DELETE', `/api/radar/${monId}`, t);

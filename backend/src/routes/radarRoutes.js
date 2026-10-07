@@ -6,7 +6,7 @@ const MonitorRadar    = require('../models/MonitorRadar');
 const OcorrenciaRadar = require('../models/OcorrenciaRadar');
 const { cifrar, decifrar, criptografiaConfigurada } = require('../utils/cripto');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
-const { cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId } = require('../config/radar');
+const { cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId, nomeDiario } = require('../config/radar');
 const { processarMonitor, decifrarMonitor, DRIVERS } = require('../service/radar/radarService');
 
 const router = express.Router();
@@ -191,6 +191,7 @@ router.get('/ocorrencias', limiterRadar, autenticar, exigirRadarDisponivel, asyn
         id: String(o._id),
         monitorId: String(o.monitor),
         cidade: cidadePorId(o.cidadeId)?.nome ?? o.cidadeId,
+        diario: nomeDiario(o.cidadeId),
         dataPublicacao: o.dataPublicacao,
         url: o.url,
         edicao: o.edicao,
@@ -209,12 +210,12 @@ let coberturaCache = { em: 0, dados: null };
 router.get('/cobertura', limiterRadar, autenticar, async (_req, res) => {
   try {
     if (!coberturaCache.dados || Date.now() - coberturaCache.em > 6 * 60 * 60 * 1000) {
-      const driver = DRIVERS[0];
       const dados = [];
       for (const cidade of cidadesDisponiveis()) {
+        const driver = DRIVERS.find((d) => d.suporta(cidade.id));
         let ultima = null;
-        try { ultima = await driver.ultimaPublicacao(cidade.id); } catch { ultima = null; }
-        dados.push({ ...cidade, fonte: driver.nome, ultimaPublicacao: ultima });
+        try { ultima = driver?.ultimaPublicacao ? await driver.ultimaPublicacao(cidade.id) : null; } catch { ultima = null; }
+        dados.push({ ...cidade, fonte: driver?.nome ?? null, ultimaPublicacao: ultima });
       }
       coberturaCache = { em: Date.now(), dados };
     }

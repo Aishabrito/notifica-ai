@@ -26,7 +26,7 @@ export default function Privacidade() {
           },
           {
             titulo: "3. Compartilhamento de dados",
-            texto: "Seus dados nunca são vendidos ou compartilhados com terceiros para fins comerciais. Utilizamos serviços de infraestrutura e operação (MongoDB Atlas, Render, Vercel, Resend para e-mails, Mercado Pago para pagamentos, Google Gemini para resumos, Telegram para notificações opcionais e a API pública do Querido Diário para consulta de diários oficiais) que processam dados conforme suas próprias políticas de privacidade."
+            texto: "Seus dados nunca são vendidos ou compartilhados com terceiros para fins comerciais. Utilizamos serviços de infraestrutura e operação (MongoDB Atlas, Render, Vercel, Resend para e-mails, Mercado Pago para pagamentos, Google Gemini para resumos, Telegram para notificações opcionais a API pública do Querido Diário e a busca pública do Diário Oficial da União, da Imprensa Nacional, para consulta de diários oficiais) que processam dados conforme suas próprias políticas de privacidade."
           },
           {
             titulo: "4. Retenção de dados",

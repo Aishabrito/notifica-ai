@@ -9,12 +9,14 @@
 // Sem a variável, todas as da lista ficam disponíveis.
 
 const TODAS_CIDADES = [
-  { id: '3304557', nome: 'Rio de Janeiro', uf: 'RJ' },
+  { id: '3304557', nome: 'Rio de Janeiro', uf: 'RJ', preposicao: 'do' },
   { id: '3303302', nome: 'Niterói', uf: 'RJ' },
   { id: '3304904', nome: 'São Gonçalo', uf: 'RJ' },
   { id: '3301702', nome: 'Duque de Caxias', uf: 'RJ' },
   { id: '3303500', nome: 'Nova Iguaçu', uf: 'RJ' },
   { id: '3302700', nome: 'Maricá', uf: 'RJ' },
+  // Federal: nomeações, posses e resultados de concursos federais
+  { id: 'DOU', nome: 'Diário Oficial da União', uf: 'BR', federal: true },
 ];
 
 const RADAR = {
@@ -35,4 +37,11 @@ function cidadesDisponiveis() {
 const cidadePorId = (id) => TODAS_CIDADES.find((c) => c.id === id) ?? null;
 const cidadeDisponivel = (id) => cidadesDisponiveis().some((c) => c.id === id);
 
-module.exports = { TODAS_CIDADES, cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId };
+// "Diário Oficial de Niterói" / "Diário Oficial da União"
+function nomeDiario(id) {
+  const fonte = cidadePorId(id);
+  if (!fonte) return `Diário Oficial (${id})`;
+  return fonte.federal ? fonte.nome : `Diário Oficial ${fonte.preposicao ?? 'de'} ${fonte.nome}`;
+}
+
+module.exports = { TODAS_CIDADES, cidadesDisponiveis, cidadeDisponivel, RADAR, cidadePorId, nomeDiario };

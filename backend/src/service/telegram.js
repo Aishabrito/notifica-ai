@@ -133,9 +133,9 @@ async function notificarMudanca(usuario, alerta, resumo) {
 
 async function notificarOcorrencias(usuario, _dados, ocorrencias) {
   if (!podeReceber(usuario)) return false;
-  const { cidadePorId } = require('../config/radar');
+  const { nomeDiario } = require('../config/radar');
   const linhas = ocorrencias.slice(0, 5).map((o) =>
-    `• <b>${escaparHtml(cidadePorId(o.cidadeId)?.nome ?? o.cidadeId)}</b> — ${o.dataPublicacao.split('-').reverse().join('/')}\n${escaparHtml(o.url)}`
+    `• <b>${escaparHtml(nomeDiario(o.cidadeId))}</b> — ${o.dataPublicacao.split('-').reverse().join('/')}\n${escaparHtml(o.url)}`
   );
   return enviarMensagem(usuario.telegram.chatId,
     `📰 <b>Você foi citado(a) no Diário Oficial</b> (${ocorrencias.length} publicação${ocorrencias.length > 1 ? 'ões' : ''})\n\n${linhas.join('\n\n')}\n\nOs trechos completos foram para o seu e-mail.`);
