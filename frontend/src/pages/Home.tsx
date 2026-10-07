@@ -49,7 +49,8 @@ export default function Home() {
   // Limite de alertas ativos vindo do backend (null = ilimitado, plano Pro)
   const [limite, setLimite]           = useState<number | null>(3);
   const [ehPro, setEhPro]             = useState(false);
-  const [intervalos, setIntervalos]   = useState<number[]>([24]);
+  const [intervalos, setIntervalos]   = useState<number[]>([6]);
+  const [intervaloPadrao, setIntervaloPadrao] = useState(6);
   const [historicoAberto, setHistoricoAberto] = useState<string | null>(null);
   const [historico, setHistorico]     = useState<Record<string, Mudanca[]>>({});
   const [telegram, setTelegram]       = useState<{ disponivel: boolean; conectado: boolean } | null>(null);
@@ -62,6 +63,7 @@ export default function Home() {
         setLimite(d.uso.limiteAlertas);
         setEhPro(d.plano.efetivo === "pro");
         setIntervalos(d.recursos.intervalosPermitidos);
+        setIntervaloPadrao(d.recursos.intervaloPadrao);
         setTelegram(d.canais?.telegram ?? null);
       }
     } catch (err) {
@@ -373,12 +375,12 @@ export default function Home() {
                         <label className="font-mono text-[10px] text-neutral-600 flex items-center gap-2">
                           Checagem:
                           <select
-                            value={alerta.intervaloHoras ?? 24}
+                            value={intervalos.includes(alerta.intervaloHoras ?? -1) ? alerta.intervaloHoras! : intervaloPadrao}
                             disabled={!ehPro}
                             onChange={(e) => alterarFrequencia(alerta._id, Number(e.target.value))}
                             className="bg-neutral-900 border border-neutral-800 rounded px-2 py-1 text-neutral-300 disabled:opacity-60"
                           >
-                            {Array.from(new Set([...intervalos, alerta.intervaloHoras ?? 24])).sort((a, b) => b - a).map((h) => (
+                            {[...intervalos].sort((a, b) => b - a).map((h) => (
                               <option key={h} value={h}>{rotuloIntervalo(h)}</option>
                             ))}
                           </select>

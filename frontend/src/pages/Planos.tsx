@@ -64,7 +64,7 @@ function carregarSdkMercadoPago(): Promise<void> {
 
 const RECURSOS = [
   { nome: "Alertas ativos", free: "3", pro: "Ilimitados" },
-  { nome: "Frequência de checagem", free: "1x por dia", pro: "Até a cada 15 min" },
+  { nome: "Frequência de checagem", free: "A cada 6 horas", pro: "Até a cada 15 min" },
   { nome: "Resumo do que mudou (IA)", free: "—", pro: "✓" },
   { nome: "Prazos direto na agenda", free: "—", pro: "✓" },
   { nome: "Radar do Diário Oficial", free: "—", pro: "✓" },

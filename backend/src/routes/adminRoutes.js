@@ -8,6 +8,8 @@ const Mudanca  = require('../models/Mudanca');
 const LogCron  = require('../models/LogCron');
 const MonitorRadar    = require('../models/MonitorRadar');
 const OcorrenciaRadar = require('../models/OcorrenciaRadar');
+const Transacao       = require('../models/Transacao');
+const { SUBSCRIPTION_OFFERS } = require('../config/ofertas');
 
 const { autenticar, isAdmin } = require('../middleware/authMiddleware');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
@@ -96,6 +98,30 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }))
     };
 
+    // Receita: assinantes no cartão × preço mensal + Pix recebido nos últimos 30 dias
+    const proPorOrigem = { mercadopago: 0, pix: 0, cortesia: 0 };
+    for (const u of usuariosRaw) {
+      if (obterTipoPlanoEfetivo(u) !== 'pro') continue;
+      const origem = u.plano?.origem;
+      if (origem === 'mercadopago' && u.plano?.status !== 'ativo') continue; // cancelada: sem próxima cobrança
+      if (origem in proPorOrigem) proPorOrigem[origem] += 1;
+    }
+    let precoMensal = 0;
+    try { precoMensal = SUBSCRIPTION_OFFERS()['pro-mensal'].amount; } catch { /* preço mal configurado */ }
+    const pix30d = await Transacao.aggregate([
+      { $match: { tipo: 'pix', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+      { $group: { _id: null, total: { $sum: '$valor' }, quantidade: { $sum: 1 } } },
+    ]);
+    const pagantes = proPorOrigem.mercadopago + proPorOrigem.pix;
+    const receita = {
+      assinantesCartao: proPorOrigem.mercadopago,
+      proPix: proPorOrigem.pix,
+      cortesias: proPorOrigem.cortesia,
+      mrrCartao: Math.round(proPorOrigem.mercadopago * precoMensal * 100) / 100,
+      pixRecebido30d: Math.round((pix30d[0]?.total ?? 0) * 100) / 100,
+      conversao: usuariosRaw.length ? Math.round((pagantes / usuariosRaw.length) * 1000) / 10 : 0,
+    };
+
     const [radarMonitores, radarOcorrencias30d] = await Promise.all([
       MonitorRadar.countDocuments({ ativo: true }),
       OcorrenciaRadar.countDocuments({ criadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } }),
@@ -106,6 +132,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       dados: {
         // Só contagens: nomes monitorados são dados sensíveis e não aparecem aqui
         radar: { monitoresAtivos: radarMonitores, ocorrencias30d: radarOcorrencias30d },
+        receita,
         totalUsers:      usuariosRaw.length,
         totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
         alertasPausados,
