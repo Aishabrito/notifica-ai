@@ -22,6 +22,7 @@ const SUITES = [
   'teste-posicao.js',    // minha posição na lista de espera
   'teste-editais.js',    // radar de editais por interesse
   'teste-indicacao.js',  // indique e ganhe
+  'teste-pastas.js',     // pastas compartilháveis
 ];
 
 let falhas = 0;

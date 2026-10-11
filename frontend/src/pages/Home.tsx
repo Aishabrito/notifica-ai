@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
 import ModelosProntos from "../components/ModelosProntos";
 import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
+import MinhasPastas from "../components/MinhasPastas";
+import { CHAVE_PASTA_PENDENTE } from "./PastaPublica";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
@@ -152,6 +154,17 @@ export default function Home() {
     api.get("/teste").catch(() => {});
     carregarAlertas();
   }, [usuario, emailManual]);
+
+  // Veio de uma pasta compartilhada antes de ter conta: termina a cópia aqui
+  useEffect(() => {
+    if (!usuario) return;
+    let token: string | null = null;
+    try { token = localStorage.getItem(CHAVE_PASTA_PENDENTE); localStorage.removeItem(CHAVE_PASTA_PENDENTE); } catch { /* */ }
+    if (!token) return;
+    api.post(`/api/pastas/publica/${token}/copiar`)
+      .then(({ data }) => { setStatusMsg({ tipo: "sucesso", texto: `Pasta copiada: ${data.mensagem}` }); carregarAlertas(); })
+      .catch(() => {});
+  }, [usuario]);
 
   useEffect(() => {
     const onFocus = () => carregarAlertas();
@@ -483,6 +496,8 @@ export default function Home() {
             ))
           )}
         </div>
+
+        {usuario && <MinhasPastas alertas={alertas} />}
 
       </main>
     </div>

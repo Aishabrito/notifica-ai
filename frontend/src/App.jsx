@@ -20,6 +20,7 @@ import Planos         from './pages/Planos';
 import Radar          from './pages/Radar';
 import Conta          from './pages/Conta';
 import Prazos         from './pages/Prazos';
+import PastaPublica   from './pages/PastaPublica';
 
 // O painel admin tem visual próprio: não recebe tema/cor escolhidos
 function AparenciaPorRota() {
@@ -53,6 +54,7 @@ export default function App() {
                 <Radar />
               </PrivateRoute>
             } />
+            <Route path="/p/:token" element={<PastaPublica />} />
             <Route path="/prazos" element={
               <PrivateRoute>
                 <Prazos />

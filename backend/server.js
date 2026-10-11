@@ -144,6 +144,7 @@ app.use('/api/plano', planoRoutes);
 app.use('/api/radar', radarRoutes);
 app.use('/api/conta', contaRoutes);
 app.use('/api/prazos', prazoRouter);
+app.use('/api/pastas', require('./src/routes/pastaRoutes'));
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
