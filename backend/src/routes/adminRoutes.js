@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const router = express.Router();
 
 const Usuario = require('../models/Usuario');
@@ -133,6 +134,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       dados: {
         // Só contagens: nomes monitorados são dados sensíveis e não aparecem aqui
         radar: { monitoresAtivos: radarMonitores, ocorrencias30d: radarOcorrencias30d },
+        tarefasAbertas: await require('../models/TarefaAdmin').countDocuments({ status: 'aberta' }),
         receita,
         totalUsers:      usuariosRaw.length,
         totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
@@ -264,71 +266,202 @@ router.get('/historico/:alertaId', autenticar, isAdmin, async (req, res) => {
 });
 
 // ============================================================
-// 🩺 SAÚDE DO SISTEMA (o que precisa de atenção manual)
+// 🩺 SAÚDE DO SISTEMA
 // ============================================================
-// Mostra num lugar só: configurações faltando, fontes do Radar paradas,
-// rodadas do cron com erro e, com ?modelos=1, se cada modelo pronto ainda
-// abre e tem texto legível (sites de banca mudam de endereço sem aviso).
-async function verificarModelo(modelo) {
-  const axios = require('axios');
-  const { OPCOES_DOWNLOAD, interpretarResposta } = require('../utils/conteudoPagina');
-  const { validarUrlPublica } = require('../utils/urlPublica');
-  const { gerarHeaders } = require('../service/crawler');
-  const inicio = Date.now();
-  try {
-    const validacao = await validarUrlPublica(modelo.url);
-    if (!validacao.valido) return { id: modelo.id, ok: false, erro: validacao.motivo };
-    const resposta = await axios.get(modelo.url, { headers: gerarHeaders(), ...OPCOES_DOWNLOAD, timeout: 20000 });
-    const pagina = await interpretarResposta(resposta, { url: modelo.url });
-    const caracteres = pagina.texto.length;
-    return { id: modelo.id, ok: caracteres >= 200, status: resposta.status, caracteres, ms: Date.now() - inicio,
-      erro: caracteres < 200 ? 'Página quase sem texto (pode depender de JavaScript)' : null };
-  } catch (err) {
-    return { id: modelo.id, ok: false, status: err.response?.status ?? null, erro: err.code || err.message, ms: Date.now() - inicio };
-  }
-}
-
 router.get('/saude', autenticar, isAdmin, async (req, res) => {
   try {
-    const { MODELOS } = require('../config/modelos');
-    const { iaConfigurada } = require('../service/ia');
-    const { criptografiaConfigurada } = require('../utils/cripto');
-    const { telegramConfigurado } = require('../service/telegram');
-    const { cidadesDisponiveis } = require('../config/radar');
-    const { DRIVERS } = require('../service/radar/radarService');
-
-    const configuracoes = [
-      { item: 'Mercado Pago (pagamentos)', ok: Boolean(process.env.MP_ACCESS_TOKEN && process.env.MP_PUBLIC_KEY), variaveis: 'MP_ACCESS_TOKEN, MP_PUBLIC_KEY' },
-      { item: 'Webhook do Mercado Pago', ok: Boolean(process.env.MP_WEBHOOK_SECRET), variaveis: 'MP_WEBHOOK_SECRET' },
-      { item: 'IA (resumos)', ok: iaConfigurada(), variaveis: 'GEMINI_API_KEY' },
-      { item: 'Radar do Diário Oficial', ok: criptografiaConfigurada(), variaveis: 'DADOS_CHAVE' },
-      { item: 'Telegram', ok: telegramConfigurado(), variaveis: 'TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET' },
-      { item: 'E-mail (Resend)', ok: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_REMETENTE), variaveis: 'RESEND_API_KEY, EMAIL_REMETENTE' },
-    ];
-
-    // Diário sem edição há mais de 7 dias = fonte provavelmente parada
-    const fontes = await Promise.all(cidadesDisponiveis().map(async (cidade) => {
-      const driver = DRIVERS.find((d) => d.suporta(cidade.id));
-      let ultimaPublicacao = null, erro = null;
-      try { ultimaPublicacao = driver?.ultimaPublicacao ? await driver.ultimaPublicacao(cidade.id) : null; } catch (e) { erro = e.message; }
-      const dias = ultimaPublicacao ? Math.floor((Date.now() - Date.parse(ultimaPublicacao)) / 864e5) : null;
-      return { id: cidade.id, nome: cidade.nome, fonte: driver?.nome ?? null, ultimaPublicacao, ok: !erro && (dias === null ? !driver?.ultimaPublicacao : dias <= 7), erro };
-    }));
-
-    const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
-    const [rodadas24h, rodadasComErro] = await Promise.all([
-      LogCron.countDocuments({ dataExecucao: { $gte: desde } }),
-      LogCron.find({ dataExecucao: { $gte: desde }, $or: [{ sucesso: false }, { alertasComErro: { $gt: 0 } }] }).sort({ dataExecucao: -1 }).limit(5).lean(),
-    ]);
-
-    const modelos = req.query.modelos === '1'
-      ? await (async () => { const r = []; for (let i = 0; i < MODELOS.length; i += 4) r.push(...await Promise.all(MODELOS.slice(i, i + 4).map(verificarModelo))); return r; })()
-      : null;
-
-    res.json({ sucesso: true, configuracoes, fontes, cron: { rodadas24h, rodadasComErro }, modelos });
+    const { verificarSaude } = require('../service/saudeSistema');
+    res.json({ sucesso: true, ...(await verificarSaude({ modelos: req.query.modelos === '1' })) });
   } catch (err) {
     console.error('[Admin] Erro na saúde do sistema:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao verificar a saúde do sistema.' });
+  }
+});
+
+// ============================================================
+// 📋 TAREFAS (checklist do que precisa de uma pessoa)
+// ============================================================
+const TarefaAdmin = require('../models/TarefaAdmin');
+
+function tarefaParaApi(t) {
+  return {
+    id: String(t._id), chave: t.chave, tipo: t.tipo, prioridade: t.prioridade, titulo: t.titulo, descricao: t.descricao,
+    link: t.link, status: t.status, ocorrencias: t.ocorrencias, criadaEm: t.criadaEm, ultimaOcorrenciaEm: t.ultimaOcorrenciaEm,
+    concluidaEm: t.concluidaEm, concluidaPor: t.concluidaPor, nota: t.nota,
+    alerta: t.alerta && t.alerta._id ? { id: String(t.alerta._id), url: t.alerta.url, titulo: t.alerta.titulo, status: t.alerta.status } : null,
+    usuario: t.usuario && t.usuario._id ? { id: String(t.usuario._id), nome: t.usuario.nome, email: t.usuario.email } : null,
+  };
+}
+
+async function carregarTarefa(req, res) {
+  if (!mongoose.isValidObjectId(req.params.id)) { res.status(404).json({ sucesso: false, mensagem: 'Tarefa não encontrada.' }); return null; }
+  const tarefa = await TarefaAdmin.findById(req.params.id);
+  if (!tarefa) { res.status(404).json({ sucesso: false, mensagem: 'Tarefa não encontrada.' }); return null; }
+  return tarefa;
+}
+
+function concluir(tarefa, req, nota) {
+  tarefa.status = 'concluida';
+  tarefa.concluidaEm = new Date();
+  tarefa.concluidaPor = req.usuario.email;
+  if (nota) tarefa.nota = String(nota).slice(0, 1000);
+}
+
+router.get('/tarefas', autenticar, isAdmin, async (req, res) => {
+  try {
+    const status = req.query.status === 'concluida' ? 'concluida' : 'aberta';
+    const [tarefas, abertas] = await Promise.all([
+      TarefaAdmin.find({ status })
+        .sort(status === 'aberta' ? { prioridade: 1, ultimaOcorrenciaEm: -1 } : { concluidaEm: -1 })
+        .limit(200)
+        .populate('alerta', 'url titulo status')
+        .populate('usuario', 'nome email'),
+      TarefaAdmin.countDocuments({ status: 'aberta' }),
+    ]);
+    res.json({ sucesso: true, abertas, tarefas: tarefas.map(tarefaParaApi) });
+  } catch (err) {
+    console.error('[Admin] Erro ao listar tarefas:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao listar tarefas.' });
+  }
+});
+
+// Tarefa criada à mão (lembrete da própria admin)
+router.post('/tarefas', autenticar, isAdmin, async (req, res) => {
+  const titulo = String(req.body?.titulo ?? '').trim();
+  if (titulo.length < 3) return res.status(400).json({ sucesso: false, mensagem: 'Escreva o que precisa ser feito.' });
+  const tarefa = await TarefaAdmin.create({
+    tipo: 'manual', titulo: titulo.slice(0, 200), descricao: String(req.body?.descricao ?? '').slice(0, 2000),
+    link: /^https?:\/\//.test(req.body?.link ?? '') ? String(req.body.link).slice(0, 500) : null,
+    prioridade: req.body?.prioridade === 'alta' ? 'alta' : 'normal',
+  });
+  res.status(201).json({ sucesso: true, tarefa: tarefaParaApi(tarefa) });
+});
+
+// Dar ok (ou reabrir)
+router.patch('/tarefas/:id', autenticar, isAdmin, async (req, res) => {
+  try {
+    const tarefa = await carregarTarefa(req, res);
+    if (!tarefa) return;
+    if (req.body?.status === 'aberta') {
+      // Só reabre se não houver outra aberta com a mesma chave
+      if (tarefa.chave && await TarefaAdmin.exists({ chave: tarefa.chave, status: 'aberta', _id: { $ne: tarefa._id } })) {
+        return res.status(409).json({ sucesso: false, mensagem: 'Já existe uma tarefa aberta para este problema.' });
+      }
+      tarefa.status = 'aberta';
+      tarefa.concluidaEm = null;
+      tarefa.concluidaPor = null;
+    } else {
+      concluir(tarefa, req, req.body?.nota);
+    }
+    await tarefa.save();
+    res.json({ sucesso: true, tarefa: tarefaParaApi(tarefa) });
+  } catch (err) {
+    console.error('[Admin] Erro ao atualizar tarefa:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao atualizar a tarefa.' });
+  }
+});
+
+// Avisar a pessoa manualmente (ex.: "o edital saiu, está aqui o link")
+// O aviso também entra no histórico do alerta, como uma mudança.
+router.post('/tarefas/:id/avisar', autenticar, isAdmin, async (req, res) => {
+  try {
+    const tarefa = await carregarTarefa(req, res);
+    if (!tarefa) return;
+    const mensagem = String(req.body?.mensagem ?? '').trim().slice(0, 2000);
+    const link = String(req.body?.link ?? '').trim();
+    if (mensagem.length < 5) return res.status(400).json({ sucesso: false, mensagem: 'Escreva a mensagem para a pessoa.' });
+    if (link && !/^https?:\/\/\S+$/.test(link)) return res.status(400).json({ sucesso: false, mensagem: 'Link inválido (use http:// ou https://).' });
+
+    const alerta = tarefa.alerta ? await Alerta.findById(tarefa.alerta) : null;
+    const usuario = tarefa.usuario ? await Usuario.findById(tarefa.usuario) : (alerta?.usuario ? await Usuario.findById(alerta.usuario) : null);
+    const email = usuario?.email ?? alerta?.email;
+    if (!email) return res.status(400).json({ sucesso: false, mensagem: 'Esta tarefa não está ligada a nenhuma pessoa.' });
+
+    const transportador = require('../utils/mailer');
+    const { escaparHtml } = require('../utils/html');
+    const sobre = alerta ? (alerta.titulo || alerta.url) : null;
+    await transportador.sendMail({
+      from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+      to: email,
+      subject: sobre ? `📌 Atualização sobre: ${sobre}` : '📌 Atualização da equipe Notifica.ai',
+      html: `
+        <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 560px;">
+          <h2 style="margin-top:0">Uma atualização da equipe Notifica.ai</h2>
+          ${sobre ? `<p style="color:#555">Sobre o que você monitora: <strong>${escaparHtml(sobre)}</strong></p>` : ''}
+          <p style="white-space: pre-line">${escaparHtml(mensagem)}</p>
+          ${link ? `<p><a href="${escaparHtml(link)}" style="background:#10b981;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:bold">Abrir</a></p><p style="font-size:12px;color:#666">${escaparHtml(link)}</p>` : ''}
+        </div>`,
+    });
+
+    if (alerta) {
+      await Mudanca.create({
+        alertaId: alerta._id, emailNotificado: email, emailEnviado: true,
+        resumo: { relevante: true, titulo: 'Atualização da equipe', resumo: link ? `${mensagem}\n${link}` : mensagem, datas: [] },
+      });
+    }
+    if (usuario) {
+      const telegram = require('../service/telegram');
+      await telegram.notificarMudanca(usuario, alerta ?? { url: link || '', titulo: 'Notifica.ai' }, { titulo: 'Atualização da equipe', resumo: mensagem, datas: [] }).catch(() => {});
+    }
+
+    if (req.body?.concluir !== false) concluir(tarefa, req, `Pessoa avisada por e-mail: ${mensagem.slice(0, 200)}`);
+    await tarefa.save();
+    res.json({ sucesso: true, mensagem: `Aviso enviado para ${email}.`, tarefa: tarefaParaApi(tarefa) });
+  } catch (err) {
+    console.error('[Admin] Erro ao avisar usuário:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao enviar o aviso.' });
+  }
+});
+
+// A página mudou de endereço: troca a URL do alerta e volta a monitorar
+router.post('/tarefas/:id/trocar-url', autenticar, isAdmin, async (req, res) => {
+  try {
+    const tarefa = await carregarTarefa(req, res);
+    if (!tarefa) return;
+    const alerta = tarefa.alerta ? await Alerta.findById(tarefa.alerta) : null;
+    if (!alerta) return res.status(400).json({ sucesso: false, mensagem: 'Esta tarefa não está ligada a um alerta.' });
+    const url = String(req.body?.url ?? '').trim();
+    const { validarUrlPublica } = require('../utils/urlPublica');
+    const validacao = await validarUrlPublica(url);
+    if (!validacao.valido) return res.status(400).json({ sucesso: false, mensagem: validacao.motivo });
+
+    const urlAntiga = alerta.url;
+    alerta.url = url;
+    alerta.hashConteudo = null; // a próxima leitura vira a nova base, sem alarme falso
+    alerta.ultimoConteudo = null;
+    alerta.linksPdf = undefined;
+    alerta.status = 'ativo';
+    alerta.motivoPausa = null;
+    alerta.falhasSeguidas = 0;
+    alerta.ultimoErro = null;
+    alerta.tarefaAberta = false;
+    alerta.proximaVerificacao = new Date();
+    await alerta.save();
+
+    concluir(tarefa, req, `URL trocada: ${urlAntiga} → ${url}`);
+    await tarefa.save();
+    res.json({ sucesso: true, mensagem: 'Endereço atualizado. O alerta volta a ser verificado na próxima rodada.', tarefa: tarefaParaApi(tarefa) });
+  } catch (err) {
+    console.error('[Admin] Erro ao trocar URL:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao trocar o endereço.' });
+  }
+});
+
+// Tentar de novo sem mudar nada (ex.: o site estava fora do ar e voltou).
+// A tarefa fecha sozinha quando a próxima leitura der certo.
+router.post('/tarefas/:id/reativar-alerta', autenticar, isAdmin, async (req, res) => {
+  try {
+    const tarefa = await carregarTarefa(req, res);
+    if (!tarefa) return;
+    const r = await Alerta.updateOne(
+      { _id: tarefa.alerta, motivoPausa: 'falhas' },
+      { $set: { status: 'ativo', motivoPausa: null, falhasSeguidas: 0, proximaVerificacao: new Date() } }
+    );
+    if (!r.modifiedCount) return res.status(400).json({ sucesso: false, mensagem: 'Este alerta não está pausado por falhas.' });
+    res.json({ sucesso: true, mensagem: 'Alerta reativado. Se a página abrir na próxima rodada, a tarefa fecha sozinha.' });
+  } catch (err) {
+    console.error('[Admin] Erro ao reativar alerta:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao reativar.' });
   }
 });
 

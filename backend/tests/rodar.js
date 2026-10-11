@@ -17,6 +17,7 @@ const SUITES = [
   'teste-conta.js',      // confirmação de e-mail, teste grátis, Minha conta, cidades do Radar
   'teste-dou.js',        // Radar: Diário Oficial da União e janela por fonte
   'teste-modelos.js',    // modelos prontos e saúde do sistema
+  'teste-tarefas.js',    // checklist de tarefas do admin
 ];
 
 let falhas = 0;

@@ -49,4 +49,4 @@ async function ultimaPublicacao(cidadeId) {
   return data?.gazettes?.[0]?.date ? String(data.gazettes[0].date).slice(0, 10) : null;
 }
 
-module.exports = { id: ID, nome: 'Querido Diário', suporta, buscar, ultimaPublicacao };
+module.exports = { id: ID, nome: 'Querido Diário', linkConsulta: 'https://queridodiario.ok.org.br/', suporta, buscar, ultimaPublicacao };

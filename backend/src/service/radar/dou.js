@@ -58,4 +58,4 @@ async function buscar({ termo, cidades, desde }) {
     .filter((p) => p.data && p.url);
 }
 
-module.exports = { id: ID, nome: 'Diário Oficial da União', suporta, buscar };
+module.exports = { id: ID, nome: 'Diário Oficial da União', linkConsulta: 'https://www.in.gov.br/leiturajornal', suporta, buscar };

@@ -40,6 +40,7 @@ const Mudanca                   = require('./src/models/Mudanca');
 const adminRoutes               = require('./src/routes/adminRoutes');
 const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
 const { escaparHtml }           = require('./src/utils/html');
+const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
@@ -340,6 +341,15 @@ cron.schedule('40 7,19 * * *', async () => {
 // ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
 // ============================================
+// Checklist do admin: confere configuração e diários todo dia; modelos prontos às segundas
+cron.schedule('20 6 * * *', async () => {
+  try {
+    await gerarTarefasDeSaude({ modelos: new Date().getDay() === 1 });
+  } catch (err) {
+    console.error('[Saúde] Erro na verificação diária:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 cron.schedule('0 3 * * *', async () => {
   try {
     await processarPlanosExpirados();

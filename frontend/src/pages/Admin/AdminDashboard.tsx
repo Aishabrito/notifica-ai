@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper } from "lucide-react";
+import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
 import { DashboardDados } from "./components/types"; 
@@ -11,11 +11,12 @@ import StatCard from "./components/StatCard";
 import PainelSaudeCrawler from "./components/PainelSaudeCrawler";
 import PainelLogCrawler from "./components/PainelLogCrawler";
 import PainelSaudeSistema from "./components/PainelSaudeSistema";
+import ChecklistTarefas from "./components/ChecklistTarefas";
 import TabelaUsuarios from "./components/TabelaUsuarios";
 import TabelaAlertas from "./components/TabelaAlertas";
 import TabelaFeedbacks from "./components/TabelaFeedbacks";
 
-type Tab = "visao-geral" | "usuarios" | "alertas" | "feedbacks";
+type Tab = "tarefas" | "visao-geral" | "usuarios" | "alertas" | "feedbacks";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -24,7 +25,8 @@ export default function AdminDashboard() {
   const [dados, setDados] = useState<DashboardDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("visao-geral");
+  const [tab, setTab] = useState<Tab>("tarefas");
+  const [tarefasAbertas, setTarefasAbertas] = useState<number | null>(null);
 
   const fetchDados = async () => {
     // Se já temos dados, não mostramos o skeleton de loading pesado, 
@@ -56,6 +58,7 @@ export default function AdminDashboard() {
   };
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: "tarefas",     label: `Tarefas${(tarefasAbertas ?? dados?.tarefasAbertas) ? ` (${tarefasAbertas ?? dados?.tarefasAbertas})` : ""}`, icon: ListChecks },
     { id: "visao-geral", label: "Visão geral", icon: Activity },
     { id: "usuarios",    label: "Usuários",    icon: Users },
     { id: "alertas",     label: "Alertas",     icon: Bell },
@@ -209,6 +212,8 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── Conteúdo das Abas com Proteção de Dados ── */}
+        {tab === "tarefas" && <ChecklistTarefas onMudou={setTarefasAbertas} />}
+
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
             <PainelSaudeSistema />
@@ -240,7 +245,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Loading State para abas */}
-        {tab !== "visao-geral" && loading && !dados && (
+        {tab !== "visao-geral" && tab !== "tarefas" && loading && !dados && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 animate-pulse h-64" />
         )}
 

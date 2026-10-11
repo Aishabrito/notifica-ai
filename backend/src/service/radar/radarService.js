@@ -15,6 +15,7 @@ const dou = require('./dou');
 // Novas fontes (DOERJ...) entram nesta lista.
 const DRIVERS = [queridoDiario, dou];
 
+const { abrirTarefa, resolverTarefa } = require('../tarefasAdmin');
 const DIA_MS = 24 * 60 * 60 * 1000;
 const PAUSA_ENTRE_CONSULTAS_MS = 1000; // educação com a API pública
 
@@ -160,6 +161,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
     if (cidadesDriver.length === 0) continue;
     const desde = desdePara(driver);
     let errosDriver = 0;
+    let ultimoErroDriver = null;
 
     for (const termo of termos) {
       try {
@@ -197,6 +199,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
       } catch (err) {
         erros += 1;
         errosDriver += 1;
+        ultimoErroDriver = err.message;
         console.error(`[Radar] Falha no driver ${driver.id} (monitor ${monitor._id}):`, err.message);
         await LogRadar.create({
           monitor: monitor._id, usuario: monitor.usuario._id ?? monitor.usuario, driver: driver.id,
@@ -210,6 +213,18 @@ async function processarMonitor(monitor, { manual = false } = {}) {
     if (errosDriver === 0) {
       if (!monitor.buscasPorFonte) monitor.buscasPorFonte = new Map();
       monitor.buscasPorFonte.set(driver.id, new Date());
+      await resolverTarefa(`fonte:${driver.id}`, `Resolvido: ${driver.nome} voltou a responder.`);
+    } else {
+      // Sem nomes na tarefa (LGPD): a admin só confere se a fonte está no ar
+      await abrirTarefa({
+        chave: `fonte:${driver.id}`,
+        tipo: 'fonte-radar',
+        prioridade: 'alta',
+        titulo: `Não consegui consultar: ${driver.nome}`,
+        descricao: `A busca do Radar falhou (${String(ultimoErroDriver).slice(0, 200)}). As buscas seguem tentando 2x por dia e a janela não avança, `
+          + 'então nada se perde se a fonte voltar em poucos dias. Se ficar fora por mais tempo, confira o diário manualmente.',
+        link: driver.linkConsulta ?? null,
+      });
     }
   }
 

@@ -335,10 +335,19 @@ webhookRouter.post('/mercadopago', async (req, res) => {
     }
 
     console.log(`[Webhook MP] ${tipo} ${dataId} → ${resultado}`);
+    await require('../service/tarefasAdmin').resolverTarefa(`pagamento:${tipo}:${dataId}`, 'Resolvido: o reenvio do Mercado Pago foi processado.');
     res.sendStatus(200);
   } catch (err) {
     // Erro 5xx faz o MP reenviar a notificação mais tarde
     console.error(`[Webhook MP] Erro ao processar ${tipo} ${dataId}:`, err.message);
+    // O MP reenvia sozinho; se continuar falhando, alguém precisa conferir o pagamento
+    require('../service/tarefasAdmin').abrirTarefa({
+      chave: `pagamento:${tipo}:${dataId}`, tipo: 'pagamento', prioridade: 'alta',
+      titulo: `Pagamento não processado (${tipo} ${dataId})`,
+      descricao: `${String(err.message).slice(0, 300)} — O Mercado Pago reenvia a notificação sozinho. Se a tarefa continuar contando ocorrências, `
+        + 'procure o ID no painel do Mercado Pago e, se o pagamento foi aprovado, libere o Pro da pessoa em Usuários (cortesia com a mesma duração).',
+      link: 'https://www.mercadopago.com.br/activities',
+    });
     res.sendStatus(500);
   }
 });

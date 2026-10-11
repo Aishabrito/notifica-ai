@@ -11,6 +11,8 @@ const alertaSchema = new mongoose.Schema({
   // Por que o alerta foi pausado: 'falhas' (crawler), 'plano' (downgrade) ou 'admin'
   motivoPausa:       { type: String, enum: ['falhas', 'plano', 'admin', null], default: null },
   falhasSeguidas:    { type: Number, default: 0 },
+  // Há uma tarefa aberta no painel admin por causa deste alerta
+  tarefaAberta:      { type: Boolean, default: false },
   ultimoErro:        { type: String, default: null },
   ultimaVerificacao: { type: Date, default: null },
   ultimaNotificacao: { type: Date, default: null },

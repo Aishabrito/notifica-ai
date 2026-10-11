@@ -7,6 +7,7 @@ const { gerarIcs }    = require('../utils/ics');
 const { resumirMudanca } = require('./resumoMudanca');
 const { notificarMudanca } = require('./telegram');
 const { validarUrlPublica } = require('../utils/urlPublica');
+const { abrirTarefa, resolverTarefa } = require('./tarefasAdmin');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -201,7 +202,8 @@ async function enviarEmailADM(alerta, erro) {
         </tr>
       </table>
       <br>
-      <p>Para reativar: <code>PATCH ${process.env.BASE_URL}/api/reativar-alerta/${alerta._id}</code></p>
+      <p>Abri uma tarefa no checklist do painel admin (aba <strong>Tarefas</strong>): lá dá para avisar a pessoa, trocar o endereço ou tentar de novo.</p>
+      <p><a href="${process.env.FRONTEND_URL || ''}/admin">Abrir o painel</a></p>
       <hr>
       <small>Notifica.ai — painel de controle interno</small>
     `,
@@ -227,6 +229,10 @@ async function verificarAlerta(alerta, buscarPagina) {
     if (alerta.falhasSeguidas > 0) console.log(`[Crawler] ✅ ${alerta.url} — contador de falhas resetado`);
     alerta.falhasSeguidas    = 0;
     alerta.ultimoErro        = null;
+    if (alerta.tarefaAberta) {
+      alerta.tarefaAberta = false;
+      await resolverTarefa(`alerta:${alerta._id}`, 'Resolvido: a página voltou a abrir normalmente.');
+    }
     alerta.ultimaVerificacao = new Date();
     alerta.hashConteudo      = hashAtual;
     alerta.ultimoConteudo    = pagina.texto.slice(0, MAX_SNAPSHOT);
@@ -336,6 +342,18 @@ async function verificarAlerta(alerta, buscarPagina) {
     if (alerta.falhasSeguidas >= LIMITE_FALHAS) {
       alerta.status = 'pausado';
       alerta.motivoPausa = 'falhas';
+      alerta.tarefaAberta = true;
+      await abrirTarefa({
+        chave: `alerta:${alerta._id}`,
+        tipo: 'alerta-pausado',
+        prioridade: 'alta',
+        titulo: `Não consegui ler: ${alerta.titulo || alerta.url}`,
+        descricao: `O alerta de ${alerta.email} foi pausado após ${LIMITE_FALHAS} falhas seguidas (${mensagemErro}). `
+          + 'Abra a página: se o endereço mudou, troque a URL; se saiu novidade (edital, lista), avise a pessoa com o link.',
+        link: alerta.url,
+        alerta: alerta._id,
+        usuario: alerta.usuario?._id ?? alerta.usuario,
+      });
       console.error(`[Crawler] 🔴 ${alerta.url} — PAUSADO após ${LIMITE_FALHAS} falhas seguidas`);
 
       try {

@@ -58,6 +58,7 @@ export interface Receita {
 export interface DashboardDados {
   receita?: Receita;
   radar?: { monitoresAtivos: number; ocorrencias30d: number };
+  tarefasAbertas?: number;
   totalUsers: number;
   totalAlerts: number;
   alertasPausados: number;
