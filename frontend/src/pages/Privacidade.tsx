@@ -21,6 +21,10 @@ export default function Privacidade() {
             texto: "Se você ativar o Radar, guardamos o nome completo, o número de inscrição (opcional) e apenas os 6 dígitos do meio do CPF (opcional) que você informar, além dos trechos de diários oficiais em que eles aparecerem. Esses dados ficam cifrados (AES-256) no banco de dados, são usados somente para procurar publicações em diários oficiais públicos e avisar você, e não ficam visíveis no painel administrativo. Registramos cada consulta feita às fontes oficiais (sem o nome buscado) por 180 dias, para auditoria. Ao remover um nome do Radar, ele e o histórico de publicações encontradas são apagados."
           },
           {
+            titulo: "1.2 Outros recursos",
+            texto: "Minha posição na lista: se você ativar, guardamos de forma cifrada o nome ou a inscrição que você informar e o trecho da página onde ele aparece, só para mostrar e avisar sua posição; desligar apaga esses dados. Prazos: guardamos as datas e o checklist de documentos dos seus prazos. Agenda sincronizada: o link da agenda funciona como uma senha — quem o tiver vê seus prazos; você pode gerar um novo a qualquer momento, o que invalida o anterior. Pastas compartilhadas: o link público mostra o nome da pasta, as páginas e só o seu primeiro nome, nunca o e-mail. Indique e ganhe: registramos quem indicou cada conta para conceder as recompensas. Resumo semanal: enviado às segundas; você pode desligá-lo em Minha conta ou pelo link do próprio e-mail."
+          },
+          {
             titulo: "2. Como usamos seus dados",
             texto: "Seu e-mail é usado exclusivamente para enviar notificações de alertas e comunicações essenciais do serviço. Não enviamos e-mails de marketing sem consentimento explícito. Seu telefone, se fornecido, poderá ser usado futuramente para notificações via WhatsApp, mediante opt-in. No plano Pro, os trechos alterados das páginas públicas que você monitora são enviados a um serviço de inteligência artificial (Google Gemini) para gerar o resumo da mudança; seus dados pessoais e os dados do Radar não são enviados à IA."
           },
@@ -42,7 +46,7 @@ export default function Privacidade() {
           },
           {
             titulo: "7. Cookies",
-            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). Não utilizamos cookies de rastreamento ou publicidade."
+            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). No seu navegador também ficam guardadas suas preferências de aparência (tema e cor) e, se você chegou por um convite, o código de indicação até o cadastro. Não utilizamos cookies de rastreamento ou publicidade."
           },
         ].map((item) => (
           <div key={item.titulo} className="mb-8">
