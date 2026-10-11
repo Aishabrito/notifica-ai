@@ -24,6 +24,10 @@ const SUITES = [
   'teste-indicacao.js',  // indique e ganhe
   'teste-pastas.js',     // pastas compartilháveis
   'teste-resumo-semanal.js', // resumo semanal por e-mail
+  'teste-cortesia.js',   // contas Pro de cortesia
+  'teste-push.js',       // notificação no celular
+  'teste-chamadas.js',   // histórico das chamadas da lista de espera
+  'teste-nomeacao.js',   // nomeação, posse e validade do concurso
 ];
 
 let falhas = 0;

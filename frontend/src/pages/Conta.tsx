@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import { ControlesAparencia } from "../components/SeletorAparencia";
 import IndiqueGanhe from "../components/IndiqueGanhe";
+import AtivarNotificacoes from "../components/AtivarNotificacoes";
 import api from "../services/Api";
 
 interface Conta {
@@ -77,6 +78,8 @@ export default function Conta() {
         )}
 
         <IndiqueGanhe />
+
+        <AtivarNotificacoes compacto />
 
         {/* E-MAILS */}
         {conta && (

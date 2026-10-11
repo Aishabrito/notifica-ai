@@ -13,6 +13,16 @@ const alertaSchema = new mongoose.Schema({
   falhasSeguidas:    { type: Number, default: 0 },
   // Há uma tarefa aberta no painel admin por causa deste alerta
   tarefaAberta:      { type: Boolean, default: false },
+  // Lista de espera: até que posição cada chamada foi (IA ou registrado pela pessoa)
+  chamadas: {
+    type: [{
+      numero: { type: Number, default: null },  // 1ª, 2ª, 3ª chamada…
+      ate:    { type: Number, required: true }, // última posição convocada
+      em:     { type: Date, default: Date.now },
+      origem: { type: String, enum: ['ia', 'manual'], default: 'manual' },
+    }],
+    default: undefined,
+  },
   // Minha posição na lista: como o nome/inscrição aparece (cifrado) e o último resultado
   posicao: {
     type: new mongoose.Schema({

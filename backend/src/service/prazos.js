@@ -102,6 +102,12 @@ async function enviarCodigoVermelho(prazo, usuario, horas) {
       </div>`,
   });
 
+  await require('./push').enviarPush(usuario._id, {
+    titulo: `${urgente ? '🔴' : '🟠'} Faltam ${restante}: ${prazo.titulo}`,
+    corpo: `Até ${quando}${pendentes.length ? ` · ainda falta: ${pendentes.map((c) => c.item).join(', ')}` : ''}`,
+    url: '/prazos', tag: `prazo-${prazo._id}`, urgente,
+  });
+
   const telegram = require('./telegram');
   if (telegram.telegramConfigurado() && usuario.telegram?.chatId) {
     await telegram.enviarMensagem(usuario.telegram.chatId,

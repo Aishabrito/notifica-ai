@@ -1,7 +1,10 @@
 import { useState, useEffect } from "react";
 import ModelosProntos from "../components/ModelosProntos";
-import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
+import MinhaPosicao, { type Posicao, type Chamada, type Estimativa } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
+import Novidades from "../components/Novidades";
+import AtivarNotificacoes from "../components/AtivarNotificacoes";
+import BoasVindas from "../components/BoasVindas";
 import { CHAVE_PASTA_PENDENTE } from "./PastaPublica";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -18,6 +21,8 @@ interface Alerta {
   intervaloHoras?: number;
   ultimaVerificacao?: string | null;
   posicao?: Posicao | null;
+  chamadas?: Chamada[];
+  estimativa?: Estimativa | null;
 }
 
 interface Mudanca {
@@ -89,6 +94,13 @@ export default function Home() {
 
   useEffect(() => {
     if (usuario) carregarPlano();
+  }, [usuario]);
+
+  // Boas-vindas: aparece até a pessoa escolher o perfil (ou pular)
+  const [mostrarBoasVindas, setMostrarBoasVindas] = useState(false);
+  useEffect(() => {
+    if (!usuario) return;
+    api.get("/api/conta").then(({ data }) => setMostrarBoasVindas(!data.conta?.boasVindasConcluida)).catch(() => {});
   }, [usuario]);
 
   const alterarFrequencia = async (id: string, intervaloHoras: number) => {
@@ -264,7 +276,7 @@ export default function Home() {
           {usuario && (
             <button
               onClick={handleLogout}
-              className="font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-3 md:px-4 py-2 rounded-lg transition-colors shrink-0"
+              className="hidden md:block font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-3 md:px-4 py-2 rounded-lg transition-colors shrink-0"
             >
               Sair →
             </button>
@@ -312,6 +324,12 @@ export default function Home() {
           </div>
         )}
 
+        {usuario && mostrarBoasVindas && (
+          <BoasVindas ehPro={ehPro} email={usuario.email} onConcluir={() => { setMostrarBoasVindas(false); carregarAlertas(); }} />
+        )}
+        {usuario && !mostrarBoasVindas && <AtivarNotificacoes />}
+        {usuario && !mostrarBoasVindas && <Novidades ehPro={ehPro} />}
+
         {/* FORM */}
         <div
           className="mb-10 md:mb-14 p-6 md:p-8 rounded-2xl border border-white/5"
@@ -334,7 +352,7 @@ export default function Home() {
                 className="font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
                 Fazer upgrade →
               </button>
-              <p className="text-[11px] text-neutral-600 mt-2">Cartão ou Pix — sem precisar de conta no Mercado Pago.</p>
+              <p className="text-[11px] text-neutral-600 mt-2">Cartão ou Pix · cancele quando quiser.</p>
             </div>
           ) : (
             <form onSubmit={handleCadastrar} className="space-y-3">
@@ -445,13 +463,6 @@ export default function Home() {
                         </button>
                       </div>
                     )}
-                    {usuario && (
-                      <MinhaPosicao
-                        alertaId={alerta._id}
-                        posicao={alerta.posicao}
-                        onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
-                      />
-                    )}
                   </div>
                   <button
                     onClick={() => handleCancelar(alerta._id)}
@@ -460,6 +471,16 @@ export default function Home() {
                     [ remover ]
                   </button>
                 </div>
+                {usuario && (
+                  <MinhaPosicao
+                    alertaId={alerta._id}
+                    posicao={alerta.posicao}
+                    onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
+                    chamadas={alerta.chamadas}
+                    estimativa={alerta.estimativa}
+                    onChamadas={(c, e) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, chamadas: c, estimativa: e } : a)))}
+                  />
+                )}
 
                 {historicoAberto === alerta._id && (
                   <div className="mt-4 border-t border-white/5 pt-4 space-y-3">

@@ -1,6 +1,9 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import SeletorAparencia from '../components/SeletorAparencia';
+import { Footer } from '../components/footer';
+import { FaqSection } from '../components/faq-section';
+import { PUBLICOS, Celular, SecaoPublico, AntesDepois, Confianca, type Publico } from '../components/landing/PublicoAlvo';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
@@ -11,31 +14,23 @@ function Navbar() {
       </Link>
       <div className="flex items-center gap-4 md:gap-8">
         <SeletorAparencia />
-        <Link to="/como-funciona" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden sm:block">
+        <a href="#pra-voce" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden md:block">
           Como funciona
+        </a>
+        <a href="#planos" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden md:block">
+          Planos
+        </a>
+        <Link to="/login" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden sm:block">
+          Entrar
         </Link>
         <Link
           to="/cadastro"
           className="font-mono text-[10px] uppercase tracking-widest border border-emerald-400/40 text-emerald-400 px-4 py-2 rounded-sm hover:bg-emerald-400 hover:text-black transition-all"
         >
-          Criar alerta →
+          Começar grátis
         </Link>
       </div>
     </nav>
-  );
-}
-
-// ─── Footer ───────────────────────────────────────────────────────────────────
-function Footer() {
-  return (
-    <footer className="border-t border-white/5 px-6 md:px-20 py-10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-      <span className="font-mono text-sm font-bold text-white">
-        notifica<span className="text-emerald-400">.ai</span>
-      </span>
-      <p className="font-mono text-[10px] text-neutral-600 uppercase tracking-widest">
-        © {new Date().getFullYear()} — feito com ♥ no Brasil
-      </p>
-    </footer>
   );
 }
 
@@ -63,27 +58,6 @@ function Ticker() {
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Alert Card ───────────────────────────────────────────────────────────────
-function AlertCard({
-  url, msg, color, delay,
-}: {
-  url: string; msg: string; color: string; delay: string;
-}) {
-  return (
-    <div
-      className="border border-white/5 border-l-4 border-l-purple-600 p-5 rounded-lg opacity-0"
-      style={{
-        background: 'linear-gradient(135deg, rgba(108,52,131,0.07) 0%, rgba(0,0,0,0) 100%)',
-        animation: `slideIn 0.5s ease forwards`,
-        animationDelay: delay,
-      }}
-    >
-      <div className="font-mono text-[9px] text-neutral-600 mb-1">{url}</div>
-      <div className={`font-bold text-sm ${color}`}>{msg}</div>
     </div>
   );
 }
@@ -131,7 +105,7 @@ function Planos() {
     <section id="planos" className="px-6 md:px-20 py-20 md:py-28 border-t border-white/5">
       <p className="font-mono text-[10px] text-purple-400 tracking-[0.3em] uppercase mb-3">// planos</p>
       <h2 className="font-black text-4xl md:text-5xl tracking-tighter mb-3">Comece grátis. Vire Pro quando precisar.</h2>
-      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix, sem precisar de conta no Mercado Pago. Cancele quando quiser.</p>
+      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix. Sem fidelidade: cancele quando quiser.</p>
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
         {planos.map((p) => (
           <div key={p.nome} className={`rounded-2xl p-8 border ${p.destaque ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10'}`}>
@@ -156,12 +130,12 @@ function Planos() {
   );
 }
 
-export default function LandingPage() {
-  const desktopCards = [
-    { url: 'sisu.mec.gov.br',     msg: '🚨 Lista de espera atualizada!',  color: 'text-purple-400', delay: '0.2s'  },
-    { url: 'ufrj.br/editais',     msg: '✓ Sem alterações',                color: 'text-neutral-500', delay: '0.5s' },
-    { url: 'ibge.gov.br/concurso',msg: '🚨 Resultado final publicado!',   color: 'text-purple-400', delay: '0.8s'  },
-  ];
+export default function LandingPage({ publicoInicial = 'vestibulando' }: { publicoInicial?: Publico }) {
+  const [publico, setPublico] = useState<Publico>(publicoInicial);
+  const escolher = (p: Publico) => {
+    setPublico(p);
+    document.getElementById('pra-voce')?.scrollIntoView({ behavior: 'smooth' });
+  };
 
   return (
     <>
@@ -171,12 +145,8 @@ export default function LandingPage() {
           to   { transform: translateX(-50%); }
         }
         @keyframes slideIn {
-          from { opacity: 0; transform: translateX(20px); }
-          to   { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes pulse-dot {
-          0%, 100% { opacity: 1; }
-          50%       { opacity: 0.4; }
+          from { opacity: 0; transform: translateY(12px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
       `}</style>
 
@@ -185,16 +155,16 @@ export default function LandingPage() {
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
         <section
-          className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] relative"
+          className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-10 relative px-6 md:px-20 pt-28 md:pt-36 pb-16 md:pb-24 items-center"
           style={{
             background:
-              'radial-gradient(ellipse 60% 50% at 65% 40%, rgba(108,52,131,0.16) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.03) 0%, transparent 70%), var(--fundo)',
+              'radial-gradient(ellipse 60% 50% at 70% 40%, rgba(108,52,131,0.18) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.04) 0%, transparent 70%), var(--fundo)',
           }}
         >
-          <div className="pt-28 md:pt-40 px-6 md:pl-20 md:pr-12 pb-16 flex flex-col justify-center relative z-10">
+          <div className="relative z-10">
             <Ticker />
 
-            <h1 className="font-black text-5xl sm:text-6xl md:text-8xl leading-[0.9] tracking-tighter mb-6 md:mb-8">
+            <h1 className="font-black text-5xl sm:text-6xl md:text-7xl leading-[0.92] tracking-tighter mb-6">
               Você vai<br />
               <span
                 className="text-transparent"
@@ -206,65 +176,51 @@ export default function LandingPage() {
               <span className="text-emerald-400">de todo mundo.</span>
             </h1>
 
-            <p className="text-neutral-500 text-base md:text-lg font-light max-w-md leading-relaxed mb-8 md:mb-10">
-              Saiu resultado do <strong className="text-purple-400 font-medium">SISU</strong>?
-              Convocação do <strong className="text-neutral-200 font-medium">concurso</strong>?{' '}
-              A gente te avisa na hora — sem você precisar de F5.
+            <p className="text-neutral-400 text-base md:text-lg leading-relaxed mb-8 max-w-lg">
+              A gente vigia o site do <strong className="text-(--texto) font-semibold">SISU</strong>, da{' '}
+              <strong className="text-(--texto) font-semibold">banca</strong> e o{' '}
+              <strong className="text-(--texto) font-semibold">Diário Oficial</strong>. Mudou? Você recebe no celular,
+              em uma frase, com o prazo e o link oficial.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 sm:gap-6">
-              <Link
-                to="/cadastro"
-                className="w-full sm:w-auto text-center bg-emerald-400 text-black font-black text-sm px-8 md:px-10 py-4 md:py-5 rounded-sm hover:-translate-y-1 hover:shadow-[0_12px_40px_rgba(16,185,129,0.3)] hover:bg-emerald-300 transition-all uppercase tracking-widest"
-              >
-                Criar alerta grátis
-              </Link>
-              <Link
-                to="/como-funciona"
-                className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-purple-400 border-b border-purple-500/20 pb-1 transition-colors"
-              >
-                ver como funciona →
-              </Link>
-            </div>
-          </div>
-
-          {/* Feed lateral — desktop */}
-          <div className="hidden lg:flex items-center justify-center pr-20 pt-40">
-            <div className="w-full max-w-sm space-y-3">
-              <div className="flex justify-between font-mono text-[10px] text-purple-600 mb-4 uppercase tracking-widest font-bold">
-                <span>Alertas recentes</span>
-                <span className="text-emerald-400 flex items-center gap-2">
-                  <span
-                    className="w-1.5 h-1.5 bg-emerald-400 rounded-full"
-                    style={{ animation: 'pulse-dot 2s ease-in-out infinite' }}
-                  />
-                  monitorando
-                </span>
-              </div>
-              {desktopCards.map((c) => (
-                <AlertCard key={c.url} {...c} />
-              ))}
-            </div>
-          </div>
-
-          {/* Feed mobile */}
-          <div className="lg:hidden px-6 pb-16">
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              {desktopCards.map((c) => (
-                <div
-                  key={c.url}
-                  className="shrink-0 border border-white/5 border-l-4 border-l-purple-600 p-4 rounded-lg min-w-45"
-                  style={{ background: 'linear-gradient(135deg, rgba(108,52,131,0.06) 0%, rgba(0,0,0,0) 100%)' }}
+            <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 mb-3">Eu sou:</p>
+            <div className="grid sm:grid-cols-2 gap-3 max-w-xl mb-6">
+              {(Object.keys(PUBLICOS) as Publico[]).map((id) => (
+                <button
+                  key={id}
+                  onClick={() => escolher(id)}
+                  className={`text-left rounded-2xl border p-4 transition-all hover:-translate-y-0.5 group ${publico === id ? 'border-emerald-400/60 bg-emerald-400/5' : 'border-white/10 hover:border-white/25 bg-neutral-900/30'}`}
                 >
-                  <div className="font-mono text-[9px] text-neutral-600 mb-1">{c.url}</div>
-                  <div className={`font-bold text-sm ${c.color}`}>{c.msg}</div>
-                </div>
+                  <span className="text-2xl">{PUBLICOS[id].emoji}</span>
+                  <p className="font-black text-lg mt-1 flex justify-between items-center">
+                    {PUBLICOS[id].rotulo}
+                    <span className="text-emerald-400 group-hover:translate-x-1 transition-transform">→</span>
+                  </p>
+                  <p className="text-xs text-neutral-500">{PUBLICOS[id].chamada}</p>
+                </button>
               ))}
             </div>
+
+            <Link
+              to={`/cadastro?perfil=${publico}`}
+              className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-emerald-400 border-b border-purple-500/20 pb-1 transition-colors"
+            >
+              ou crie seu alerta grátis agora →
+            </Link>
           </div>
+
+          <Celular />
         </section>
 
+        <AntesDepois publico={publico} />
+
+        <SecaoPublico publico={publico} onTrocar={setPublico} />
+
+        <Confianca />
+
         <Planos />
+
+        <FaqSection />
 
         <Footer />
       </div>

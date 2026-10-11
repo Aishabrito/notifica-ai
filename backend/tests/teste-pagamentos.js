@@ -59,8 +59,8 @@ const DIA = 864e5;
   ok(r.status === 200 && r.data.publicKey === 'pub-123' && r.data.cartao.valor === 29.9 && r.headers.get('cache-control').includes('no-store'), '/api/mp-config: chave pública + preço, sem cache');
   ok(r.data.pix.find(p => p.id === 'pix-anual').valor === 299 && r.data.pix.find(p => p.id === 'pix-30-dias').dias === 30, 'ofertas Pix: 30 dias (R$ 29,90) e anual (R$ 299)');
   const sem = r.data.planos.find(p => p.periodo === 'semestral'), anu = r.data.planos.find(p => p.periodo === 'anual');
-  ok(r.data.planos.length === 3 && sem.valor === 90 && sem.porMes === 15 && sem.meses === 6 && sem.cartaoId === 'pro-semestral' && sem.pixId === 'pix-semestral' && anu.porMes === 24.92 && anu.economiaPct === 17 && r.data.planos[0].economiaPct === 0,
-    'planos mensal/semestral/anual: total, valor por mês e economia (semestral padrão R$ 90 = R$ 15/mês)');
+  ok(r.data.planos.length === 3 && sem.valor === 75 && sem.porMes === 12.5 && sem.meses === 6 && sem.cartaoId === 'pro-semestral' && sem.pixId === 'pix-semestral' && anu.porMes === 24.92 && anu.economiaPct === 17 && r.data.planos[0].economiaPct === 0,
+    'planos mensal/semestral/anual: total, valor por mês e economia (semestral padrão R$ 75 = R$ 12,50/mês)');
   ok(r.data.pix.find(p => p.id === 'pix-semestral').dias === 182, 'Pix semestral dá 182 dias');
 
   // ── CARTÃO
@@ -202,9 +202,9 @@ const DIA = 864e5;
   r = await call('POST', '/api/assinatura/cartao', tSem, { offerId: 'pro-semestral', cardToken: 'tok_sem' });
   const cSem = chamadas.criar.at(-1);
   const uSem = await Usuario.findById(semU._id);
-  ok(r.status === 200 && cSem.trustedOffer.frequency === 6 && cSem.trustedOffer.amount === 90 && uSem.plano.periodoMeses === 6 && uSem.plano.valorCobranca === 90, 'cartão semestral: recorrência de 6 meses, R$ 90');
+  ok(r.status === 200 && cSem.trustedOffer.frequency === 6 && cSem.trustedOffer.amount === 75 && uSem.plano.periodoMeses === 6 && uSem.plano.valorCobranca === 75, 'cartão semestral: recorrência de 6 meses, R$ 75');
   r = await call('GET', '/api/admin/dashboard', jwt.sign({ id: adm._id }, 'x'));
-  ok(r.data.dados.receita.mrrCartao === 74.8, `receita mensal soma o semestral como R$ 15/mês (${r.data.dados.receita.mrrCartao})`);
+  ok(r.data.dados.receita.mrrCartao === 72.3, `receita mensal soma o semestral como R$ 12,50/mês (${r.data.dados.receita.mrrCartao})`);
 
   // ── assinatura antiga (external_reference = só o id do usuário) continua funcionando
   const { u: velha } = await novoUsuario('velha@x.com');

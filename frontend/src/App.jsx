@@ -37,6 +37,8 @@ export default function App() {
         <div className="min-h-screen bg-(--fundo) selection:bg-purple-500 selection:text-white font-sans">
           <Routes>
             <Route path="/"              element={<LandingPage />} />
+            <Route path="/vestibular"    element={<LandingPage publicoInicial="vestibulando" />} />
+            <Route path="/concursos"     element={<LandingPage publicoInicial="concurseiro" />} />
             <Route path="/como-funciona" element={<ComoFunciona />} />
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />

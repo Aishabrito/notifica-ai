@@ -15,7 +15,7 @@ export const Footer = () => (
       </Link>
     </div>
     <div className="font-mono text-xs text-neutral-800">
-      © 2025 Notifica.ai
+      © {new Date().getFullYear()} Notifica.ai
     </div>
   </footer>
 );

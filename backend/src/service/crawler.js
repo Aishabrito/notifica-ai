@@ -9,7 +9,8 @@ const { notificarMudanca } = require('./telegram');
 const { validarUrlPublica } = require('../utils/urlPublica');
 const { abrirTarefa, resolverTarefa } = require('./tarefasAdmin');
 const { registrarPrazosDaMudanca } = require('./prazos');
-const { atualizarPosicao, avisarMudancaPosicao } = require('./posicaoLista');
+const { enviarPush } = require('./push');
+const { atualizarPosicao, avisarMudancaPosicao, registrarChamada, avisarPosicaoAlcancada } = require('./posicaoLista');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -316,8 +317,20 @@ async function verificarAlerta(alerta, buscarPagina) {
       }
       // Telegram (Pro que conectou): não bloqueia nem depende do e-mail
       notificarMudanca(alerta.usuario, alerta, resumo).catch(() => {});
+      enviarPush(alerta.usuario?._id ?? alerta.usuario, {
+        titulo: resumo ? `🚨 ${resumo.titulo}` : `🚨 Mudou: ${alerta.titulo || alerta.url}`,
+        corpo: resumo ? resumo.resumo : 'A página que você monitora foi atualizada. Toque para ver.',
+        url: alerta.url, tag: `alerta-${alerta._id}`, urgente: true,
+      }).catch(() => {});
     } else {
       console.log(`[Crawler] 🔕 Mudança irrelevante em ${alerta.url} — sem e-mail`);
+    }
+
+    // Lista de espera: a IA leu até que posição a chamada foi
+    if (resumo?.chamada?.ultimaPosicao) {
+      const r = registrarChamada(alerta, { numero: resumo.chamada.numero, ate: resumo.chamada.ultimaPosicao }, 'ia');
+      if (r.registrada) await alerta.save();
+      if (r.alcancou) avisarPosicaoAlcancada(alerta, resumo.chamada.ultimaPosicao).catch(() => {});
     }
 
     // Pro: as datas achadas pela IA viram prazos (Código Vermelho e agenda)

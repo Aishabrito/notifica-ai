@@ -29,7 +29,7 @@ const { telegramRouter, webhookTelegramRouter } = require('./src/routes/telegram
 const telegram                  = require('./src/service/telegram');
 const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
-const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
+const { processarPlanosExpirados, enviarLembretesRenovacao, aplicarCortesias } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
 const {
   verificarLimitePlano,
@@ -42,7 +42,7 @@ const adminRoutes               = require('./src/routes/adminRoutes');
 const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
 const { escaparHtml }           = require('./src/utils/html');
 const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
-const { atualizarPosicao, posicaoParaApi } = require('./src/service/posicaoLista');
+const { atualizarPosicao, posicaoParaApi, registrarChamada, estimarChamadas, minhaPosicao } = require('./src/service/posicaoLista');
 const { cifrar, criptografiaConfigurada } = require('./src/utils/cripto');
 const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
 const { executarCodigoVermelho } = require('./src/service/prazos');
@@ -117,6 +117,7 @@ mongoose.connect(process.env.MONGODB_URI, {
     try {
       const migrados = await Usuario.migrarPlanosLegados();
       if (migrados > 0) console.log(`[Plano] ${migrados} usuário(s) migrados para o novo formato de plano.`);
+      await aplicarCortesias();
     } catch (errMigracao) {
       console.error('[Plano] Falha na migração de planos legados:', errMigracao.message);
     }
@@ -162,6 +163,8 @@ app.use('/api/radar', radarRoutes);
 app.use('/api/conta', contaRoutes);
 app.use('/api/prazos', prazoRouter);
 app.use('/api/pastas', require('./src/routes/pastaRoutes'));
+app.use('/api/push', require('./src/routes/pushRoutes'));
+app.use('/api/concursos', require('./src/routes/concursoRoutes'));
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
@@ -171,6 +174,9 @@ app.use('/api/telegram', telegramRouter);
 
 // Publicações do Radar também vão para o Telegram de quem conectou
 aoEncontrarOcorrencias(telegram.notificarOcorrencias);
+aoEncontrarOcorrencias((usuario, _dados, ocorrencias) => require('./src/service/push').enviarPush(usuario._id, ocorrencias.some((o) => o.nomeacao)
+  ? { titulo: '🚨 Parece a sua nomeação!', corpo: 'Saiu publicação de nomeação/convocação com o seu nome. Confira o prazo de posse agora.', url: '/prazos', tag: 'radar-nomeacao', urgente: true }
+  : { titulo: '📰 Você foi citado(a) no Diário Oficial', corpo: `${ocorrencias.length} publicação(ões) com seus dados. Toque para ver.`, url: '/radar', tag: 'radar', urgente: true }));
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -258,7 +264,7 @@ app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
     // posição: o dono vê o identificador decifrado, nunca o valor cifrado
-    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a) })) });
+    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a), estimativa: estimarChamadas(a.chamadas, minhaPosicao(a)) })) });
   } catch (err) {
     return res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
@@ -334,6 +340,31 @@ app.patch('/api/alertas/:id/posicao', limiterAlertasGeral, autenticar, async (re
     console.error('[Posição] Erro ao configurar:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar.' });
   }
+});
+
+// Lista de espera: "a 2ª chamada foi até a posição 65" (registrado pela pessoa)
+app.post('/api/alertas/:id/chamadas', limiterAlertasGeral, autenticar, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+  if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const ate = Number(req.body?.ate);
+  const numero = req.body?.numero ? Number(req.body.numero) : null;
+  if (!Number.isInteger(ate) || ate < 1 || ate > 99999 || (numero !== null && (!Number.isInteger(numero) || numero < 1 || numero > 99))) {
+    return res.status(400).json({ sucesso: false, mensagem: 'Informe até qual posição a chamada foi (número inteiro).' });
+  }
+  const r = registrarChamada(alerta, { numero, ate }, 'manual');
+  if (!r.registrada) return res.status(409).json({ sucesso: false, mensagem: 'Essa chamada já está registrada.' });
+  await alerta.save();
+  res.json({ sucesso: true, chamadas: alerta.chamadas, estimativa: estimarChamadas(alerta.chamadas, minhaPosicao(alerta)) });
+});
+
+app.delete('/api/alertas/:id/chamadas/:chamadaId', limiterAlertasGeral, autenticar, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+  if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  alerta.chamadas = (alerta.chamadas ?? []).filter((c) => String(c._id) !== req.params.chamadaId);
+  await alerta.save();
+  res.json({ sucesso: true, chamadas: alerta.chamadas, estimativa: estimarChamadas(alerta.chamadas, minhaPosicao(alerta)) });
 });
 
 app.get('/api/alertas/:id/historico', limiterAlertasGeral, autenticar, async (req, res) => {
@@ -430,6 +461,12 @@ cron.schedule('20 6 * * *', async () => {
 
 cron.schedule('0 3 * * *', async () => {
   try {
+    await require('./src/service/nomeacao').lembrarValidades();
+  } catch (err) {
+    console.error('[Validade] Erro:', err.message);
+  }
+  try {
+    await aplicarCortesias();
     await processarPlanosExpirados();
   } catch (err) {
     console.error('[Plano] Erro no job de planos expirados:', err.message);

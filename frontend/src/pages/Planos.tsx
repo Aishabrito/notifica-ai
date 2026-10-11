@@ -60,13 +60,13 @@ function carregarSdkMercadoPago(): Promise<void> {
     const script = existente ?? Object.assign(document.createElement("script"), { src: "https://sdk.mercadopago.com/js/v2", async: true });
     script.dataset.mpSdk = "1";
     script.addEventListener("load", () => resolve());
-    script.addEventListener("error", () => reject(new Error("Falha ao carregar o Mercado Pago.")));
+    script.addEventListener("error", () => reject(new Error("Falha ao carregar o formulário de pagamento.")));
     if (!existente) document.body.appendChild(script);
   });
 }
 
 const RECURSOS = [
-  { nome: "Alertas ativos", free: "3", pro: "Ilimitados" },
+  { nome: "Páginas monitoradas", free: "1", pro: "Ilimitadas" },
   { nome: "Frequência de checagem", free: "A cada 6 horas", pro: "Até a cada 15 min" },
   { nome: "Resumo do que mudou (IA)", free: "—", pro: "✓" },
   { nome: "Prazos direto na agenda", free: "—", pro: "✓" },
@@ -82,6 +82,7 @@ export default function Planos() {
   const [carregando, setCarregando] = useState(true);
   const [metodo, setMetodo] = useState<"cartao" | "pix">("cartao");
   const [periodo, setPeriodo] = useState("anual");
+  const [cartaoAberto, setCartaoAberto] = useState(false);
   const [estado, setEstado] = useState<Estado>({ tipo: "", texto: "" });
   const [pix, setPix] = useState<PixGerado | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -127,12 +128,13 @@ export default function Planos() {
 
   const ehPro = info?.plano.efetivo === "pro";
   const temCartao = info?.plano.origem === "mercadopago" && info.plano.status === "ativo";
-  const podeAssinarCartao = !temCartao;
+  const proPermanente = ehPro && !info?.plano.validoAte;
+  const podeAssinarCartao = !temCartao && !proPermanente;
   const podePagarPix = !temCartao && !(ehPro && !info?.plano.validoAte);
 
   // ─── Cartão: Card Payment Brick (o cartão é tokenizado pelo Mercado Pago) ─
   useEffect(() => {
-    if (metodo !== "cartao" || !config?.pagamentosAtivos || !config.publicKey || !info || !podeAssinarCartao || !planoEscolhido) return;
+    if (metodo !== "cartao" || !cartaoAberto || !config?.pagamentosAtivos || !config.publicKey || !info || !podeAssinarCartao || !planoEscolhido) return;
     let cancelado = false;
 
     (async () => {
@@ -143,7 +145,14 @@ export default function Planos() {
         brickRef.current = await mp.bricks().create("cardPayment", "cardPaymentBrick_container", {
           initialization: { amount: planoEscolhido!.valor, payer: { email: usuario?.email } },
           customization: {
-            visual: { style: { theme: "dark" }, texts: { formSubmit: "Assinar Pro" } },
+            visual: {
+              hideFormTitle: true,
+              style: {
+                theme: document.documentElement.dataset.tema === "claro" ? "default" : "dark",
+                customVariables: { formPadding: "12px", inputVerticalPadding: "8px", borderRadiusMedium: "10px", borderRadiusLarge: "12px" },
+              },
+              texts: { formSubmit: `Assinar por ${brl(planoEscolhido!.valor)}` },
+            },
             paymentMethods: { maxInstallments: 1, types: { excluded: ["debit_card"] } },
           },
           callbacks: {
@@ -180,7 +189,7 @@ export default function Planos() {
       brickRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metodo, config, periodo, info?.plano.origem, info?.plano.status]);
+  }, [metodo, cartaoAberto, config, periodo, info?.plano.origem, info?.plano.status]);
 
   // ─── Pix ───────────────────────────────────────────────────────────────
   const gerarPix = async (oferta: OfertaPix) => {
@@ -280,7 +289,7 @@ export default function Planos() {
       <main data-mp-subscriptions-page="without-plan-authorized" className="max-w-4xl mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-16">
         <p className="font-mono text-[10px] text-purple-400 tracking-[0.3em] uppercase mb-2">// planos</p>
         <h1 className="text-4xl md:text-5xl font-black tracking-tighter mb-3">Notifica.ai Pro</h1>
-        <p className="text-neutral-500 mb-10">Saiba o que mudou antes de todo mundo — sem precisar de conta no Mercado Pago.</p>
+        <p className="text-neutral-500 mb-10">Saiba o que mudou antes de todo mundo. Pague no cartão ou no Pix e cancele quando quiser.</p>
 
         {carregando ? (
           <div className="flex items-center gap-3 text-neutral-500 font-mono text-xs">
@@ -373,21 +382,21 @@ export default function Planos() {
                 </h2>
 
                 {/* PERÍODO */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
                   {planos.map((p) => (
                     <button key={p.periodo} onClick={() => { setPeriodo(p.periodo); setPix(null); }}
-                      className={`relative text-left rounded-xl border p-4 transition-colors ${planoEscolhido?.periodo === p.periodo ? "border-emerald-400 bg-emerald-400/5" : "border-neutral-800 hover:border-neutral-600"}`}>
+                      className={`relative text-left rounded-xl border p-2.5 sm:p-4 transition-colors ${planoEscolhido?.periodo === p.periodo ? "border-emerald-400 bg-emerald-400/5" : "border-neutral-800 hover:border-neutral-600"}`}>
                       {p.economiaPct > 0 && (
-                        <span className="absolute -top-2.5 right-3 font-mono text-[10px] font-bold bg-emerald-400 text-black px-2 py-0.5 rounded-full">-{p.economiaPct}%</span>
+                        <span className="absolute -top-2.5 right-1.5 sm:right-3 font-mono text-[9px] sm:text-[10px] font-bold bg-emerald-400 text-black px-1.5 sm:px-2 py-0.5 rounded-full">-{p.economiaPct}%</span>
                       )}
-                      <p className="font-bold text-sm">{p.nome}</p>
-                      <p className="text-2xl font-black text-emerald-400">{brl(p.porMes)}<span className="text-xs text-neutral-500 font-normal">/mês</span></p>
-                      <p className="text-[11px] text-neutral-500 mt-1">{p.meses === 1 ? "cobrado todo mês" : `${brl(p.valor)} ${p.meses === 12 ? "por ano" : `a cada ${p.meses} meses`}`}</p>
+                      <p className="font-bold text-xs sm:text-sm">{p.nome}</p>
+                      <p className="text-base sm:text-2xl font-black text-emerald-400 leading-tight">{brl(p.porMes)}<span className="block sm:inline text-[10px] sm:text-xs text-neutral-500 font-normal">/mês</span></p>
+                      <p className="text-[10px] sm:text-[11px] text-neutral-500 mt-1 leading-tight">{p.meses === 1 ? "cobrado todo mês" : `${brl(p.valor)} ${p.meses === 12 ? "por ano" : `a cada ${p.meses} meses`}`}</p>
                     </button>
                   ))}
                 </div>
 
-                <div className="flex gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-6">
                   {podeAssinarCartao && (
                     <button onClick={() => { setMetodo("cartao"); setPix(null); }} className={`font-mono text-xs px-4 py-2 rounded-lg border ${metodo === "cartao" ? "border-emerald-400 text-emerald-400" : "border-neutral-800 text-neutral-500"}`}>
                       💳 Cartão — renova sozinho
@@ -401,14 +410,22 @@ export default function Planos() {
                 </div>
 
                 {metodo === "cartao" && podeAssinarCartao && (
-                  <>
-                    <p className="text-xs text-neutral-500 mb-4">
+                  <div className="max-w-md">
+                    <p className="text-xs text-neutral-500 mb-3">
                       {planoEscolhido && descricaoCobranca(planoEscolhido)}, renovando sozinho. Cancele quando quiser pelo painel.
                       {ehPro && info?.plano.validoAte && <> A primeira cobrança só acontece quando seus dias de Pro atuais acabarem ({dataBR(info.plano.validoAte)}).</>}
                     </p>
-                    {/* Formulário seguro do Mercado Pago: os dados do cartão nunca passam pelo nosso servidor */}
-                    <div id="cardPaymentBrick_container" data-mp-subscription-cta="without-plan-authorized" />
-                  </>
+                    {!cartaoAberto ? (
+                      <button onClick={() => setCartaoAberto(true)} className="font-mono text-xs bg-emerald-400 text-black font-bold px-6 py-3 rounded-lg">
+                        💳 Pagar com cartão de crédito →
+                      </button>
+                    ) : (
+                      // Formulário seguro do processador: os dados do cartão nunca passam pelo nosso servidor
+                      <div className="rounded-xl border border-neutral-800 p-2">
+                        <div id="cardPaymentBrick_container" data-mp-subscription-cta="without-plan-authorized" />
+                      </div>
+                    )}
+                  </div>
                 )}
 
                 {metodo === "pix" && podePagarPix && !pix && planoEscolhido && (() => {
@@ -451,8 +468,26 @@ export default function Planos() {
               </p>
             )}
 
-            <p className="mt-10 text-xs text-neutral-600">
-              Pagamentos processados pelo Mercado Pago. <Link to="/dashboard" className="underline hover:text-neutral-400">Voltar ao painel</Link>
+            {/* CONFIANÇA */}
+            <ul className="mt-8 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {[
+                ["🔒", "Pagamento criptografado", "Os dados do cartão vão direto para um processador certificado (PCI DSS). Nós nunca vemos nem guardamos o número."],
+                ["↩️", "7 dias de garantia", "Desistiu na primeira semana? Devolvemos 100% do valor (direito de arrependimento)."],
+                ["✋", "Cancele quando quiser", "Sem fidelidade e sem multa: cancele em 1 clique e o Pro vale até o fim do período pago."],
+                ["⚡", "Pix na hora", "Prefere não usar cartão? Pague com Pix e o Pro é liberado assim que o pagamento cair."],
+              ].map(([icone, titulo, texto]) => (
+                <li key={titulo} className="flex gap-3 rounded-xl border border-white/5 p-4">
+                  <span className="text-lg" aria-hidden>{icone}</span>
+                  <span>
+                    <span className="block text-sm font-bold">{titulo}</span>
+                    <span className="block text-xs text-neutral-500">{texto}</span>
+                  </span>
+                </li>
+              ))}
+            </ul>
+
+            <p className="mt-8 text-xs text-neutral-600">
+              Dúvidas sobre pagamento? Fale com a gente pelo e-mail de contato. <Link to="/dashboard" className="underline hover:text-neutral-400">Voltar ao painel</Link>
             </p>
           </>
         )}

@@ -12,6 +12,8 @@ const ocorrenciaRadarSchema = new mongoose.Schema({
   edicao:         { type: String, default: null },
   trechosCifrados: { type: String, default: null }, // JSON cifrado: o trecho cita o nome
   confirmacao:    { type: String, enum: ['nome', 'nome+documento', 'inscricao'], default: 'nome' },
+  // Publicação de nomeação/convocação (aviso urgente + prazo de posse)
+  nomeacao:       { type: Boolean, default: false },
   notificadoEm:   { type: Date, default: null },
 }, { timestamps: { createdAt: 'criadoEm', updatedAt: false } });
 

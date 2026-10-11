@@ -44,6 +44,7 @@ function verificarConfiguracoes() {
     { id: 'ia', item: 'IA (resumos)', ok: iaConfigurada(), variaveis: 'GEMINI_API_KEY' },
     { id: 'radar', item: 'Radar do Diário Oficial', ok: criptografiaConfigurada(), variaveis: 'DADOS_CHAVE' },
     { id: 'telegram', item: 'Telegram', ok: telegramConfigurado(), variaveis: 'TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET' },
+    { id: 'push', item: 'Notificação no celular', ok: temVariaveis('VAPID_PUBLIC_KEY', 'VAPID_PRIVATE_KEY'), variaveis: 'VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY (gere com: npx web-push generate-vapid-keys)' },
     { id: 'email', item: 'E-mail (Resend)', ok: temVariaveis('RESEND_API_KEY', 'EMAIL_REMETENTE'), variaveis: 'RESEND_API_KEY, EMAIL_REMETENTE' },
   ];
 }

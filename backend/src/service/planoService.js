@@ -162,4 +162,30 @@ async function enviarLembretesRenovacao() {
   return { lembretesEnviados: enviados };
 }
 
-module.exports = { aplicarDowngrade, reativarAlertasPausadosPorPlano, processarPlanosExpirados, enviarLembretesRenovacao };
+// ============================================
+// 🎁 CORTESIAS PERMANENTES (config/cortesias.js)
+// ============================================
+async function aplicarCortesias(filtroEmail = null) {
+  const { emailsCortesia } = require('../config/cortesias');
+  const lista = emailsCortesia().filter((e) => !filtroEmail || e === String(filtroEmail).toLowerCase());
+  if (!lista.length) return 0;
+  const r = await Usuario.updateMany(
+    {
+      email: { $in: lista },
+      // Quem já paga no cartão continua como está (não pausa a cobrança por engano)
+      $nor: [{ 'plano.origem': 'mercadopago', 'plano.status': 'ativo' }],
+      // Já é cortesia sem prazo: nada a fazer
+      $or: [{ 'plano.tipo': { $ne: 'pro' } }, { 'plano.origem': { $ne: 'cortesia' } }, { 'plano.validoAte': { $ne: null } }],
+    },
+    { $set: { plano: { tipo: 'pro', status: 'ativo', validoAte: null, origem: 'cortesia', mpAssinaturaId: null, lembreteRenovacaoEm: null } } }
+  );
+  if (r.modifiedCount) {
+    const usuarios = await Usuario.find({ email: { $in: lista } }).select('_id');
+    for (const u of usuarios) await reativarAlertasPausadosPorPlano(u._id);
+    console.log(`[Plano] Cortesia Pro aplicada a ${r.modifiedCount} conta(s).`);
+  }
+  return r.modifiedCount;
+}
+
+module.exports = {
+  aplicarCortesias, aplicarDowngrade, reativarAlertasPausadosPorPlano, processarPlanosExpirados, enviarLembretesRenovacao };

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import { Footer } from "../components/footer";
@@ -8,6 +8,9 @@ import { lerIndicacao } from "../utils/indicacao";
 export default function Cadastro() {
   const { cadastrar } = useAuth();
   const navigate = useNavigate();
+  // Veio da página inicial com o perfil escolhido: as boas-vindas já abrem com ele em destaque
+  const [params] = useSearchParams();
+  const perfilSugerido = params.get("perfil");
 
   const [nome, setNome]               = useState("");
   const [email, setEmail]             = useState("");
@@ -39,6 +42,9 @@ export default function Cadastro() {
       if (mensagemErro) {
         setErro(mensagemErro);
       } else {
+        if (perfilSugerido === "vestibulando" || perfilSugerido === "concurseiro") {
+          try { localStorage.setItem("notifica:perfil-sugerido", perfilSugerido); } catch { /* sem storage */ }
+        }
         navigate("/login");
       }
     } catch {

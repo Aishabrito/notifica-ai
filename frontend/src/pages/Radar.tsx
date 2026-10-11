@@ -4,6 +4,7 @@ import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import api from "../services/Api";
 import RadarEditais from "../components/RadarEditais";
+import MeusConcursos from "../components/MeusConcursos";
 
 interface Cidade { id: string; nome: string; uf: string }
 interface Monitor {
@@ -260,6 +261,8 @@ export default function Radar() {
             )}
           </>
         )}
+
+        {estado && <div className="mt-14 pt-10 border-t border-white/5"><MeusConcursos ehPro={estado.ehPro} /></div>}
 
         {estado && <RadarEditais cidades={estado.cidades} ehPro={estado.ehPro} />}
       </main>

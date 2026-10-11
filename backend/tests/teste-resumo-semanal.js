@@ -71,6 +71,11 @@ const DIA = 864e5;
   const tb = jwt.sign({ id: free._id }, 'x');
   let r = await call('PATCH', '/api/conta/preferencias', tb, { resumoSemanal: false });
   ok(r.status === 200 && (await call('GET', '/api/conta', tb)).data.conta.resumoSemanal === false, 'ligar/desligar em Minha conta');
+  r = await call('PATCH', '/api/conta/preferencias', tb, { perfil: 'hacker' });
+  ok(r.status === 400, 'perfil inválido é recusado');
+  r = await call('PATCH', '/api/conta/preferencias', tb, { perfil: 'lista-espera', boasVindasConcluida: true });
+  const conta = (await call('GET', '/api/conta', tb)).data.conta;
+  ok(r.status === 200 && conta.perfil === 'lista-espera' && conta.boasVindasConcluida === true, 'escolher o perfil e concluir as boas-vindas');
 
   process.exit();
 })().catch(e => { console.error(e); process.exit(1); });
