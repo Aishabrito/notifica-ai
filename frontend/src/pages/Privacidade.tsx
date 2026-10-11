@@ -4,25 +4,33 @@ import { Footer } from "../components/footer";
 
 export default function Privacidade() {
   return (
-    <div className="bg-[#0a0a0a] text-[#f5f2eb] min-h-screen font-sans">
+    <div className="bg-(--fundo) text-(--texto) min-h-screen font-sans">
       <Navbar />
       <main className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         <p className="font-mono text-[10px] text-purple-400 uppercase tracking-widest mb-4">// legal</p>
         <h1 className="text-4xl font-black tracking-tighter mb-2">Política de Privacidade</h1>
-        <p className="font-mono text-xs text-neutral-600 mb-12">Última atualização: março de 2025</p>
+        <p className="font-mono text-xs text-neutral-600 mb-12">Última atualização: outubro de 2026</p>
 
         {[
           {
             titulo: "1. Dados que coletamos",
-            texto: "Coletamos apenas o necessário para o funcionamento do serviço: nome, endereço de e-mail, telefone (opcional) e as URLs que você escolhe monitorar. Não coletamos dados de navegação, localização ou informações de pagamento."
+            texto: "Coletamos apenas o necessário para o funcionamento do serviço: nome, endereço de e-mail, telefone (opcional), as URLs que você escolhe monitorar e, se você conectar, o identificador do seu chat no Telegram. Não coletamos dados de navegação ou localização. Dados de cartão são digitados diretamente no formulário do Mercado Pago e nunca passam pelos nossos servidores; guardamos apenas a referência da assinatura ou do pagamento Pix."
+          },
+          {
+            titulo: "1.1 Radar do Diário Oficial (plano Pro)",
+            texto: "Se você ativar o Radar, guardamos o nome completo, o número de inscrição (opcional) e apenas os 6 dígitos do meio do CPF (opcional) que você informar, além dos trechos de diários oficiais em que eles aparecerem. Esses dados ficam cifrados (AES-256) no banco de dados, são usados somente para procurar publicações em diários oficiais públicos e avisar você, e não ficam visíveis no painel administrativo. Registramos cada consulta feita às fontes oficiais (sem o nome buscado) por 180 dias, para auditoria. Ao remover um nome do Radar, ele e o histórico de publicações encontradas são apagados."
+          },
+          {
+            titulo: "1.2 Outros recursos",
+            texto: "Minha posição na lista: se você ativar, guardamos de forma cifrada o nome ou a inscrição que você informar e o trecho da página onde ele aparece, só para mostrar e avisar sua posição; desligar apaga esses dados. Prazos: guardamos as datas e o checklist de documentos dos seus prazos. Agenda sincronizada: o link da agenda funciona como uma senha — quem o tiver vê seus prazos; você pode gerar um novo a qualquer momento, o que invalida o anterior. Pastas compartilhadas: o link público mostra o nome da pasta, as páginas e só o seu primeiro nome, nunca o e-mail. Indique e ganhe: registramos quem indicou cada conta para conceder as recompensas. Resumo semanal: enviado às segundas; você pode desligá-lo em Minha conta ou pelo link do próprio e-mail."
           },
           {
             titulo: "2. Como usamos seus dados",
-            texto: "Seu e-mail é usado exclusivamente para enviar notificações de alertas e comunicações essenciais do serviço. Não enviamos e-mails de marketing sem consentimento explícito. Seu telefone, se fornecido, poderá ser usado futuramente para notificações via WhatsApp, mediante opt-in."
+            texto: "Seu e-mail é usado exclusivamente para enviar notificações de alertas e comunicações essenciais do serviço. Não enviamos e-mails de marketing sem consentimento explícito. Seu telefone, se fornecido, poderá ser usado futuramente para notificações via WhatsApp, mediante opt-in. No plano Pro, os trechos alterados das páginas públicas que você monitora são enviados a um serviço de inteligência artificial (Google Gemini) para gerar o resumo da mudança; seus dados pessoais e os dados do Radar não são enviados à IA."
           },
           {
             titulo: "3. Compartilhamento de dados",
-            texto: "Seus dados nunca são vendidos ou compartilhados com terceiros para fins comerciais. Utilizamos serviços de infraestrutura (MongoDB Atlas, Render, Vercel) que processam dados conforme suas próprias políticas de privacidade."
+            texto: "Seus dados nunca são vendidos ou compartilhados com terceiros para fins comerciais. Utilizamos serviços de infraestrutura e operação (MongoDB Atlas, Render, Vercel, Resend para e-mails, Mercado Pago para pagamentos, Google Gemini para resumos, Telegram para notificações opcionais a API pública do Querido Diário e a busca pública do Diário Oficial da União, da Imprensa Nacional, para consulta de diários oficiais) que processam dados conforme suas próprias políticas de privacidade."
           },
           {
             titulo: "4. Retenção de dados",
@@ -30,7 +38,7 @@ export default function Privacidade() {
           },
           {
             titulo: "5. Segurança",
-            texto: "Senhas são armazenadas com hash bcrypt. Sessões são gerenciadas via JWT em cookies httpOnly, protegidos contra acesso por JavaScript. Utilizamos HTTPS em todas as comunicações."
+            texto: "Senhas são armazenadas com hash bcrypt. Sessões são gerenciadas via JWT em cookies httpOnly, protegidos contra acesso por JavaScript. Dados do Radar do Diário Oficial são cifrados com AES-256-GCM. Utilizamos HTTPS em todas as comunicações."
           },
           {
             titulo: "6. Seus direitos",
@@ -38,7 +46,7 @@ export default function Privacidade() {
           },
           {
             titulo: "7. Cookies",
-            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). Não utilizamos cookies de rastreamento ou publicidade."
+            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). No seu navegador também ficam guardadas suas preferências de aparência (tema e cor) e, se você chegou por um convite, o código de indicação até o cadastro. Não utilizamos cookies de rastreamento ou publicidade."
           },
         ].map((item) => (
           <div key={item.titulo} className="mb-8">

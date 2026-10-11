@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 // ─── Navbar ───────────────────────────────────────────────────────────────────
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4#0a0a0a]/80 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-(--fundo)/80 backdrop-blur-md">
       <Link to="/" className="font-mono font-bold text-sm tracking-widest text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </Link>
@@ -97,7 +97,7 @@ function MockWindow({
   return (
     <div
       className="rounded-xl border border-white/5 overflow-hidden"
-      style={{ background: 'linear-gradient(145deg, rgba(108,52,131,0.05) 0%, #111 100%)' }}
+      style={{ background: 'linear-gradient(145deg, rgba(108,52,131,0.05) 0%, var(--cartao) 100%)' }}
     >
       {/* Barra do "navegador" */}
       <div className="flex items-center gap-2 px-4 py-3 border-b border-white/5 bg-white/2">
@@ -336,7 +336,7 @@ export default function ComoFunciona() {
       `}</style>
 
       <div
-        className="bg-[#0a0a0a] text-[#f5f2eb] min-h-screen font-sans antialiased selection:bg-purple-500 selection:text-white"
+        className="bg-(--fundo) text-(--texto) min-h-screen font-sans antialiased selection:bg-purple-500 selection:text-white"
         style={{ cursor: 'none' }}
       >
         {/* Noise overlay */}
@@ -350,7 +350,7 @@ export default function ComoFunciona() {
           className="pt-32 md:pt-44 pb-16 md:pb-24 px-6 md:px-16 border-b border-white/5 relative overflow-hidden"
           style={{
             background:
-              'radial-gradient(ellipse 70% 60% at 70% 40%, rgba(108,52,131,0.14) 0%, transparent 70%), #0a0a0a',
+              'radial-gradient(ellipse 70% 60% at 70% 40%, rgba(108,52,131,0.14) 0%, transparent 70%), var(--fundo)',
           }}
         >
           <Reveal>
@@ -364,7 +364,7 @@ export default function ComoFunciona() {
               Veja exatamente<br />
               <span
                 className="text-transparent"
-                style={{ WebkitTextStroke: '1.5px #f5f2eb', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
+                style={{ WebkitTextStroke: '1.5px var(--texto)', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
               >
                 o que acontece
               </span>
@@ -430,7 +430,7 @@ export default function ComoFunciona() {
           className="px-6 md:px-16 py-16 md:py-24 border-b border-white/5"
           style={{
             background:
-              'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a',
+              'radial-gradient(ellipse 80% 60% at 50% 100%, rgba(108,52,131,0.08) 0%, transparent 70%), var(--fundo)',
           }}
         >
           <Reveal>
@@ -532,7 +532,7 @@ export default function ComoFunciona() {
           className="px-6 md:px-16 py-20 md:py-32 text-center relative overflow-hidden border-t border-white/5"
           style={{
             background:
-              'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a',
+              'radial-gradient(ellipse 70% 60% at 50% 50%, rgba(108,52,131,0.12) 0%, transparent 70%), var(--fundo)',
           }}
         >
           <Reveal>

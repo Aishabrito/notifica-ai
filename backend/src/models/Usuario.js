@@ -10,10 +10,37 @@ const usuarioSchema = new mongoose.Schema({
     status:    { type: String, enum: ['ativo', 'cancelado'], default: 'ativo' },
     validoAte: { type: Date, default: null }, // null = sem expiração
     // Quem concedeu o Pro: assinatura paga ou cortesia dada pelo admin
-    origem:         { type: String, enum: ['mercadopago', 'cortesia', null], default: null },
+    origem:         { type: String, enum: ['mercadopago', 'pix', 'cortesia', 'teste', null], default: null },
     mpAssinaturaId: { type: String, default: null }, // preapproval_id do Mercado Pago
+    // Assinatura no cartão: de quantos em quantos meses cobra e o valor cobrado
+    periodoMeses:   { type: Number, default: null },
+    valorCobranca:  { type: Number, default: null },
+    // Pix não renova sozinho: data do último lembrete de renovação enviado
+    lembreteRenovacaoEm: { type: Date, default: null },
   },
   role:     { type: String, enum: ['user', 'admin'], default: 'user' },
+  // Confirmação de e-mail (obrigatória para o Radar do Diário Oficial)
+  emailVerificado:   { type: Boolean, default: false },
+  emailVerificadoEm: { type: Date, default: null },
+  // Teste grátis do Pro: só uma vez por conta
+  testeGratisUsadoEm: { type: Date, default: null },
+  // Alertas no Telegram (Pro). Só o hash do código de conexão é guardado.
+  // Agenda assinável (.ics): quem tem o link vê os prazos; trocar o token revoga
+  agendaToken: { type: String },
+  // Indique e ganhe
+  codigoIndicacao:         { type: String },
+  indicadoPor:             { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null, index: true },
+  indicacaoRecompensadaEm: { type: Date, default: null },
+  creditoDias:             { type: Number, default: 0 },
+  // Resumo semanal por e-mail (segunda de manhã)
+  resumoSemanal:          { type: Boolean, default: true },
+  resumoSemanalEnviadoEm: { type: Date, default: null }, // dias de Pro guardados (bônus para quem paga no cartão)
+  telegram: {
+    chatId:       { type: String, default: null },
+    conectadoEm:  { type: Date, default: null },
+    codigoHash:   { type: String, default: null },
+    codigoExpira: { type: Date, default: null },
+  },
   criadoEm: { type: Date, default: Date.now },
 
   // Recuperação de senha via código OTP
@@ -51,5 +78,8 @@ usuarioSchema.statics.migrarPlanosLegados = async function () {
   ]);
   return premium.modifiedCount + gratuito.modifiedCount;
 };
+
+usuarioSchema.index({ codigoIndicacao: 1 }, { unique: true, partialFilterExpression: { codigoIndicacao: { $type: 'string' } } });
+usuarioSchema.index({ agendaToken: 1 }, { unique: true, partialFilterExpression: { agendaToken: { $type: 'string' } } });
 
 module.exports = mongoose.models.Usuario || mongoose.model('Usuario', usuarioSchema);

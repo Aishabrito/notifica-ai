@@ -2,6 +2,8 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 
 # Ignorar arquivos do sistema
 .DS_Store

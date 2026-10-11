@@ -4,16 +4,15 @@ require('dotenv').config();
 const express       = require('express');
 const cors          = require('cors');
 const axios         = require('axios');
-const cheerio       = require('cheerio');
 const mongoose      = require('mongoose');
 const cookieParser  = require('cookie-parser');
 const cron          = require('node-cron');
 const crypto        = require('crypto');
 const rateLimit     = require('express-rate-limit');
-const { URL }       = require('url');
 
 const transportador             = require('./src/utils/mailer');
-const { extrairConteudoLimpo }  = require('./src/utils/extrairConteudo');
+const { OPCOES_DOWNLOAD, interpretarResposta } = require('./src/utils/conteudoPagina');
+const { validarUrlPublica }     = require('./src/utils/urlPublica');
 const authRoutes                = require('./src/routes/authRoutes');
 const { autenticar }            = require('./src/middleware/authMiddleware');
 const { gerarHeaders }          = require('./src/service/crawler');
@@ -21,9 +20,16 @@ const { executarRodada }        = require('./src/service/agendador');
 const Usuario                   = require('./src/models/Usuario');
 const planoRoutes               = require('./src/routes/planoRoutes');
 const cancelamentoRoutes        = require('./src/routes/cancelamentoRoutes');
-const { assinaturaRouter, webhookRouter } = require('./src/routes/assinaturaRoutes');
+const verificacaoRoutes         = require('./src/routes/verificacaoRoutes');
+const radarRoutes               = require('./src/routes/radarRoutes');
+const contaRoutes               = require('./src/routes/contaRoutes');
+const { executarRadar, aoEncontrarOcorrencias } = require('./src/service/radar/radarService');
+const { executarRadarEditais } = require('./src/service/radar/editais');
+const { telegramRouter, webhookTelegramRouter } = require('./src/routes/telegramRoutes');
+const telegram                  = require('./src/service/telegram');
+const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
-const { processarPlanosExpirados } = require('./src/service/planoService');
+const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
 const {
   verificarLimitePlano,
@@ -31,7 +37,17 @@ const {
   validarIntervalo,
 } = require('./src/middleware/planoMiddleware');
 const Alerta                    = require('./src/models/alertaModel');
+const Mudanca                   = require('./src/models/Mudanca');
 const adminRoutes               = require('./src/routes/adminRoutes');
+const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
+const { escaparHtml }           = require('./src/utils/html');
+const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
+const { atualizarPosicao, posicaoParaApi } = require('./src/service/posicaoLista');
+const { cifrar, criptografiaConfigurada } = require('./src/utils/cripto');
+const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
+const { executarCodigoVermelho } = require('./src/service/prazos');
+const { enviarResumosSemanais, tokenSairValido } = require('./src/service/resumoSemanal');
+const { pagina: paginaSimples } = require('./src/utils/paginaSimples');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
@@ -48,6 +64,24 @@ app.use(cookieParser());
 // Fica antes do CORS porque o POST do formulário vem da origem do backend,
 // que não está na lista de origens do frontend.
 app.use('/cancelar', cancelamentoRoutes);
+app.use('/verificar-email', verificacaoRoutes);
+app.use('/prazo-feito', prazoFeitoRouter);
+app.use('/agenda', agendaPublicaRouter);
+
+// Sair do resumo semanal pelo link do e-mail (GET confirma, POST desliga)
+app.get('/resumo-semanal/sair/:id/:token', (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !tokenSairValido(req.params.id, req.params.token)) {
+    return res.status(400).send(paginaSimples('Link inválido', '<h1>Link inválido</h1>'));
+  }
+  res.send(paginaSimples('Resumo semanal', '<h1>Parar o resumo semanal?</h1><p>Seus alertas continuam funcionando normalmente.</p><form method="POST"><button type="submit">Sim, não quero mais o resumo</button></form>'));
+});
+app.post('/resumo-semanal/sair/:id/:token', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !tokenSairValido(req.params.id, req.params.token)) {
+    return res.status(400).send(paginaSimples('Link inválido', '<h1>Link inválido</h1>'));
+  }
+  await Usuario.updateOne({ _id: req.params.id }, { $set: { resumoSemanal: false } });
+  res.send(paginaSimples('Pronto', '<h1>Pronto!</h1><p>Você não vai mais receber o resumo semanal. Dá para ligar de novo em Minha conta.</p>'));
+});
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -79,6 +113,7 @@ mongoose.connect(process.env.MONGODB_URI, {
 })
   .then(async () => {
     console.log('MongoDB conectado com sucesso.');
+    telegram.configurarWebhook();
     try {
       const migrados = await Usuario.migrarPlanosLegados();
       if (migrados > 0) console.log(`[Plano] ${migrados} usuário(s) migrados para o novo formato de plano.`);
@@ -110,43 +145,6 @@ const limiterAlertasGeral = rateLimit({
 });
 
 // ============================================
-// 🛡️ VALIDAÇÃO DE URL (anti-SSRF)
-// ============================================
-const PRIVATE_IPV4_REGEX = /^(10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|127\.|0\.0\.0\.0)/;
-const PRIVATE_IPV6_REGEX = /^(::1$|fe[89ab][0-9a-f]:|fc[0-9a-f]{2}:|fd[0-9a-f]{2}:)/i;
-
-function isPrivateAddress(address) {
-  if (address.includes(':')) return PRIVATE_IPV6_REGEX.test(address);
-  return PRIVATE_IPV4_REGEX.test(address);
-}
-
-async function validarUrlPublica(rawUrl) {
-  let parsed;
-  try {
-    parsed = new URL(rawUrl);
-  } catch {
-    return { valido: false, motivo: 'URL inválida.' };
-  }
-
-  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-    return { valido: false, motivo: 'Apenas URLs http:// e https:// são permitidas.' };
-  }
-
-  const hostname = parsed.hostname.toLowerCase();
-
-  if (
-    hostname === 'localhost' ||
-    hostname === '0.0.0.0' ||
-    hostname === '::1' ||
-    isPrivateAddress(hostname)
-  ) {
-    return { valido: false, motivo: 'URLs internas ou de rede privada não são permitidas.' };
-  }
-
-  return { valido: true };
-}
-
-// ============================================
 // 🛠️ FUNÇÕES AUXILIARES
 // ============================================
 function gerarHash(texto) {
@@ -160,8 +158,19 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/plano', planoRoutes);
+app.use('/api/radar', radarRoutes);
+app.use('/api/conta', contaRoutes);
+app.use('/api/prazos', prazoRouter);
+app.use('/api/pastas', require('./src/routes/pastaRoutes'));
+app.get('/api/mp-config', mpConfigHandler);
+app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
 app.use('/api/webhooks', webhookRouter);
+app.use('/api/webhooks', webhookTelegramRouter);
+app.use('/api/telegram', telegramRouter);
+
+// Publicações do Radar também vão para o Telegram de quem conectou
+aoEncontrarOcorrencias(telegram.notificarOcorrencias);
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -186,16 +195,13 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
     : obterRegrasPlano(req.usuario).intervaloPadrao;
 
   try {
-    const resposta = await axios.get(url, {
-      headers: gerarHeaders(),
-      timeout: 15000,
-    });
+    const resposta = await axios.get(url, { headers: gerarHeaders(), ...OPCOES_DOWNLOAD });
 
     const seletorLimpo  = seletorCss ? seletorCss.trim() : null;
-    const conteudoLimpo = extrairConteudoLimpo(resposta.data, seletorLimpo, url);
-    const hashInicial   = gerarHash(conteudoLimpo);
-    const $             = cheerio.load(resposta.data);
-    const tituloDoSite  = $('title').text().trim() || url;
+    const pagina        = await interpretarResposta(resposta, { url, seletorCss: seletorLimpo });
+    const hashInicial   = gerarHash(pagina.texto);
+    const nomeArquivo   = decodeURIComponent(new URL(url).pathname.split('/').pop() || '');
+    const tituloDoSite  = pagina.titulo || (pagina.tipo === 'pdf' && nomeArquivo) || url;
 
     const novoAlerta = await Alerta.create({
       url,
@@ -203,6 +209,10 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       titulo: tituloDoSite,
       seletorCss: seletorLimpo,
       hashConteudo: hashInicial,
+      // Primeira versão guardada: a próxima mudança já pode ser resumida
+      ultimoConteudo: pagina.texto.slice(0, 200000),
+      linksPdf: pagina.linksPdf,
+      tipoConteudo: pagina.tipo,
       usuario: req.usuario._id,
       intervaloHoras,
       proximaVerificacao: new Date(Date.now() + intervaloHoras * 60 * 60 * 1000),
@@ -217,7 +227,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2>Seu alerta está ativo!</h2>
-          <p>Estamos vigiando o site: <br><strong><a href="${url}">${tituloDoSite}</a></strong></p>
+          <p>Estamos vigiando o site: <br><strong><a href="${escaparHtml(url)}">${escaparHtml(tituloDoSite)}</a></strong></p>
           <p>Vamos te avisar por e-mail assim que detectarmos qualquer alteração.</p>
           <br>
           <p style="font-size: 12px; color: #666;">
@@ -230,7 +240,8 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       console.error('Erro ao enviar email de confirmação:', erroEmail.message);
     });
 
-    return res.json({ sucesso: true, alerta: novoAlerta });
+    const { ultimoConteudo, linksPdf, ...alertaPublico } = novoAlerta.toObject();
+    return res.json({ sucesso: true, titulo: tituloDoSite, alerta: alertaPublico });
 
   } catch (err) {
     console.error('[Cadastro] Falha na requisição ao site monitorado:', err.code, err.message);
@@ -246,7 +257,8 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
 app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
-    return res.json({ sucesso: true, alertas });
+    // posição: o dono vê o identificador decifrado, nunca o valor cifrado
+    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a) })) });
   } catch (err) {
     return res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
@@ -295,6 +307,52 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
   }
 });
 
+// Histórico de mudanças de um alerta (protegido) — com o resumo da IA quando houver
+// 📍 Minha posição na lista: { identificador } para ativar, null para desligar
+app.patch('/api/alertas/:id/posicao', limiterAlertasGeral, autenticar, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    if (!criptografiaConfigurada()) return res.status(503).json({ sucesso: false, mensagem: 'Recurso indisponível no momento.' });
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id }).select('+ultimoConteudo');
+    if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+
+    const identificador = req.body?.identificador == null ? null : String(req.body.identificador).replace(/\s+/g, ' ').trim();
+    if (identificador === null || identificador === '') {
+      alerta.posicao = undefined;
+      await alerta.save();
+      return res.json({ sucesso: true, posicao: null });
+    }
+    if (identificador.length < 4 || identificador.length > 120) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Escreva o nome completo ou o número de inscrição, como aparece na lista.' });
+    }
+    alerta.posicao = { identificadorCifrado: cifrar(identificador), historico: [] };
+    // Já procura na última versão guardada da página
+    if (alerta.ultimoConteudo) atualizarPosicao(alerta, alerta.ultimoConteudo);
+    await alerta.save();
+    res.json({ sucesso: true, posicao: posicaoParaApi(alerta) });
+  } catch (err) {
+    console.error('[Posição] Erro ao configurar:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar.' });
+  }
+});
+
+app.get('/api/alertas/:id/historico', limiterAlertasGeral, autenticar, async (req, res) => {
+  try {
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id }).select('_id').lean();
+    if (!alerta) {
+      return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    }
+    const mudancas = await Mudanca.find({ alertaId: alerta._id })
+      .sort({ detectadaEm: -1 })
+      .limit(50)
+      .select('detectadaEm emailEnviado resumo pdfsNovos')
+      .lean();
+    return res.json({ sucesso: true, mudancas });
+  } catch (err) {
+    return res.status(400).json({ sucesso: false, mensagem: 'Erro ao buscar histórico.' });
+  }
+});
+
 // Alterar frequência de checagem (protegido) — opções dependem do plano
 app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
@@ -324,13 +382,62 @@ app.patch('/api/alertas/:id/frequencia', limiterAlertasGeral, autenticar, async 
 cron.schedule('*/5 * * * *', executarRodada, { timezone: 'America/Sao_Paulo' });
 
 // ============================================
+// 📰 CRON DO RADAR — 07h40 e 19h40 (Brasília)
+// ============================================
+// Diários costumam sair de madrugada/manhã; a 2ª rodada pega edições extras.
+cron.schedule('40 7,19 * * *', async () => {
+  try {
+    await executarRadar();
+  } catch (err) {
+    console.error('[Radar] Erro na rodada agendada:', err.message);
+  }
+  try {
+    await executarRadarEditais();
+  } catch (err) {
+    console.error('[Editais] Erro na rodada agendada:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
 // ============================================
+// Resumo semanal: segunda, 7h50 (Brasília)
+cron.schedule('50 7 * * 1', async () => {
+  try {
+    await enviarResumosSemanais();
+  } catch (err) {
+    console.error('[Resumo semanal] Erro:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// Código Vermelho: lembretes de prazo 72h, 24h e 3h antes
+cron.schedule('5 * * * *', async () => {
+  try {
+    await executarCodigoVermelho();
+  } catch (err) {
+    console.error('[Prazos] Erro no Código Vermelho:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// Checklist do admin: confere configuração e diários todo dia; modelos prontos às segundas
+cron.schedule('20 6 * * *', async () => {
+  try {
+    await gerarTarefasDeSaude({ modelos: new Date().getDay() === 1 });
+  } catch (err) {
+    console.error('[Saúde] Erro na verificação diária:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 cron.schedule('0 3 * * *', async () => {
   try {
     await processarPlanosExpirados();
   } catch (err) {
     console.error('[Plano] Erro no job de planos expirados:', err.message);
+  }
+  try {
+    await enviarLembretesRenovacao();
+  } catch (err) {
+    console.error('[Plano] Erro no job de lembretes de renovação:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

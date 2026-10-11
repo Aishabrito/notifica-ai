@@ -33,7 +33,7 @@ export const UseSection = ({
   );
 
   return (
-    <section className={`px-16 py-24 border-b border-neutral-900 ${dark ? "bg-[#0c0c0c]" : ""}`}>
+    <section className={`px-16 py-24 border-b border-neutral-900 ${dark ? "bg-(--fundo-2)" : ""}`}>
       <div className={`grid grid-cols-2 gap-24 items-start ${flip ? "direction-rtl" : ""}`}>
         {flip ? (
           <>

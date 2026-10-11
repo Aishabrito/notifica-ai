@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import SeletorAparencia from "./SeletorAparencia";
 
 interface NavbarProps {
   logado?: boolean;
@@ -44,9 +45,14 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
         <div className="hidden md:flex items-center gap-8">
           {logado ? (
             <>
-              <span className="font-mono text-xs text-neutral-500 tracking-wide truncate max-w-50">
+              <Link to="/dashboard" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Painel</Link>
+              <Link to="/prazos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Prazos</Link>
+              <Link to="/radar" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Radar DO</Link>
+              <Link to="/planos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Planos</Link>
+              <Link to="/conta" className="font-mono text-xs text-neutral-500 hover:text-white tracking-wide truncate max-w-50" title="Minha conta">
                 {usuario?.email}
-              </span>
+              </Link>
+              <SeletorAparencia />
               <button
                 onClick={handleLogout}
                 className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors border border-neutral-800 hover:border-neutral-600 px-4 py-2 rounded-lg"
@@ -59,6 +65,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <Link to="/como-funciona" className="font-mono text-xs text-white tracking-wide">
                 Como funciona
               </Link>
+              <SeletorAparencia />
               <Link to="/login" className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors">
                 Entrar
               </Link>
@@ -78,6 +85,11 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <span className="font-mono text-xs text-neutral-500 tracking-wide border-b border-neutral-800 pb-4">
                 {usuario?.email}
               </span>
+              <Link to="/dashboard" onClick={fecharMenu} className="font-mono text-sm text-white">Painel</Link>
+              <Link to="/prazos" onClick={fecharMenu} className="font-mono text-sm text-white">Prazos</Link>
+              <Link to="/radar" onClick={fecharMenu} className="font-mono text-sm text-white">Radar do Diário Oficial</Link>
+              <Link to="/planos" onClick={fecharMenu} className="font-mono text-sm text-white">Planos</Link>
+              <Link to="/conta" onClick={fecharMenu} className="font-mono text-sm text-white">Minha conta</Link>
               <button
                 onClick={() => { fecharMenu(); handleLogout(); }}
                 className="w-full text-left font-mono text-xs text-red-400 tracking-wide py-2"

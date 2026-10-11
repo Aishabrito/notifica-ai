@@ -1,6 +1,8 @@
 const { escaparHtml } = require('./html');
 
-const emailPremium = (nome, validoAte) => `
+const formatarData = (data) => new Date(data).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+const emailPremium = (nome, validoAte, { renovaSozinho = true } = {}) => `
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
@@ -34,12 +36,14 @@ const emailPremium = (nome, validoAte) => `
                 <tr><td style="padding:6px 0;font-size:14px;color:#f5f2eb;">⚡ Checagens a cada 1h ou 15 minutos</td></tr>
                 <tr><td style="padding:6px 0;font-size:14px;color:#f5f2eb;">🔁 Alertas pausados pelo limite do plano gratuito foram reativados</td></tr>
               </table>
-              ${validoAte ? `<p style="font-size:13px;color:#737373;margin:0;">Próxima renovação: ${new Date(validoAte).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })}</p>` : ''}
+              ${validoAte ? `<p style="font-size:13px;color:#737373;margin:0;">${renovaSozinho ? 'Próxima renovação' : 'Seu Pro vale até'}: ${formatarData(validoAte)}${renovaSozinho ? '' : '. Vamos te lembrar alguns dias antes de vencer.'}</p>` : ''}
             </td>
           </tr>
           <tr>
             <td style="padding-top:24px;font-size:12px;color:#525252;">
-              Você pode cancelar a assinatura a qualquer momento pelo painel. O acesso Pro continua até o fim do período pago.
+              ${renovaSozinho
+                ? 'Você pode cancelar a assinatura a qualquer momento pelo painel. O acesso Pro continua até o fim do período pago.'
+                : 'Pagamento via Pix não renova automaticamente — nada será cobrado sem você pedir.'}
             </td>
           </tr>
         </table>

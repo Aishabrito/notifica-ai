@@ -1,6 +1,7 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import api from "../services/Api";
+import { lerIndicacao } from "../utils/indicacao";
 
 interface Usuario {
   id: string;
@@ -13,6 +14,7 @@ interface Usuario {
     origem?: "mercadopago" | "cortesia" | null;
   };
   role: "user" | "admin";
+  emailVerificado?: boolean;
 }
 
 interface AuthContextType {
@@ -63,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, []);
   const cadastrar = async (nome: string, email: string, senha: string): Promise<string | null> => {
     try {
-      const { data: d } = await api.post("/api/auth/cadastro", { nome, email, senha });
+      const { data: d } = await api.post("/api/auth/cadastro", { nome, email, senha, indicacao: lerIndicacao() ?? undefined });
       if (d.sucesso) {
         if (d.token) localStorage.setItem("authToken", d.token);
         setUsuario(d.usuario);

@@ -1,6 +1,8 @@
 // src/App.tsx
 
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { ativarAparencia } from './utils/aparencia';
 import Home         from './pages/Home';
 import Login        from './pages/Login';
 import Cadastro     from './pages/Cadastro';
@@ -14,12 +16,25 @@ import { AuthProvider } from './contexts/AuthContext';
 import { PrivateRoute } from './components/private-route';
 import AdminRoute     from './components/AdminRoute';
 import AdminDashboard from "./pages/Admin/AdminDashboard";
+import Planos         from './pages/Planos';
+import Radar          from './pages/Radar';
+import Conta          from './pages/Conta';
+import Prazos         from './pages/Prazos';
+import PastaPublica   from './pages/PastaPublica';
+
+// O painel admin tem visual próprio: não recebe tema/cor escolhidos
+function AparenciaPorRota() {
+  const { pathname } = useLocation();
+  useEffect(() => { ativarAparencia(!pathname.startsWith('/admin')); }, [pathname]);
+  return null;
+}
 
 export default function App() {
   return (
     <AuthProvider>
       <Router>
-        <div className="min-h-screen bg-[#0a0a0a] selection:bg-purple-500 selection:text-white font-sans">
+        <AparenciaPorRota />
+        <div className="min-h-screen bg-(--fundo) selection:bg-purple-500 selection:text-white font-sans">
           <Routes>
             <Route path="/"              element={<LandingPage />} />
             <Route path="/como-funciona" element={<ComoFunciona />} />
@@ -31,6 +46,28 @@ export default function App() {
             <Route path="/dashboard" element={
               <PrivateRoute>
                 <Home />
+              </PrivateRoute>
+            } />
+
+            <Route path="/radar" element={
+              <PrivateRoute>
+                <Radar />
+              </PrivateRoute>
+            } />
+            <Route path="/p/:token" element={<PastaPublica />} />
+            <Route path="/prazos" element={
+              <PrivateRoute>
+                <Prazos />
+              </PrivateRoute>
+            } />
+            <Route path="/conta" element={
+              <PrivateRoute>
+                <Conta />
+              </PrivateRoute>
+            } />
+            <Route path="/planos" element={
+              <PrivateRoute>
+                <Planos />
               </PrivateRoute>
             } />
 

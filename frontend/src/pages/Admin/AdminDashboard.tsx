@@ -1,10 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { 
-  Activity, Users, Bell, BellOff, MessageSquare, 
-  LogOut, ArrowLeft, RefreshCw, AlertCircle 
-} from "lucide-react";
+import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
 import { DashboardDados } from "./components/types"; 
@@ -13,11 +10,13 @@ import { DashboardDados } from "./components/types";
 import StatCard from "./components/StatCard";
 import PainelSaudeCrawler from "./components/PainelSaudeCrawler";
 import PainelLogCrawler from "./components/PainelLogCrawler";
+import PainelSaudeSistema from "./components/PainelSaudeSistema";
+import ChecklistTarefas from "./components/ChecklistTarefas";
 import TabelaUsuarios from "./components/TabelaUsuarios";
 import TabelaAlertas from "./components/TabelaAlertas";
 import TabelaFeedbacks from "./components/TabelaFeedbacks";
 
-type Tab = "visao-geral" | "usuarios" | "alertas" | "feedbacks";
+type Tab = "tarefas" | "visao-geral" | "usuarios" | "alertas" | "feedbacks";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -26,7 +25,8 @@ export default function AdminDashboard() {
   const [dados, setDados] = useState<DashboardDados | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [tab, setTab] = useState<Tab>("visao-geral");
+  const [tab, setTab] = useState<Tab>("tarefas");
+  const [tarefasAbertas, setTarefasAbertas] = useState<number | null>(null);
 
   const fetchDados = async () => {
     // Se já temos dados, não mostramos o skeleton de loading pesado, 
@@ -58,6 +58,7 @@ export default function AdminDashboard() {
   };
 
   const TABS: { id: Tab; label: string; icon: React.ElementType }[] = [
+    { id: "tarefas",     label: `Tarefas${(tarefasAbertas ?? dados?.tarefasAbertas) ? ` (${tarefasAbertas ?? dados?.tarefasAbertas})` : ""}`, icon: ListChecks },
     { id: "visao-geral", label: "Visão geral", icon: Activity },
     { id: "usuarios",    label: "Usuários",    icon: Users },
     { id: "alertas",     label: "Alertas",     icon: Bell },
@@ -169,6 +170,32 @@ export default function AdminDashboard() {
           )}
         </div>
 
+        {/* ── Receita e Pro ── */}
+        {dados?.receita && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              icon={Wallet} label="Receita recorrente" value={Math.round(dados.receita.mrrCartao)}
+              accent="text-emerald-700" iconBg="bg-emerald-50 text-emerald-500"
+              sub={`R$/mês · ${dados.receita.assinantesCartao} assinante(s) no cartão`}
+            />
+            <StatCard
+              icon={Gem} label="Pix (30 dias)" value={Math.round(dados.receita.pixRecebido30d)}
+              accent="text-sky-700" iconBg="bg-sky-50 text-sky-500"
+              sub={`R$ · ${dados.receita.proPix} Pro via Pix ativos`}
+            />
+            <StatCard
+              icon={TrendingUp} label="Conversão" value={dados.receita.conversao}
+              accent="text-violet-700" iconBg="bg-violet-50 text-violet-500"
+              sub={`% pagantes · ${dados.receita.cortesias} cortesia(s)`}
+            />
+            <StatCard
+              icon={Newspaper} label="Radar DO" value={dados.radar?.monitoresAtivos ?? 0}
+              accent="text-amber-700" iconBg="bg-amber-50 text-amber-500"
+              sub={`nomes ativos · ${dados.radar?.ocorrencias30d ?? 0} publicações em 30 dias`}
+            />
+          </div>
+        )}
+
         {/* ── Seleção de Abas ── */}
         <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit mb-6 shadow-sm">
           {TABS.map(t => (
@@ -185,8 +212,11 @@ export default function AdminDashboard() {
         </div>
 
         {/* ── Conteúdo das Abas com Proteção de Dados ── */}
+        {tab === "tarefas" && <ChecklistTarefas onMudou={setTarefasAbertas} />}
+
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <PainelSaudeSistema />
             <PainelSaudeCrawler health={dados?.crawlerHealth} />
             <PainelLogCrawler logs={dados?.crawlerHealth?.logs ?? []} />
           </div>
@@ -215,7 +245,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Loading State para abas */}
-        {tab !== "visao-geral" && loading && !dados && (
+        {tab !== "visao-geral" && tab !== "tarefas" && loading && !dados && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 animate-pulse h-64" />
         )}
 

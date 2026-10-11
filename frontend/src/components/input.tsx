@@ -27,10 +27,10 @@ export const Input = ({
       value={value}
       onChange={onChange}
       required={required}
-      className="w-full bg-black border border-white/5 p-4 rounded-xl outline-none focus:border-emerald-400 transition-all font-mono text-sm text-[#f5f2eb] placeholder:text-neutral-700"
+      className="w-full bg-(--campo) border border-white/5 p-4 rounded-xl outline-none focus:border-emerald-400 transition-all font-mono text-sm text-(--texto) placeholder:text-neutral-700"
       style={{
-        WebkitTextFillColor: '#f5f2eb',
-        boxShadow: '0 0 0px 1000px black inset',
+        WebkitTextFillColor: 'var(--texto)',
+        boxShadow: '0 0 0px 1000px var(--campo) inset',
       }}
     />
   </div>

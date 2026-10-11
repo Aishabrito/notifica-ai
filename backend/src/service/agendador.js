@@ -52,7 +52,9 @@ async function reservarAlertasVencidos(limite = LOTE_MAX_ALERTAS) {
     { $set: { travadoAte: new Date(agora.getTime() + DURACAO_RESERVA_MS), travaId } }
   );
 
-  return Alerta.find({ travaId }).populate('usuario', 'plano');
+  return Alerta.find({ travaId })
+    .select('+ultimoConteudo +linksPdf') // versão anterior, para o resumo com IA
+    .populate('usuario', 'nome plano telegram');
 }
 
 // ============================================

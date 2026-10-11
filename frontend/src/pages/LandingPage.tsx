@@ -1,14 +1,16 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import SeletorAparencia from '../components/SeletorAparencia';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-[#0a0a0a]/80 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-(--fundo)/80 backdrop-blur-md">
       <Link to="/" className="font-mono font-bold text-sm tracking-widest text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </Link>
-      <div className="flex items-center gap-6 md:gap-8">
+      <div className="flex items-center gap-4 md:gap-8">
+        <SeletorAparencia />
         <Link to="/como-funciona" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden sm:block">
           Como funciona
         </Link>
@@ -87,6 +89,73 @@ function AlertCard({
 }
 
 // ─── Main Page ────────────────────────────────────────────────────────────────
+const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
+
+function Planos() {
+  // Preços e limites vêm do backend (mesma fonte do checkout); sem resposta, mostra só "Pro"
+  const [config, setConfig] = useState<{ menor: number; mensal: number; free?: { maxAlertas: number; intervaloHoras: number } } | null>(null);
+  useEffect(() => {
+    fetch(`${API_URL}/api/mp-config`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((d) => {
+        const porMes: number[] = (d?.planos ?? []).map((p: { porMes: number }) => p.porMes);
+        const mensal = d?.cartao?.valor;
+        if (mensal) setConfig({ menor: porMes.length ? Math.min(...porMes) : mensal, mensal, free: d.free });
+      })
+      .catch(() => {});
+  }, []);
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const maxFree = config?.free?.maxAlertas ?? 1;
+
+  const planos = [
+    {
+      nome: 'Grátis', preco: 'R$ 0', destaque: false, cta: 'Criar conta grátis',
+      itens: [maxFree === 1 ? '1 página monitorada' : `${maxFree} páginas monitoradas`, `Checagem a cada ${config?.free?.intervaloHoras ?? 6} horas`, 'Aviso por e-mail'],
+    },
+    {
+      nome: 'Pro', destaque: true, cta: 'Testar 7 dias grátis',
+      preco: config ? `a partir de ${brl(config.menor)}/mês` : 'Pro',
+      nota: config && config.menor < config.mensal ? `no plano anual · ou ${brl(config.mensal)} no mensal` : null,
+      itens: [
+        'Alertas ilimitados',
+        'Checagem até a cada 15 minutos',
+        'Resumo do que mudou, feito por IA',
+        'Prazos direto na sua agenda',
+        'Radar: seu nome no Diário Oficial',
+        'Alertas no Telegram',
+      ],
+    },
+  ];
+
+  return (
+    <section id="planos" className="px-6 md:px-20 py-20 md:py-28 border-t border-white/5">
+      <p className="font-mono text-[10px] text-purple-400 tracking-[0.3em] uppercase mb-3">// planos</p>
+      <h2 className="font-black text-4xl md:text-5xl tracking-tighter mb-3">Comece grátis. Vire Pro quando precisar.</h2>
+      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix, sem precisar de conta no Mercado Pago. Cancele quando quiser.</p>
+      <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
+        {planos.map((p) => (
+          <div key={p.nome} className={`rounded-2xl p-8 border ${p.destaque ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10'}`}>
+            <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 mb-2">{p.nome}</p>
+            <p className={`text-3xl font-black ${'nota' in p && p.nota ? 'mb-1' : 'mb-6'}`}>{p.preco}</p>
+            {'nota' in p && p.nota && <p className="text-xs text-neutral-500 mb-6">{p.nota}</p>}
+            <ul className="space-y-2 mb-8">
+              {p.itens.map((i) => (
+                <li key={i} className="text-sm text-neutral-300 flex gap-2"><span className="text-emerald-400">✓</span>{i}</li>
+              ))}
+            </ul>
+            <Link
+              to="/cadastro"
+              className={`inline-block font-mono text-xs font-bold px-6 py-3 rounded-lg uppercase tracking-widest ${p.destaque ? 'bg-emerald-400 text-black hover:bg-emerald-300' : 'border border-white/20 hover:border-white/40'}`}
+            >
+              {p.cta}
+            </Link>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 export default function LandingPage() {
   const desktopCards = [
     { url: 'sisu.mec.gov.br',     msg: '🚨 Lista de espera atualizada!',  color: 'text-purple-400', delay: '0.2s'  },
@@ -111,7 +180,7 @@ export default function LandingPage() {
         }
       `}</style>
 
-      <div className="bg-[#0a0a0a] text-[#f5f2eb] font-sans overflow-x-hidden selection:bg-purple-500 selection:text-white min-h-screen">
+      <div className="bg-(--fundo) text-(--texto) font-sans overflow-x-hidden selection:bg-purple-500 selection:text-white min-h-screen">
         <Navbar />
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -119,7 +188,7 @@ export default function LandingPage() {
           className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] relative"
           style={{
             background:
-              'radial-gradient(ellipse 60% 50% at 65% 40%, rgba(108,52,131,0.16) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.03) 0%, transparent 70%), #0a0a0a',
+              'radial-gradient(ellipse 60% 50% at 65% 40%, rgba(108,52,131,0.16) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.03) 0%, transparent 70%), var(--fundo)',
           }}
         >
           <div className="pt-28 md:pt-40 px-6 md:pl-20 md:pr-12 pb-16 flex flex-col justify-center relative z-10">
@@ -129,7 +198,7 @@ export default function LandingPage() {
               Você vai<br />
               <span
                 className="text-transparent"
-                style={{ WebkitTextStroke: '1.5px #f5f2eb', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
+                style={{ WebkitTextStroke: '1.5px var(--texto)', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
               >
                 saber antes
               </span>
@@ -194,6 +263,8 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+
+        <Planos />
 
         <Footer />
       </div>

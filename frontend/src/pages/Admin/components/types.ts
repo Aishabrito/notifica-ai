@@ -46,7 +46,19 @@ export interface CrawlerHealth {
   logs: CrawlerLog[];
 }
 
+export interface Receita {
+  assinantesCartao: number;
+  proPix: number;
+  cortesias: number;
+  mrrCartao: number;
+  pixRecebido30d: number;
+  conversao: number;
+}
+
 export interface DashboardDados {
+  receita?: Receita;
+  radar?: { monitoresAtivos: number; ocorrencias30d: number };
+  tarefasAbertas?: number;
   totalUsers: number;
   totalAlerts: number;
   alertasPausados: number;

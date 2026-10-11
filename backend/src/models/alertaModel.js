@@ -11,16 +11,37 @@ const alertaSchema = new mongoose.Schema({
   // Por que o alerta foi pausado: 'falhas' (crawler), 'plano' (downgrade) ou 'admin'
   motivoPausa:       { type: String, enum: ['falhas', 'plano', 'admin', null], default: null },
   falhasSeguidas:    { type: Number, default: 0 },
+  // Há uma tarefa aberta no painel admin por causa deste alerta
+  tarefaAberta:      { type: Boolean, default: false },
+  // Minha posição na lista: como o nome/inscrição aparece (cifrado) e o último resultado
+  posicao: {
+    type: new mongoose.Schema({
+      identificadorCifrado: String,
+      encontrado:    Boolean,
+      numero:        Number,
+      trechoCifrado: String,
+      verificadoEm:  Date,
+      mudouEm:       Date,
+      historico:     [{ _id: false, encontrado: Boolean, numero: Number, em: Date }],
+    }, { _id: false }),
+    default: undefined,
+  },
   ultimoErro:        { type: String, default: null },
   ultimaVerificacao: { type: Date, default: null },
   ultimaNotificacao: { type: Date, default: null },
   // Frequência de checagem em horas (Free: 24 · Pro: 6, 1 ou 0.25 = 15min)
-  intervaloHoras:     { type: Number, default: 24 },
+  // null = padrão do plano do dono (ver config/planos.js)
+  intervaloHoras:     { type: Number, default: null },
   proximaVerificacao: { type: Date, default: Date.now },
   // Reserva do crawler: enquanto travadoAte > agora, só a instância que
   // reservou o alerta pode verificá-lo (ver service/agendador.js)
   travadoAte:         { type: Date, default: null },
   travaId:            { type: String, default: null },
+  // Última versão do texto monitorado e links de PDF da página, usados para
+  // descobrir O QUE mudou (resumo com IA). select:false: nunca vão para a API.
+  ultimoConteudo:     { type: String, default: null, select: false },
+  linksPdf:           { type: [String], default: undefined, select: false },
+  tipoConteudo:       { type: String, enum: ['html', 'pdf', null], default: null },
 }, { timestamps: { createdAt: 'criadoEm', updatedAt: 'atualizadoEm' } });
 
 // Consulta do cron: alertas ativos com checagem vencida

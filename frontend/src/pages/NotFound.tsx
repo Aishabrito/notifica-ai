@@ -3,8 +3,8 @@ import { Link } from "react-router-dom";
 export default function NotFound() {
   return (
     <div
-      className="min-h-screen bg-[#0a0a0a] text-[#f5f2eb] flex flex-col items-center justify-center px-6 text-center relative overflow-hidden"
-      style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(108,52,131,0.08) 0%, transparent 70%), #0a0a0a' }}
+      className="min-h-screen bg-(--fundo) text-(--texto) flex flex-col items-center justify-center px-6 text-center relative overflow-hidden"
+      style={{ background: 'radial-gradient(ellipse 60% 50% at 50% 50%, rgba(108,52,131,0.08) 0%, transparent 70%), var(--fundo)' }}
     >
       {/* Número grande de fundo */}
       <div

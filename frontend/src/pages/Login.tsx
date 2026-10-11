@@ -106,7 +106,7 @@ export default function Login() {
       <Navbar />
       <div
         className="min-h-screen flex items-center justify-center px-4 py-24 selection:bg-purple-500 selection:text-white"
-        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.12) 0%, transparent 70%), #0a0a0a" }}
+        style={{ background: "radial-gradient(ellipse 60% 50% at 50% 30%, rgba(108,52,131,0.12) 0%, transparent 70%), var(--fundo)" }}
       >
         <div className="w-full max-w-md relative">
 
@@ -242,7 +242,7 @@ export default function Login() {
         >
           <div
             className="w-full max-w-sm rounded-2xl border border-white/8 p-7 relative"
-            style={{ background: "linear-gradient(145deg, rgba(20,20,20,0.98) 0%, rgba(108,52,131,0.06) 100%)" }}
+            style={{ background: "linear-gradient(145deg, var(--cartao) 0%, rgba(108,52,131,0.06) 100%)" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Fechar */}
