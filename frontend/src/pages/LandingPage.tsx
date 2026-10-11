@@ -1,14 +1,16 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
+import SeletorAparencia from '../components/SeletorAparencia';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
   return (
-    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-[#0a0a0a]/80 backdrop-blur-md">
+    <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-10 py-4 border-b border-white/4 bg-(--fundo)/80 backdrop-blur-md">
       <Link to="/" className="font-mono font-bold text-sm tracking-widest text-white">
         notifica<span className="text-emerald-400">.ai</span>
       </Link>
-      <div className="flex items-center gap-6 md:gap-8">
+      <div className="flex items-center gap-4 md:gap-8">
+        <SeletorAparencia />
         <Link to="/como-funciona" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden sm:block">
           Como funciona
         </Link>
@@ -178,7 +180,7 @@ export default function LandingPage() {
         }
       `}</style>
 
-      <div className="bg-[#0a0a0a] text-[#f5f2eb] font-sans overflow-x-hidden selection:bg-purple-500 selection:text-white min-h-screen">
+      <div className="bg-(--fundo) text-(--texto) font-sans overflow-x-hidden selection:bg-purple-500 selection:text-white min-h-screen">
         <Navbar />
 
         {/* ── HERO ─────────────────────────────────────────────────────── */}
@@ -186,7 +188,7 @@ export default function LandingPage() {
           className="min-h-screen grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] relative"
           style={{
             background:
-              'radial-gradient(ellipse 60% 50% at 65% 40%, rgba(108,52,131,0.16) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.03) 0%, transparent 70%), #0a0a0a',
+              'radial-gradient(ellipse 60% 50% at 65% 40%, rgba(108,52,131,0.16) 0%, transparent 70%), radial-gradient(ellipse 40% 40% at 20% 30%, rgba(0,230,118,0.03) 0%, transparent 70%), var(--fundo)',
           }}
         >
           <div className="pt-28 md:pt-40 px-6 md:pl-20 md:pr-12 pb-16 flex flex-col justify-center relative z-10">
@@ -196,7 +198,7 @@ export default function LandingPage() {
               Você vai<br />
               <span
                 className="text-transparent"
-                style={{ WebkitTextStroke: '1.5px #f5f2eb', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
+                style={{ WebkitTextStroke: '1.5px var(--texto)', textShadow: '0 0 10px rgba(108,52,131,0.3)' }}
               >
                 saber antes
               </span>

@@ -272,8 +272,8 @@ export default function Planos() {
   // ─── Render ────────────────────────────────────────────────────────────
   return (
     <div
-      className="bg-[#0a0a0a] text-[#f5f2eb] min-h-screen font-sans antialiased"
-      style={{ background: "radial-gradient(circle at 0% 0%, rgba(108,52,131,0.08) 0%, transparent 40%), #0a0a0a" }}
+      className="bg-(--fundo) text-(--texto) min-h-screen font-sans antialiased"
+      style={{ background: "radial-gradient(circle at 0% 0%, rgba(108,52,131,0.08) 0%, transparent 40%), var(--fundo)" }}
     >
       <Navbar logado={!!usuario} />
 

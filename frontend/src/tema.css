@@ -1,0 +1,129 @@
+/* ============================================
+   🎨 APARÊNCIA: tema claro/escuro e cor de destaque
+   ============================================
+   O site foi desenhado no escuro com classes do Tailwind (neutral, white,
+   emerald). Em vez de reescrever cada tela, remapeamos as variáveis de cor
+   do Tailwind v4 conforme os atributos que o seletor de aparência põe no <html>:
+     data-tema="claro"            → inverte a escala neutra
+     data-destaque="azul|roxo|…"  → troca o verde (emerald) pela cor escolhida
+   O painel admin não recebe esses atributos (tem visual próprio). */
+
+:root {
+  --fundo: #0a0a0a;    /* fundo das páginas */
+  --fundo-2: #0c0c0c;  /* seções alternadas */
+  --cartao: #111111;   /* cartões e janelas */
+  --campo: #000000;    /* campos de formulário */
+  --texto: #f5f2eb;    /* texto principal */
+}
+html[data-tema="claro"] {
+  --fundo: #f6f4ef;
+  --fundo-2: #efece5;
+  --cartao: #ffffff;
+  --campo: #ffffff;
+  --texto: #1c1b19;
+}
+body { background-color: var(--fundo); }
+
+html[data-destaque="azul"] {
+  --color-emerald-50: oklch(97.7% 0.013 236.62);
+  --color-emerald-100: oklch(95.1% 0.026 236.824);
+  --color-emerald-200: oklch(90.1% 0.058 230.902);
+  --color-emerald-300: oklch(82.8% 0.111 230.318);
+  --color-emerald-400: oklch(74.6% 0.16 232.661);
+  --color-emerald-500: oklch(68.5% 0.169 237.323);
+  --color-emerald-600: oklch(58.8% 0.158 241.966);
+  --color-emerald-700: oklch(50% 0.134 242.749);
+}
+
+html[data-destaque="roxo"] {
+  --color-emerald-50: oklch(96.9% 0.016 293.756);
+  --color-emerald-100: oklch(94.3% 0.029 294.588);
+  --color-emerald-200: oklch(89.4% 0.057 293.283);
+  --color-emerald-300: oklch(81.1% 0.111 293.571);
+  --color-emerald-400: oklch(70.2% 0.183 293.541);
+  --color-emerald-500: oklch(60.6% 0.25 292.717);
+  --color-emerald-600: oklch(54.1% 0.281 293.009);
+  --color-emerald-700: oklch(49.1% 0.27 292.581);
+}
+
+html[data-destaque="rosa"] {
+  --color-emerald-50: oklch(97.1% 0.014 343.198);
+  --color-emerald-100: oklch(94.8% 0.028 342.258);
+  --color-emerald-200: oklch(89.9% 0.061 343.231);
+  --color-emerald-300: oklch(82.3% 0.12 346.018);
+  --color-emerald-400: oklch(71.8% 0.202 349.761);
+  --color-emerald-500: oklch(65.6% 0.241 354.308);
+  --color-emerald-600: oklch(59.2% 0.249 0.584);
+  --color-emerald-700: oklch(52.5% 0.223 3.958);
+}
+
+html[data-destaque="laranja"] {
+  --color-emerald-50: oklch(98.7% 0.022 95.277);
+  --color-emerald-100: oklch(96.2% 0.059 95.617);
+  --color-emerald-200: oklch(92.4% 0.12 95.746);
+  --color-emerald-300: oklch(87.9% 0.169 91.605);
+  --color-emerald-400: oklch(82.8% 0.189 84.429);
+  --color-emerald-500: oklch(76.9% 0.188 70.08);
+  --color-emerald-600: oklch(66.6% 0.179 58.318);
+  --color-emerald-700: oklch(55.5% 0.163 48.998);
+}
+
+/* ── Tema claro ── */
+html[data-tema="claro"] {
+  color-scheme: light;
+  --color-white: oklch(21% 0 0);          /* texto principal */
+  --color-neutral-950: oklch(98.5% 0 0);
+  --color-neutral-900: oklch(95% 0 0);
+  --color-neutral-800: oklch(88% 0 0);
+  --color-neutral-700: oklch(68% 0 0);
+  --color-neutral-600: oklch(56% 0 0);
+  --color-neutral-500: oklch(47% 0 0);
+  --color-neutral-400: oklch(40% 0 0);
+  --color-neutral-300: oklch(32% 0 0);
+  --color-neutral-200: oklch(26% 0 0);
+  --color-neutral-100: oklch(22% 0 0);
+  --color-neutral-50: oklch(18% 0 0);
+  /* roxo dos detalhes, mais escuro para ler no fundo claro */
+  --color-purple-300: oklch(55.8% 0.288 302.321);
+  --color-purple-400: oklch(49.6% 0.265 301.924);
+}
+/* destaque um pouco mais escuro no claro, para o texto verde/azul ser legível */
+html[data-tema="claro"]:not([data-destaque]), html[data-tema="claro"][data-destaque="verde"] {
+  --color-emerald-300: oklch(69.6% 0.17 162.48);
+  --color-emerald-400: oklch(59.6% 0.145 163.225);
+}
+
+html[data-tema="claro"][data-destaque="azul"] {
+  --color-emerald-300: oklch(68.5% 0.169 237.323);
+  --color-emerald-400: oklch(58.8% 0.158 241.966);
+}
+
+html[data-tema="claro"][data-destaque="roxo"] {
+  --color-emerald-300: oklch(60.6% 0.25 292.717);
+  --color-emerald-400: oklch(54.1% 0.281 293.009);
+}
+
+html[data-tema="claro"][data-destaque="rosa"] {
+  --color-emerald-300: oklch(65.6% 0.241 354.308);
+  --color-emerald-400: oklch(59.2% 0.249 0.584);
+}
+
+html[data-tema="claro"][data-destaque="laranja"] {
+  --color-emerald-300: oklch(76.9% 0.188 70.08);
+  --color-emerald-400: oklch(66.6% 0.179 58.318);
+}
+
+html[data-tema="claro"] .bg-white { background-color: #fff; } /* QR Code do Pix continua branco */
+html[data-tema="claro"] .border-white\/5,
+html[data-tema="claro"] .border-white\/4,
+html[data-tema="claro"] .border-white\/10 { border-color: rgb(0 0 0 / 0.09); }
+html[data-tema="claro"] .bg-black\/40 { background-color: rgb(0 0 0 / 0.04); }
+html[data-tema="claro"] .bg-black { background-color: #fff; }
+
+/* Movimento reduzido / visual mais leve */
+html[data-suave="1"] *, html[data-suave="1"] *::before, html[data-suave="1"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+html[data-suave="1"] [class*="shadow-[0_0"] { box-shadow: none !important; }

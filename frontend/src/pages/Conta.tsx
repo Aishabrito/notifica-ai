@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
+import { ControlesAparencia } from "../components/SeletorAparencia";
 import api from "../services/Api";
 
 interface Conta {
@@ -54,7 +55,7 @@ export default function Conta() {
   };
 
   return (
-    <div className="bg-[#0a0a0a] text-[#f5f2eb] min-h-screen font-sans antialiased">
+    <div className="bg-(--fundo) text-(--texto) min-h-screen font-sans antialiased">
       <Navbar logado={!!usuario} />
       <main className="max-w-2xl mx-auto px-4 md:px-6 pt-24 md:pt-32 pb-16 space-y-8">
         <div>
@@ -73,6 +74,13 @@ export default function Conta() {
             {msg.tipo === "sucesso" ? "✓" : "●"} {msg.texto}
           </p>
         )}
+
+        {/* APARÊNCIA */}
+        <section className="border border-white/5 rounded-2xl p-6 space-y-3">
+          <h2 className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">Aparência</h2>
+          <p className="text-xs text-neutral-500">Achou escuro demais ou a cor forte? Mude aqui — vale para este aparelho.</p>
+          <ControlesAparencia />
+        </section>
 
         {/* NOME */}
         <form className="border border-white/5 rounded-2xl p-6 space-y-3" onSubmit={(e) => { e.preventDefault(); executar(() => api.patch("/api/conta", { nome }), carregar); }}>

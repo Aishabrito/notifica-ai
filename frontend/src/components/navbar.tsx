@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
+import SeletorAparencia from "./SeletorAparencia";
 
 interface NavbarProps {
   logado?: boolean;
@@ -50,6 +51,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <Link to="/conta" className="font-mono text-xs text-neutral-500 hover:text-white tracking-wide truncate max-w-50" title="Minha conta">
                 {usuario?.email}
               </Link>
+              <SeletorAparencia />
               <button
                 onClick={handleLogout}
                 className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors border border-neutral-800 hover:border-neutral-600 px-4 py-2 rounded-lg"
@@ -62,6 +64,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
               <Link to="/como-funciona" className="font-mono text-xs text-white tracking-wide">
                 Como funciona
               </Link>
+              <SeletorAparencia />
               <Link to="/login" className="font-mono text-xs text-neutral-500 tracking-wide hover:text-white transition-colors">
                 Entrar
               </Link>

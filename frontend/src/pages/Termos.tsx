@@ -4,7 +4,7 @@ import { Footer } from "../components/footer";
 
 export default function Termos() {
   return (
-    <div className="bg-[#0a0a0a] text-[#f5f2eb] min-h-screen font-sans">
+    <div className="bg-(--fundo) text-(--texto) min-h-screen font-sans">
       <Navbar />
       <main className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         <p className="font-mono text-[10px] text-purple-400 uppercase tracking-widest mb-4">// legal</p>
