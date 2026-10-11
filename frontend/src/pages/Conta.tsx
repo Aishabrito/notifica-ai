@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import { ControlesAparencia } from "../components/SeletorAparencia";
+import IndiqueGanhe from "../components/IndiqueGanhe";
 import api from "../services/Api";
 
 interface Conta {
@@ -74,6 +75,8 @@ export default function Conta() {
             {msg.tipo === "sucesso" ? "✓" : "●"} {msg.texto}
           </p>
         )}
+
+        <IndiqueGanhe />
 
         {/* APARÊNCIA */}
         <section className="border border-white/5 rounded-2xl p-6 space-y-3">

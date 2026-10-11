@@ -168,6 +168,7 @@ async function processarPagamentoPix(pagamento) {
     };
   }
   await usuario.save();
+  await require('./indicacao').recompensarIndicacao(usuario._id).catch((err) => console.error('[Indicação] Falha:', err.message));
 
   if (!eraPro) {
     await reativarAlertasPausadosPorPlano(usuario._id);
@@ -179,7 +180,7 @@ async function processarPagamentoPix(pagamento) {
 
 module.exports = {
   sincronizarAssinatura,
+  usuarioDaReferencia,
   processarPagamentoPix,
   temAssinaturaPagaAtiva,
-  usuarioDaReferencia,
 };

@@ -27,6 +27,11 @@ const usuarioSchema = new mongoose.Schema({
   // Alertas no Telegram (Pro). Só o hash do código de conexão é guardado.
   // Agenda assinável (.ics): quem tem o link vê os prazos; trocar o token revoga
   agendaToken: { type: String },
+  // Indique e ganhe
+  codigoIndicacao:         { type: String },
+  indicadoPor:             { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null, index: true },
+  indicacaoRecompensadaEm: { type: Date, default: null },
+  creditoDias:             { type: Number, default: 0 }, // dias de Pro guardados (bônus para quem paga no cartão)
   telegram: {
     chatId:       { type: String, default: null },
     conectadoEm:  { type: Date, default: null },
@@ -71,6 +76,7 @@ usuarioSchema.statics.migrarPlanosLegados = async function () {
   return premium.modifiedCount + gratuito.modifiedCount;
 };
 
+usuarioSchema.index({ codigoIndicacao: 1 }, { unique: true, partialFilterExpression: { codigoIndicacao: { $type: 'string' } } });
 usuarioSchema.index({ agendaToken: 1 }, { unique: true, partialFilterExpression: { agendaToken: { $type: 'string' } } });
 
 module.exports = mongoose.models.Usuario || mongoose.model('Usuario', usuarioSchema);

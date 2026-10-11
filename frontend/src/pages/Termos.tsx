@@ -29,8 +29,8 @@ export default function Termos() {
             texto: "O plano Pro oferece alertas ilimitados, checagens mais frequentes e os recursos descritos na página de planos, pelo preço ali informado. O Pro pode ser contratado por período mensal, semestral ou anual. A assinatura no cartão é cobrada no início de cada período escolhido e renovada automaticamente até ser cancelada. O pagamento via Pix libera o Pro pelo período comprado (30 dias, 6 meses ou 1 ano) e não é renovado automaticamente. Os pagamentos são processados pelo Mercado Pago. Mudanças de preço são avisadas por e-mail com pelo menos 30 dias de antecedência e não afetam períodos já pagos."
           },
           {
-            titulo: "5. Teste grátis",
-            texto: "Cada conta pode usar uma única vez o teste grátis do Pro, pelo número de dias informado na página de planos, sem precisar cadastrar cartão. Ao fim do teste, a conta volta automaticamente ao plano gratuito e os alertas acima do limite ficam pausados, sem cobrança."
+            titulo: "5. Teste grátis e indicações",
+            texto: "Cada conta pode usar uma única vez o teste grátis do Pro, pelo número de dias informado na página de planos, sem precisar cadastrar cartão. Ao fim do teste, a conta volta automaticamente ao plano gratuito e os alertas acima do limite ficam pausados, sem cobrança. Pelo programa Indique e ganhe, quem indica recebe dias de Pro quando a pessoa indicada faz o primeiro pagamento (até 12 recompensas por ano), e quem foi indicado ganha dias a mais no teste grátis. Recompensas obtidas com contas falsas, autoindicação ou pagamentos reembolsados podem ser canceladas, e o programa pode ser alterado ou encerrado a qualquer momento, sem afetar dias já concedidos de forma legítima."
           },
           {
             titulo: "6. Cancelamento e reembolso",

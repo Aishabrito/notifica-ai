@@ -64,7 +64,17 @@ async function processarPlanosExpirados() {
   const expirados  = candidatos.filter((u) => obterTipoPlanoEfetivo(u) === 'free');
 
   let alertasPausados = 0;
+  let usaramCredito = 0;
   for (const usuario of expirados) {
+    // Dias guardados (Indique e ganhe): viram Pro em vez de rebaixar
+    if (usuario.creditoDias > 0) {
+      const dias = usuario.creditoDias;
+      await Usuario.updateOne({ _id: usuario._id, creditoDias: dias }, {
+        $set: { creditoDias: 0, plano: { tipo: 'pro', status: 'ativo', validoAte: new Date(Date.now() + dias * DIA_MS), origem: 'cortesia', mpAssinaturaId: null, lembreteRenovacaoEm: null } },
+      });
+      usaramCredito += 1;
+      continue;
+    }
     try {
       const r = await aplicarDowngrade(usuario);
       alertasPausados += r.alertasPausados;
@@ -74,9 +84,9 @@ async function processarPlanosExpirados() {
   }
 
   if (expirados.length > 0) {
-    console.log(`[Plano] ${expirados.length} plano(s) expirado(s) — ${alertasPausados} alerta(s) pausado(s).`);
+    console.log(`[Plano] ${expirados.length} plano(s) expirado(s) — ${alertasPausados} alerta(s) pausado(s), ${usaramCredito} usaram dias de bônus.`);
   }
-  return { usuariosRebaixados: expirados.length, alertasPausados };
+  return { usuariosRebaixados: expirados.length - usaramCredito, alertasPausados, usaramCredito };
 }
 
 // ============================================
@@ -89,7 +99,7 @@ async function enviarEmailDowngrade(usuario, excedentes, { eraTeste = false } = 
       pausamos ${excedentes.length} monitoramento(s):</p>
       <ul>${excedentes.map((a) => `<li>${escaparHtml(a.titulo || a.url)}</li>`).join('')}</ul>
       <p>Eles voltam a funcionar automaticamente assim que você renovar o Pro.</p>`
-    : '<p>Seus alertas continuam ativos, agora com checagem a cada 24 horas.</p>';
+    : `<p>Seus alertas continuam ativos, agora com checagem a cada ${PLANOS.free.intervaloPadrao} horas.</p>`;
 
   await transportador.sendMail({
     from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,

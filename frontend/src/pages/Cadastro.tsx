@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
 import { Footer } from "../components/footer";
+import { lerIndicacao } from "../utils/indicacao";
 
 export default function Cadastro() {
   const { cadastrar } = useAuth();
@@ -82,6 +83,11 @@ export default function Cadastro() {
             <p className="font-mono text-[11px] text-neutral-600 tracking-[0.05em]">
               // comece a monitorar em 20 segundos. é grátis.
             </p>
+            {lerIndicacao() && (
+              <p className="mt-4 text-sm text-emerald-400 border border-emerald-400/30 bg-emerald-400/5 rounded-xl px-4 py-3">
+                🎁 Você foi convidado(a)! Ganha <strong>7 dias a mais</strong> no teste grátis do Pro.
+              </p>
+            )}
           </div>
 
           {/* Card */}

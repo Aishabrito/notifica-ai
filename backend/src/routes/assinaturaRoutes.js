@@ -10,6 +10,7 @@ const { SUBSCRIPTION_OFFERS, PIX_OFFERS, resolveOffer, resolvePixOffer } = requi
 const { obterTipoPlanoEfetivo, PLANOS } = require('../config/planos');
 const {
   sincronizarAssinatura,
+  usuarioDaReferencia,
   processarPagamentoPix,
   temAssinaturaPagaAtiva,
 } = require('../service/assinaturaService');
@@ -212,7 +213,8 @@ router.post('/teste-gratis', limiterAssinatura, autenticar, umaPorVez, async (re
       return res.status(403).json({ sucesso: false, codigo: 'EMAIL_NAO_VERIFICADO', mensagem: 'Confirme seu e-mail para liberar o teste grátis.' });
     }
 
-    const dias = diasTesteGratis();
+    // Indicado por um amigo: alguns dias a mais
+    const dias = diasTesteGratis() + require('../service/indicacao').diasExtraTeste(req.usuario);
     // Atômico: duas requisições simultâneas não geram dois testes
     const usuario = await Usuario.findOneAndUpdate(
       { _id: req.usuario._id, testeGratisUsadoEm: null },
@@ -333,9 +335,12 @@ webhookRouter.post('/mercadopago', async (req, res) => {
       resultado = await sincronizarAssinatura(await mp.buscarAssinatura(String(dataId)));
     } else if (tipo === 'subscription_authorized_payment') {
       const cobranca = await mp.buscarPagamentoAutorizado(String(dataId));
-      resultado = cobranca?.preapproval_id
-        ? await sincronizarAssinatura(await mp.buscarAssinatura(cobranca.preapproval_id))
-        : 'ignorada:sem-assinatura';
+      const assinaturaCobrada = cobranca?.preapproval_id ? await mp.buscarAssinatura(cobranca.preapproval_id) : null;
+      resultado = assinaturaCobrada ? await sincronizarAssinatura(assinaturaCobrada) : 'ignorada:sem-assinatura';
+      // Primeira cobrança aprovada no cartão: vale a recompensa de quem indicou
+      const aprovada = cobranca?.payment?.status === 'approved' || cobranca?.status === 'processed';
+      const pagante = assinaturaCobrada && usuarioDaReferencia(assinaturaCobrada.external_reference);
+      if (aprovada && pagante) await require('../service/indicacao').recompensarIndicacao(pagante);
     } else if (tipo === 'payment') {
       // Pix avulso (cobranças das assinaturas também chegam aqui e são ignoradas)
       resultado = await processarPagamentoPix(await mp.buscarPagamento(String(dataId)));

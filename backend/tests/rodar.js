@@ -21,6 +21,7 @@ const SUITES = [
   'teste-prazos.js',     // prazos, Código Vermelho, agenda e checklist
   'teste-posicao.js',    // minha posição na lista de espera
   'teste-editais.js',    // radar de editais por interesse
+  'teste-indicacao.js',  // indique e ganhe
 ];
 
 let falhas = 0;

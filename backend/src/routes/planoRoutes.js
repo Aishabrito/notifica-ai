@@ -35,7 +35,7 @@ router.get('/', autenticar, async (req, res) => {
       },
       testeGratis: {
         disponivel: !usuario.testeGratisUsadoEm && obterTipoPlanoEfetivo(usuario) === 'free',
-        dias: Math.min(30, Math.max(1, Number(process.env.TESTE_GRATIS_DIAS || 7))),
+        dias: Math.min(30, Math.max(1, Number(process.env.TESTE_GRATIS_DIAS || 7))) + require('../service/indicacao').diasExtraTeste(usuario),
         exigeEmailVerificado: !usuario.emailVerificado,
       },
       canais: {

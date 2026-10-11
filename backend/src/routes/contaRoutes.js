@@ -182,4 +182,14 @@ router.delete('/', limiter, autenticar, async (req, res) => {
   }
 });
 
+// ─── INDIQUE E GANHE ───────────────────────────────
+router.get('/indicacao', autenticar, async (req, res) => {
+  try {
+    res.json({ sucesso: true, ...(await require('../service/indicacao').resumoIndicacao(req.usuario)) });
+  } catch (err) {
+    console.error('[Indicação] Erro:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar suas indicações.' });
+  }
+});
+
 module.exports = router;

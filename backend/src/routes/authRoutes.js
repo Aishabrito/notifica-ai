@@ -40,6 +40,10 @@ router.post('/cadastro', async (req, res) => {
       return res.status(409).json({ sucesso: false, mensagem: 'E-mail já cadastrado.' });
 
     const usuario = await Usuario.create({ nome, email, senha });
+    if (req.body.indicacao) {
+      await require('../service/indicacao').vincularIndicacao(usuario, req.body.indicacao)
+        .catch((err) => console.error('[Indicação] Falha ao vincular:', err.message));
+    }
     const token   = gerarToken(usuario._id);
 
     // E-mail de boas-vindas em HTML (dispara sem bloquear a resposta)
