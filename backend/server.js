@@ -24,6 +24,7 @@ const verificacaoRoutes         = require('./src/routes/verificacaoRoutes');
 const radarRoutes               = require('./src/routes/radarRoutes');
 const contaRoutes               = require('./src/routes/contaRoutes');
 const { executarRadar, aoEncontrarOcorrencias } = require('./src/service/radar/radarService');
+const { executarRadarEditais } = require('./src/service/radar/editais');
 const { telegramRouter, webhookTelegramRouter } = require('./src/routes/telegramRoutes');
 const telegram                  = require('./src/service/telegram');
 const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
@@ -371,6 +372,11 @@ cron.schedule('40 7,19 * * *', async () => {
     await executarRadar();
   } catch (err) {
     console.error('[Radar] Erro na rodada agendada:', err.message);
+  }
+  try {
+    await executarRadarEditais();
+  } catch (err) {
+    console.error('[Editais] Erro na rodada agendada:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

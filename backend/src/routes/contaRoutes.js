@@ -166,6 +166,10 @@ router.delete('/', limiter, autenticar, async (req, res) => {
       LogRadar.deleteMany({ usuario: usuario._id }),
       MonitorRadar.deleteMany({ _id: { $in: monitores.map((m) => m._id) } }),
       Feedback.deleteMany({ email: usuario.email }),
+      require('../models/Prazo').deleteMany({ usuario: usuario._id }),
+      require('../models/InteresseEdital').InteresseEdital.deleteMany({ usuario: usuario._id }),
+      require('../models/InteresseEdital').EditalEncontrado.deleteMany({ usuario: usuario._id }),
+      require('../models/TarefaAdmin').deleteMany({ usuario: usuario._id }),
     ]);
     await Usuario.deleteOne({ _id: usuario._id });
 

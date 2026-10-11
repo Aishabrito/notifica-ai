@@ -76,6 +76,71 @@ router.get('/', limiterRadar, autenticar, async (req, res) => {
   }
 });
 
+// ─── RADAR DE EDITAIS POR INTERESSE ─────────────────
+const { InteresseEdital, EditalEncontrado } = require('../models/InteresseEdital');
+const { processarInteresse, MAX_INTERESSES } = require('../service/radar/editais');
+
+const interesseParaApi = (i) => ({
+  id: String(i._id), termo: i.termo, ativo: i.ativo, ultimaBuscaEm: i.ultimaBuscaEm,
+  cidades: i.cidades.map((id) => cidadePorId(id) ?? { id, nome: id }),
+});
+
+router.get('/editais', limiterRadar, autenticar, async (req, res) => {
+  try {
+    const [interesses, encontrados] = await Promise.all([
+      InteresseEdital.find({ usuario: req.usuario._id }).sort({ criadoEm: 1 }),
+      EditalEncontrado.find({ usuario: req.usuario._id }).sort({ dataPublicacao: -1, criadoEm: -1 }).limit(60).lean(),
+    ]);
+    res.json({
+      sucesso: true,
+      limite: MAX_INTERESSES,
+      interesses: interesses.map(interesseParaApi),
+      encontrados: encontrados.map((e) => ({
+        id: String(e._id), interesseId: String(e.interesse), diario: nomeDiario(e.cidadeId),
+        dataPublicacao: e.dataPublicacao, url: e.url, trechos: e.trechos,
+      })),
+    });
+  } catch (err) {
+    console.error('[Editais] Erro ao listar:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar o radar de editais.' });
+  }
+});
+
+// Body: { termo, cidades: [ids] } — já faz a primeira busca (últimos 7 dias), sem e-mail
+router.post('/editais', limiterRadar, autenticar, async (req, res) => {
+  try {
+    if (obterTipoPlanoEfetivo(req.usuario) !== 'pro') {
+      return res.status(403).json({ sucesso: false, codigo: 'LIMITE_PLANO', mensagem: 'O Radar de editais é exclusivo do plano Pro.' });
+    }
+    const termo = String(req.body?.termo ?? '').replace(/\s+/g, ' ').trim();
+    if (termo.length < 4 || termo.length > 80 || !/[\p{L}]{3}/u.test(termo)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Escreva o cargo ou área (ex.: técnico de enfermagem).' });
+    }
+    const cidades = Array.isArray(req.body?.cidades) ? [...new Set(req.body.cidades.map(String))] : [];
+    if (!cidades.length || cidades.some((id) => !cidadeDisponivel(id))) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Escolha ao menos um diário da lista.' });
+    }
+    if (await InteresseEdital.countDocuments({ usuario: req.usuario._id }) >= MAX_INTERESSES) {
+      return res.status(403).json({ sucesso: false, mensagem: `Você pode acompanhar até ${MAX_INTERESSES} cargos/áreas.` });
+    }
+    const interesse = await InteresseEdital.create({ usuario: req.usuario._id, termo, cidades });
+    interesse.usuario = req.usuario;
+    const r = await processarInteresse(interesse, { avisar: false }).catch(() => ({ novos: 0, erros: 1 }));
+    res.status(201).json({ sucesso: true, interesse: interesseParaApi(interesse), encontrados: r.novos });
+  } catch (err) {
+    console.error('[Editais] Erro ao cadastrar:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao cadastrar.' });
+  }
+});
+
+router.delete('/editais/:id', limiterRadar, autenticar, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Não encontrado.' });
+  const interesse = await InteresseEdital.findOneAndDelete({ _id: req.params.id, usuario: req.usuario._id });
+  if (!interesse) return res.status(404).json({ sucesso: false, mensagem: 'Não encontrado.' });
+  await EditalEncontrado.deleteMany({ interesse: interesse._id });
+  res.json({ sucesso: true });
+});
+
 // ─── CADASTRAR NOME ────────────────────────────────
 // Body: { nome, inscricao?, cpf?, cidades: [ids], consentimento: true }
 router.post('/', limiterRadar, autenticar, exigirRadarDisponivel, async (req, res) => {

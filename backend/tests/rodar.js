@@ -20,6 +20,7 @@ const SUITES = [
   'teste-tarefas.js',    // checklist de tarefas do admin
   'teste-prazos.js',     // prazos, Código Vermelho, agenda e checklist
   'teste-posicao.js',    // minha posição na lista de espera
+  'teste-editais.js',    // radar de editais por interesse
 ];
 
 let falhas = 0;
