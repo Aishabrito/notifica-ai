@@ -1,7 +1,7 @@
 const B = require('path').resolve(__dirname, '..');
 const ok = (c, m) => { console.log((c ? '✅' : '❌') + ' ' + m); if (!c) process.exitCode = 1; };
 (async () => {
-  Object.assign(process.env, { PERMITIR_REDE_PRIVADA: 'true', MONGODB_URI: 'mongodb://127.0.0.1:27017/notifica_testes', JWT_SECRET: 'x', PORT: '3998', RESEND_API_KEY: 're_fake', BASE_URL: 'http://localhost:3998' });
+  Object.assign(process.env, { FREE_MAX_ALERTAS: '3', PERMITIR_REDE_PRIVADA: 'true', MONGODB_URI: 'mongodb://127.0.0.1:27017/notifica_testes', JWT_SECRET: 'x', PORT: '3998', RESEND_API_KEY: 're_fake', BASE_URL: 'http://localhost:3998' });
   const mongoose = require(B + '/node_modules/mongoose');
   for (let i = 0; i < 30; i++) { try { await mongoose.connect(process.env.MONGODB_URI); break; } catch { await new Promise(r => setTimeout(r, 1000)); } }
   await mongoose.connection.dropDatabase();

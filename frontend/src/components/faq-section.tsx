@@ -8,7 +8,7 @@ const FAQ_ITEMS: FaqItem[] = [
   { q: "Com que frequência a página é verificada?",  a: "No plano gratuito, de 6 em 6 horas — quatro vezes por dia, todo dia. No plano Pro, você escolhe: a cada 6 horas, 1 hora ou 15 minutos. Para listas de espera com prazo de 2 dias, o Pro é o mais indicado." },
   { q: "Como cancelo um alerta?",                    a: "Todo e-mail tem um link de cancelamento no rodapé. Um clique e acabou — sem login, sem formulário, sem burocracia." },
   { q: "E se o site não mudar por semanas?",         a: "Você não recebe nenhum e-mail. Só avisamos quando algo muda de verdade — sem spam, sem notificações desnecessárias." },
-  { q: "Posso monitorar mais de um site?",           a: "No plano gratuito você tem 3 alertas ativos — dá para monitorar lista do SISU, resultado de concurso e edital de bolsa ao mesmo tempo. No Pro os alertas são ilimitados — e você ainda recebe um resumo do que mudou, feito por IA." },
+  { q: "Posso monitorar mais de um site?",           a: "No plano gratuito você monitora 1 página — ótimo para testar com a lista do SISU ou o edital que mais importa. No Pro os alertas são ilimitados: lista, resultado e edital ao mesmo tempo, com resumo do que mudou feito por IA e o Radar do Diário Oficial." },
 ];
 
 export const FaqSection = () => {

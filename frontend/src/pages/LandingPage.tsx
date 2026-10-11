@@ -90,23 +90,30 @@ function AlertCard({
 const API_URL = (import.meta.env.VITE_API_URL as string) || 'http://localhost:3000';
 
 function Planos() {
-  // Preço vem do backend (mesma fonte do checkout); sem resposta, mostra só "Pro"
-  const [preco, setPreco] = useState<number | null>(null);
+  // Preços e limites vêm do backend (mesma fonte do checkout); sem resposta, mostra só "Pro"
+  const [config, setConfig] = useState<{ menor: number; mensal: number; free?: { maxAlertas: number; intervaloHoras: number } } | null>(null);
   useEffect(() => {
     fetch(`${API_URL}/api/mp-config`, { cache: 'no-store' })
       .then((r) => r.json())
-      .then((d) => setPreco(d?.cartao?.valor ?? null))
+      .then((d) => {
+        const porMes: number[] = (d?.planos ?? []).map((p: { porMes: number }) => p.porMes);
+        const mensal = d?.cartao?.valor;
+        if (mensal) setConfig({ menor: porMes.length ? Math.min(...porMes) : mensal, mensal, free: d.free });
+      })
       .catch(() => {});
   }, []);
+  const brl = (v: number) => v.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const maxFree = config?.free?.maxAlertas ?? 1;
 
   const planos = [
     {
       nome: 'Grátis', preco: 'R$ 0', destaque: false, cta: 'Criar conta grátis',
-      itens: ['3 alertas ativos', 'Checagem a cada 6 horas', 'Aviso por e-mail'],
+      itens: [maxFree === 1 ? '1 página monitorada' : `${maxFree} páginas monitoradas`, `Checagem a cada ${config?.free?.intervaloHoras ?? 6} horas`, 'Aviso por e-mail'],
     },
     {
       nome: 'Pro', destaque: true, cta: 'Testar 7 dias grátis',
-      preco: preco ? `${preco.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}/mês` : 'Pro',
+      preco: config ? `a partir de ${brl(config.menor)}/mês` : 'Pro',
+      nota: config && config.menor < config.mensal ? `no plano anual · ou ${brl(config.mensal)} no mensal` : null,
       itens: [
         'Alertas ilimitados',
         'Checagem até a cada 15 minutos',
@@ -127,7 +134,8 @@ function Planos() {
         {planos.map((p) => (
           <div key={p.nome} className={`rounded-2xl p-8 border ${p.destaque ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10'}`}>
             <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 mb-2">{p.nome}</p>
-            <p className="text-3xl font-black mb-6">{p.preco}</p>
+            <p className={`text-3xl font-black ${'nota' in p && p.nota ? 'mb-1' : 'mb-6'}`}>{p.preco}</p>
+            {'nota' in p && p.nota && <p className="text-xs text-neutral-500 mb-6">{p.nota}</p>}
             <ul className="space-y-2 mb-8">
               {p.itens.map((i) => (
                 <li key={i} className="text-sm text-neutral-300 flex gap-2"><span className="text-emerald-400">✓</span>{i}</li>

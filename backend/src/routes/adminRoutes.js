@@ -99,16 +99,21 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }))
     };
 
-    // Receita: assinantes no cartão × preço mensal + Pix recebido nos últimos 30 dias
+    // Receita: assinaturas no cartão convertidas para valor por mês
+    // (semestral ÷ 6, anual ÷ 12) + Pix recebido nos últimos 30 dias
+    let precoMensal = 0;
+    try { precoMensal = SUBSCRIPTION_OFFERS()['pro-mensal'].amount; } catch { /* preço mal configurado */ }
     const proPorOrigem = { mercadopago: 0, pix: 0, cortesia: 0, teste: 0 };
+    let mrrCartao = 0;
     for (const u of usuariosRaw) {
       if (obterTipoPlanoEfetivo(u) !== 'pro') continue;
       const origem = u.plano?.origem;
       if (origem === 'mercadopago' && u.plano?.status !== 'ativo') continue; // cancelada: sem próxima cobrança
       if (origem in proPorOrigem) proPorOrigem[origem] += 1;
+      if (origem === 'mercadopago') {
+        mrrCartao += u.plano?.valorCobranca ? u.plano.valorCobranca / (u.plano.periodoMeses || 1) : precoMensal;
+      }
     }
-    let precoMensal = 0;
-    try { precoMensal = SUBSCRIPTION_OFFERS()['pro-mensal'].amount; } catch { /* preço mal configurado */ }
     const pix30d = await Transacao.aggregate([
       { $match: { tipo: 'pix', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
       { $group: { _id: null, total: { $sum: '$valor' }, quantidade: { $sum: 1 } } },
@@ -119,7 +124,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       proPix: proPorOrigem.pix,
       cortesias: proPorOrigem.cortesia,
       emTesteGratis: proPorOrigem.teste,
-      mrrCartao: Math.round(proPorOrigem.mercadopago * precoMensal * 100) / 100,
+      mrrCartao: Math.round(mrrCartao * 100) / 100,
       pixRecebido30d: Math.round((pix30d[0]?.total ?? 0) * 100) / 100,
       conversao: usuariosRaw.length ? Math.round((pagantes / usuariosRaw.length) * 1000) / 10 : 0,
     };

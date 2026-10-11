@@ -6,10 +6,12 @@ import api from "../services/Api";
 
 // ─── Tipos ─────────────────────────────────────────────────────────────
 interface OfertaPix { id: string; dias: number; valor: number; descricao: string }
+interface PlanoPeriodo { periodo: string; nome: string; meses: number; valor: number; porMes: number; economiaPct: number; cartaoId: string; pixId: string }
 interface MpConfig {
   publicKey: string | null;
   pagamentosAtivos: boolean;
   cartao: { id: string; valor: number };
+  planos?: PlanoPeriodo[];
   pix: OfertaPix[];
 }
 interface PlanoInfo {
@@ -26,7 +28,7 @@ type Estado = { tipo: "" | "processando" | "sucesso" | "erro"; texto: string };
 // Estados da assinatura no Mercado Pago (a API usa "cancelled")
 const STATUS_ASSINATURA: Record<string, string> = {
   pending: "Aguardando pagamento",
-  authorized: "Ativa — renova todo mês",
+  authorized: "Ativa — renova sozinha",
   paused: "Pausada",
   cancelled: "Cancelada",
   canceled: "Cancelada",
@@ -79,6 +81,7 @@ export default function Planos() {
   const [assinaturaStatus, setAssinaturaStatus] = useState<string | null>(null);
   const [carregando, setCarregando] = useState(true);
   const [metodo, setMetodo] = useState<"cartao" | "pix">("cartao");
+  const [periodo, setPeriodo] = useState("anual");
   const [estado, setEstado] = useState<Estado>({ tipo: "", texto: "" });
   const [pix, setPix] = useState<PixGerado | null>(null);
   const [copiado, setCopiado] = useState(false);
@@ -114,6 +117,14 @@ export default function Planos() {
     })();
   }, []);
 
+  // Planos por período (servidor antigo sem "planos": só o mensal)
+  const planos: PlanoPeriodo[] = config?.planos?.length
+    ? config.planos
+    : config ? [{ periodo: "mensal", nome: "Mensal", meses: 1, valor: config.cartao.valor, porMes: config.cartao.valor, economiaPct: 0, cartaoId: config.cartao.id, pixId: config.pix[0]?.id }] : [];
+  const planoEscolhido = planos.find((p) => p.periodo === periodo) ?? planos[planos.length - 1];
+  const menorPorMes = planos.length ? Math.min(...planos.map((p) => p.porMes)) : 0;
+  const descricaoCobranca = (p: PlanoPeriodo) => p.meses === 1 ? `${brl(p.valor)} por mês` : `${brl(p.valor)} a cada ${p.meses === 12 ? "ano" : `${p.meses} meses`}`;
+
   const ehPro = info?.plano.efetivo === "pro";
   const temCartao = info?.plano.origem === "mercadopago" && info.plano.status === "ativo";
   const podeAssinarCartao = !temCartao;
@@ -121,7 +132,7 @@ export default function Planos() {
 
   // ─── Cartão: Card Payment Brick (o cartão é tokenizado pelo Mercado Pago) ─
   useEffect(() => {
-    if (metodo !== "cartao" || !config?.pagamentosAtivos || !config.publicKey || !info || !podeAssinarCartao) return;
+    if (metodo !== "cartao" || !config?.pagamentosAtivos || !config.publicKey || !info || !podeAssinarCartao || !planoEscolhido) return;
     let cancelado = false;
 
     (async () => {
@@ -130,7 +141,7 @@ export default function Planos() {
         if (cancelado || !window.MercadoPago) return;
         const mp = new window.MercadoPago(config.publicKey!, { locale: "pt-BR" });
         brickRef.current = await mp.bricks().create("cardPayment", "cardPaymentBrick_container", {
-          initialization: { amount: config.cartao.valor, payer: { email: usuario?.email } },
+          initialization: { amount: planoEscolhido!.valor, payer: { email: usuario?.email } },
           customization: {
             visual: { style: { theme: "dark" }, texts: { formSubmit: "Assinar Pro" } },
             paymentMethods: { maxInstallments: 1, types: { excluded: ["debit_card"] } },
@@ -144,7 +155,7 @@ export default function Planos() {
               inFlight.current = true;
               setIsSubmitting(true);
               setEstado({ tipo: "processando", texto: "Processando pagamento…" });
-              api.post("/api/assinatura/cartao", { offerId: config.cartao.id, cardToken: dados.token })
+              api.post("/api/assinatura/cartao", { offerId: planoEscolhido!.cartaoId, cardToken: dados.token })
                 .then(async () => {
                   setEstado({ tipo: "sucesso", texto: "Pagamento aprovado! Você agora é Pro 🚀" });
                   await carregarPlano();
@@ -169,7 +180,7 @@ export default function Planos() {
       brickRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [metodo, config, info?.plano.origem, info?.plano.status]);
+  }, [metodo, config, periodo, info?.plano.origem, info?.plano.status]);
 
   // ─── Pix ───────────────────────────────────────────────────────────────
   const gerarPix = async (oferta: OfertaPix) => {
@@ -338,7 +349,7 @@ export default function Planos() {
                 <div key={p} className={`rounded-2xl border p-6 ${p === "pro" ? "border-purple-500/40 bg-purple-500/5" : "border-neutral-800"}`}>
                   <p className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 mb-1">{p === "pro" ? "Pro" : "Gratuito"}</p>
                   <p className="text-3xl font-black mb-4">
-                    {p === "pro" ? <>{brl(config?.cartao.valor ?? 0)}<span className="text-sm text-neutral-500 font-normal">/mês</span></> : "R$ 0"}
+                    {p === "pro" ? <><span className="text-sm text-neutral-500 font-normal">a partir de </span>{brl(menorPorMes)}<span className="text-sm text-neutral-500 font-normal">/mês</span></> : "R$ 0"}
                   </p>
                   <ul className="space-y-2">
                     {RECURSOS.map((r) => (
@@ -361,6 +372,21 @@ export default function Planos() {
                   {ehPro ? "Renovar ou trocar a forma de pagamento" : "Assinar o Pro"}
                 </h2>
 
+                {/* PERÍODO */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                  {planos.map((p) => (
+                    <button key={p.periodo} onClick={() => { setPeriodo(p.periodo); setPix(null); }}
+                      className={`relative text-left rounded-xl border p-4 transition-colors ${planoEscolhido?.periodo === p.periodo ? "border-emerald-400 bg-emerald-400/5" : "border-neutral-800 hover:border-neutral-600"}`}>
+                      {p.economiaPct > 0 && (
+                        <span className="absolute -top-2.5 right-3 font-mono text-[10px] font-bold bg-emerald-400 text-black px-2 py-0.5 rounded-full">-{p.economiaPct}%</span>
+                      )}
+                      <p className="font-bold text-sm">{p.nome}</p>
+                      <p className="text-2xl font-black text-emerald-400">{brl(p.porMes)}<span className="text-xs text-neutral-500 font-normal">/mês</span></p>
+                      <p className="text-[11px] text-neutral-500 mt-1">{p.meses === 1 ? "cobrado todo mês" : `${brl(p.valor)} ${p.meses === 12 ? "por ano" : `a cada ${p.meses} meses`}`}</p>
+                    </button>
+                  ))}
+                </div>
+
                 <div className="flex gap-2 mb-6">
                   {podeAssinarCartao && (
                     <button onClick={() => { setMetodo("cartao"); setPix(null); }} className={`font-mono text-xs px-4 py-2 rounded-lg border ${metodo === "cartao" ? "border-emerald-400 text-emerald-400" : "border-neutral-800 text-neutral-500"}`}>
@@ -377,7 +403,7 @@ export default function Planos() {
                 {metodo === "cartao" && podeAssinarCartao && (
                   <>
                     <p className="text-xs text-neutral-500 mb-4">
-                      {brl(config.cartao.valor)} por mês. Cancele quando quiser pelo painel.
+                      {planoEscolhido && descricaoCobranca(planoEscolhido)}, renovando sozinho. Cancele quando quiser pelo painel.
                       {ehPro && info?.plano.validoAte && <> A primeira cobrança só acontece quando seus dias de Pro atuais acabarem ({dataBR(info.plano.validoAte)}).</>}
                     </p>
                     {/* Formulário seguro do Mercado Pago: os dados do cartão nunca passam pelo nosso servidor */}
@@ -385,17 +411,19 @@ export default function Planos() {
                   </>
                 )}
 
-                {metodo === "pix" && podePagarPix && !pix && (
-                  <div className="grid sm:grid-cols-2 gap-3">
-                    {config.pix.map((o) => (
-                      <button key={o.id} disabled={isSubmitting} onClick={() => gerarPix(o)} className="text-left border border-neutral-800 hover:border-emerald-400/50 rounded-xl p-4 disabled:opacity-50 transition-colors">
-                        <p className="font-bold">{o.dias >= 365 ? "1 ano" : `${o.dias} dias`}</p>
-                        <p className="text-2xl font-black text-emerald-400">{brl(o.valor)}</p>
-                        {o.dias >= 365 && <p className="text-xs text-neutral-500 mt-1">equivale a {brl(o.valor / 12)}/mês</p>}
+                {metodo === "pix" && podePagarPix && !pix && planoEscolhido && (() => {
+                  const oferta = config.pix.find((o) => o.id === planoEscolhido.pixId);
+                  if (!oferta) return <p className="text-sm text-neutral-500">Este período não está disponível no Pix.</p>;
+                  return (
+                    <div className="space-y-3">
+                      <p className="text-xs text-neutral-500">Pagamento único: {oferta.dias >= 365 ? "1 ano" : `${oferta.dias} dias`} de Pro. Avisamos por e-mail antes de acabar.</p>
+                      <button disabled={isSubmitting} onClick={() => gerarPix(oferta)}
+                        className="font-mono text-xs bg-emerald-400 text-black font-bold px-6 py-3 rounded-lg disabled:opacity-50">
+                        Gerar Pix de {brl(oferta.valor)} →
                       </button>
-                    ))}
-                  </div>
-                )}
+                    </div>
+                  );
+                })()}
 
                 {pix && (
                   <div className="flex flex-col items-center text-center gap-4">

@@ -46,6 +46,12 @@ const srv = http.createServer((req, res) => {
   const tu = jwt.sign({ id: u._id }, 'x');
   r = await call('POST', '/api/cadastrar-alerta', tu, { url: MODELOS[0].url });
   ok(r.status === 200 && r.data.titulo === 'Banca', 'modelo pronto vira alerta pelo cadastro normal (respeita o limite do plano)');
+  r = await call('POST', '/api/cadastrar-alerta', tu, { url: 'http://127.0.0.1:4581/bom?2' });
+  ok(r.status === 403 && /1 alerta ativo/.test(r.data.mensagem), 'Free padrão: 1 página monitorada (a 2ª pede upgrade, com o texto no singular)');
+  r = await call('GET', '/api/mp-config');
+  ok(r.data.free?.maxAlertas === 1 && r.data.free.intervaloHoras === 6, 'configuração pública informa os limites do Free para a landing');
+  r = await call('GET', '/api/plano', tu);
+  ok(r.data.uso.limiteAlertas === 1, 'GET /api/plano: limite 1 no Free');
 
   // ── saúde do sistema
   r = await call('GET', '/api/admin/saude', tu);

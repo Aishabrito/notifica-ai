@@ -5,7 +5,7 @@ const ok = (c, m) => { console.log((c ? '✅' : '❌') + ' ' + m); if (!c) proce
 
 (async () => {
     process.env.MONGODB_URI = 'mongodb://127.0.0.1:27017/notifica_testes';
-  process.env.JWT_SECRET = 'x'; process.env.PERMITIR_REDE_PRIVADA = 'true'; process.env.PORT = '3997'; process.env.RESEND_API_KEY = 're_fake';
+  process.env.JWT_SECRET = 'x'; process.env.FREE_MAX_ALERTAS = '3'; process.env.PERMITIR_REDE_PRIVADA = 'true'; process.env.PORT = '3997'; process.env.RESEND_API_KEY = 're_fake';
   const mongoose = require(B + '/node_modules/mongoose');
   await mongoose.connect(process.env.MONGODB_URI);
   await mongoose.connection.dropDatabase();

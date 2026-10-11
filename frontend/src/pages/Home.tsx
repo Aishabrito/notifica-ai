@@ -48,7 +48,7 @@ export default function Home() {
   const [emailManual, setEmailManual] = useState("");
   const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
   // Limite de alertas ativos vindo do backend (null = ilimitado, plano Pro)
-  const [limite, setLimite]           = useState<number | null>(3);
+  const [limite, setLimite]           = useState<number | null>(1);
   const [ehPro, setEhPro]             = useState(false);
   const [intervalos, setIntervalos]   = useState<number[]>([6]);
   const [intervaloPadrao, setIntervaloPadrao] = useState(6);
@@ -312,7 +312,7 @@ export default function Home() {
           {ativos >= LIMITE ? (
             <div className="text-center py-4">
               <p className="text-sm text-neutral-500 mb-3">
-                Limite de <strong className="text-white">{limite} alertas</strong> atingido no plano gratuito.
+                Limite de <strong className="text-white">{limite === 1 ? "1 página" : `${limite} páginas`}</strong> do plano gratuito atingido. No Pro você monitora quantas quiser.
               </p>
               <button
                 onClick={() => navigate("/planos")}

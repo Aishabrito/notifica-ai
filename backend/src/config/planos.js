@@ -10,10 +10,17 @@ const INTERVALO_FREE = [6, 12, 24].includes(Number(process.env.FREE_INTERVALO_HO
   ? Number(process.env.FREE_INTERVALO_HORAS)
   : 6;
 
+// Quantas páginas o Free monitora ao mesmo tempo (padrão: 1 — o suficiente
+// para experimentar; o resto é Pro). Quem já tinha mais alertas ativos antes
+// de uma redução continua com eles; o limite vale para novos cadastros.
+const MAX_ALERTAS_FREE = Number.isInteger(Number(process.env.FREE_MAX_ALERTAS)) && Number(process.env.FREE_MAX_ALERTAS) > 0
+  ? Number(process.env.FREE_MAX_ALERTAS)
+  : 1;
+
 const PLANOS = {
   free: {
     nome: 'Gratuito',
-    maxAlertasAtivos: 3,
+    maxAlertasAtivos: MAX_ALERTAS_FREE,
     intervalosPermitidos: [INTERVALO_FREE],
     intervaloPadrao: INTERVALO_FREE,
   },
@@ -47,4 +54,7 @@ function intervaloEfetivo(alerta, usuario) {
   return regras.intervalosPermitidos.includes(intervalo) ? intervalo : regras.intervaloPadrao;
 }
 
-module.exports = { PLANOS, obterTipoPlanoEfetivo, obterRegrasPlano, intervaloEfetivo };
+// "1 alerta" / "3 alertas"
+const alertasTexto = (n) => `${n} ${n === 1 ? 'alerta ativo' : 'alertas ativos'}`;
+
+module.exports = { alertasTexto, PLANOS, obterTipoPlanoEfetivo, obterRegrasPlano, intervaloEfetivo };

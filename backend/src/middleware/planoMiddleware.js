@@ -1,5 +1,5 @@
 const Alerta = require('../models/alertaModel');
-const { obterRegrasPlano } = require('../config/planos');
+const { obterRegrasPlano, alertasTexto } = require('../config/planos');
 
 // Retorna null se o usuário ainda pode ter mais um alerta ativo,
 // ou a mensagem de erro caso o limite do plano já tenha sido atingido.
@@ -10,7 +10,7 @@ async function checarLimiteAlertas(usuario) {
   const ativos = await Alerta.countDocuments({ usuario: usuario._id, status: 'ativo' });
   if (ativos < regras.maxAlertasAtivos) return null;
 
-  return `Limite de ${regras.maxAlertasAtivos} alertas ativos do plano ${regras.nome} atingido. ` +
+  return `Limite de ${alertasTexto(regras.maxAlertasAtivos)} do plano ${regras.nome} atingido. ` +
     'Faça upgrade para o Pro para monitorar sem limites.';
 }
 

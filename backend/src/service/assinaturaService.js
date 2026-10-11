@@ -12,9 +12,18 @@ const { emailPremium } = require('../utils/emailPremium');
 const DIAS_TOLERANCIA = 3;
 const DIA_MS = 24 * 60 * 60 * 1000;
 
+const mesesDaAssinatura = (assinatura) => {
+  const r = assinatura?.auto_recurring;
+  const n = Number(r?.frequency);
+  if (!Number.isFinite(n) || n <= 0) return 1;
+  return r?.frequency_type === 'days' ? n / 30 : n;
+};
+
 function calcularValidoAte(assinatura) {
   const proxima = assinatura.next_payment_date ? new Date(assinatura.next_payment_date) : null;
-  const base = proxima && !Number.isNaN(proxima.getTime()) ? proxima : new Date(Date.now() + 30 * DIA_MS);
+  const base = proxima && !Number.isNaN(proxima.getTime())
+    ? proxima
+    : new Date(Date.now() + Math.round(mesesDaAssinatura(assinatura) * 30) * DIA_MS);
   return new Date(base.getTime() + DIAS_TOLERANCIA * DIA_MS);
 }
 
@@ -70,6 +79,8 @@ async function sincronizarAssinatura(assinatura) {
       origem: 'mercadopago',
       mpAssinaturaId: id,
       lembreteRenovacaoEm: null,
+      periodoMeses: mesesDaAssinatura(assinatura),
+      valorCobranca: Number(assinatura.auto_recurring?.transaction_amount) || null,
     };
     await usuario.save();
 

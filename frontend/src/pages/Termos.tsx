@@ -22,11 +22,11 @@ export default function Termos() {
           },
           {
             titulo: "3. Plano gratuito",
-            texto: "O plano gratuito permite até 3 alertas ativos simultaneamente, com checagem a cada 6 horas. Esses limites podem ser alterados mediante aviso prévio por e-mail."
+            texto: "O plano gratuito permite monitorar 1 página por vez, com checagem a cada 6 horas. Esses limites podem ser alterados mediante aviso prévio por e-mail; quem já tinha mais alertas ativos antes de uma redução continua com eles."
           },
           {
             titulo: "4. Plano Pro, preço e renovação",
-            texto: "O plano Pro oferece alertas ilimitados, checagens mais frequentes e os recursos descritos na página de planos, pelo preço ali informado. A assinatura no cartão é renovada automaticamente todo mês até ser cancelada. O pagamento via Pix libera o Pro pelo período comprado (30 dias ou 1 ano) e não é renovado automaticamente. Os pagamentos são processados pelo Mercado Pago. Mudanças de preço são avisadas por e-mail com pelo menos 30 dias de antecedência e não afetam períodos já pagos."
+            texto: "O plano Pro oferece alertas ilimitados, checagens mais frequentes e os recursos descritos na página de planos, pelo preço ali informado. O Pro pode ser contratado por período mensal, semestral ou anual. A assinatura no cartão é cobrada no início de cada período escolhido e renovada automaticamente até ser cancelada. O pagamento via Pix libera o Pro pelo período comprado (30 dias, 6 meses ou 1 ano) e não é renovado automaticamente. Os pagamentos são processados pelo Mercado Pago. Mudanças de preço são avisadas por e-mail com pelo menos 30 dias de antecedência e não afetam períodos já pagos."
           },
           {
             titulo: "5. Teste grátis",

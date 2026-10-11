@@ -7,9 +7,9 @@ const DIA = 864e5;
 (async () => {
   Object.assign(process.env, { PERMITIR_REDE_PRIVADA: 'true',
     MONGODB_URI: 'mongodb://127.0.0.1:27017/notifica_testes', JWT_SECRET: 'x', PORT: '3994', RESEND_API_KEY: 're_fake', BASE_URL: 'http://x',
-    MP_ACCESS_TOKEN: 'tok', MP_PUBLIC_KEY: 'pub-123', MP_WEBHOOK_SECRET: 'segredo123', MP_PRECO_MENSAL: '29.90', FRONTEND_URL: 'https://notifica.dev.br',
+    MP_ACCESS_TOKEN: 'tok', MP_PUBLIC_KEY: 'pub-123', MP_WEBHOOK_SECRET: 'segredo123', MP_PRECO_MENSAL: '29.90', MP_PRECO_ANUAL: '299', FRONTEND_URL: 'https://notifica.dev.br',
   });
-  delete process.env.MP_PRECO_PIX_ANUAL; delete process.env.MP_PRECO_PIX_30_DIAS;
+  delete process.env['MP_PRECO_SEMESTRAL'];
   const mongoose = require(B + '/node_modules/mongoose');
   for (let i = 0; i < 30; i++) { try { await mongoose.connect(process.env.MONGODB_URI); break; } catch { await sleep(1000); } }
   await mongoose.connection.dropDatabase();
@@ -23,7 +23,7 @@ const DIA = 864e5;
     chamadas.criar.push(args);
     if (recusarCartao) throw new mp.ErroMercadoPago(400, { message: 'Card token invalid', cause: [{ code: 'x', description: 'invalid card' }] });
     const id = 'pre_' + chamadas.criar.length;
-    pre[id] = { id, status: statusCriado, external_reference: args.externalReference, next_payment_date: new Date(Date.now() + 30 * DIA).toISOString(), auto_recurring: { transaction_amount: args.trustedOffer.amount } };
+    pre[id] = { id, status: statusCriado, external_reference: args.externalReference, next_payment_date: new Date(Date.now() + 30 * DIA).toISOString(), auto_recurring: { transaction_amount: args.trustedOffer.amount, frequency: args.trustedOffer.frequency, frequency_type: 'months' } };
     return pre[id];
   };
   mp.buscarAssinatura = async (id) => { if (!pre[id]) throw new mp.ErroMercadoPago(404, { message: 'not found' }); return pre[id]; };
@@ -57,7 +57,11 @@ const DIA = 864e5;
   // ── configuração pública
   let r = await call('GET', '/api/mp-config');
   ok(r.status === 200 && r.data.publicKey === 'pub-123' && r.data.cartao.valor === 29.9 && r.headers.get('cache-control').includes('no-store'), '/api/mp-config: chave pública + preço, sem cache');
-  ok(r.data.pix.find(p => p.id === 'pix-anual').valor === 299 && r.data.pix.find(p => p.id === 'pix-30-dias').dias === 30, 'ofertas Pix: 30 dias (R$ 29,90) e anual (10x = R$ 299)');
+  ok(r.data.pix.find(p => p.id === 'pix-anual').valor === 299 && r.data.pix.find(p => p.id === 'pix-30-dias').dias === 30, 'ofertas Pix: 30 dias (R$ 29,90) e anual (R$ 299)');
+  const sem = r.data.planos.find(p => p.periodo === 'semestral'), anu = r.data.planos.find(p => p.periodo === 'anual');
+  ok(r.data.planos.length === 3 && sem.valor === 90 && sem.porMes === 15 && sem.meses === 6 && sem.cartaoId === 'pro-semestral' && sem.pixId === 'pix-semestral' && anu.porMes === 24.92 && anu.economiaPct === 17 && r.data.planos[0].economiaPct === 0,
+    'planos mensal/semestral/anual: total, valor por mês e economia (semestral padrão R$ 90 = R$ 15/mês)');
+  ok(r.data.pix.find(p => p.id === 'pix-semestral').dias === 182, 'Pix semestral dá 182 dias');
 
   // ── CARTÃO
   const { u: ana, t: tAna } = await novoUsuario('ana@x.com');
@@ -192,6 +196,15 @@ const DIA = 864e5;
   const rec = r.data.dados.receita;
   ok(rec && rec.assinantesCartao === 2 && rec.mrrCartao === 59.8 && rec.pixRecebido30d === 328.9 && rec.proPix >= 1 && rec.cortesias === 1 && rec.conversao > 0,
     `admin: receita (cartão ${rec?.assinantesCartao}× = R$ ${rec?.mrrCartao}/mês, Pix 30d R$ ${rec?.pixRecebido30d}, conversão ${rec?.conversao}%)`);
+
+  // ── assinatura semestral no cartão: cobra R$ 90 a cada 6 meses; receita conta R$ 15/mês
+  const { u: semU, t: tSem } = await novoUsuario('sem@x.com');
+  r = await call('POST', '/api/assinatura/cartao', tSem, { offerId: 'pro-semestral', cardToken: 'tok_sem' });
+  const cSem = chamadas.criar.at(-1);
+  const uSem = await Usuario.findById(semU._id);
+  ok(r.status === 200 && cSem.trustedOffer.frequency === 6 && cSem.trustedOffer.amount === 90 && uSem.plano.periodoMeses === 6 && uSem.plano.valorCobranca === 90, 'cartão semestral: recorrência de 6 meses, R$ 90');
+  r = await call('GET', '/api/admin/dashboard', jwt.sign({ id: adm._id }, 'x'));
+  ok(r.data.dados.receita.mrrCartao === 74.8, `receita mensal soma o semestral como R$ 15/mês (${r.data.dados.receita.mrrCartao})`);
 
   // ── assinatura antiga (external_reference = só o id do usuário) continua funcionando
   const { u: velha } = await novoUsuario('velha@x.com');

@@ -7,7 +7,7 @@ const Usuario   = require('../models/Usuario');
 const { reativarAlertasPausadosPorPlano } = require('../service/planoService');
 const mp = require('../service/mercadoPago');
 const { SUBSCRIPTION_OFFERS, PIX_OFFERS, resolveOffer, resolvePixOffer } = require('../config/ofertas');
-const { obterTipoPlanoEfetivo } = require('../config/planos');
+const { obterTipoPlanoEfetivo, PLANOS } = require('../config/planos');
 const {
   sincronizarAssinatura,
   processarPagamentoPix,
@@ -18,7 +18,7 @@ const router = express.Router();
 
 const limiterAssinatura = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 20,
+  max: 30,
   standardHeaders: true,
   legacyHeaders: false,
   message: { sucesso: false, mensagem: 'Muitas tentativas. Aguarde alguns minutos.' },
@@ -53,13 +53,22 @@ const novaReferencia = (usuario, tipo) => `${usuario._id}:${tipo}:${crypto.rando
 function mpConfigHandler(_req, res) {
   res.set('Cache-Control', 'no-store, max-age=0');
   try {
-    const cartao = SUBSCRIPTION_OFFERS()['pro-mensal'];
+    const ofertas = Object.values(SUBSCRIPTION_OFFERS());
+    const mensal = ofertas.find((o) => o.meses === 1);
     res.json({
       sucesso: true,
       publicKey: process.env.MP_PUBLIC_KEY || null,
       pagamentosAtivos: mp.mercadoPagoConfigurado() && Boolean(process.env.MP_PUBLIC_KEY),
-      cartao: { id: cartao.id, valor: cartao.amount },
-      pix: Object.values(PIX_OFFERS()).map((o) => ({ id: o.id, dias: o.dias, valor: o.amount, descricao: o.descricao })),
+      // compatibilidade com o front antigo: oferta mensal
+      cartao: { id: mensal.id, valor: mensal.amount },
+      // períodos (mensal, semestral, anual) com a economia em relação ao mensal
+      planos: ofertas.map((o) => ({
+        periodo: o.periodo, nome: o.nome, meses: o.meses, valor: o.amount, porMes: o.porMes,
+        economiaPct: Math.max(0, Math.round((1 - o.porMes / mensal.porMes) * 100)),
+        cartaoId: o.id, pixId: Object.values(PIX_OFFERS()).find((p) => p.periodo === o.periodo)?.id,
+      })),
+      pix: Object.values(PIX_OFFERS()).map((o) => ({ id: o.id, dias: o.dias, valor: o.amount, descricao: o.descricao, periodo: o.periodo, meses: o.meses })),
+      free: { maxAlertas: PLANOS.free.maxAlertasAtivos, intervaloHoras: PLANOS.free.intervaloPadrao },
     });
   } catch (err) {
     console.error('[Assinatura] Configuração de preços inválida:', err.message);

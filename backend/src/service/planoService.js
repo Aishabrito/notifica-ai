@@ -2,7 +2,7 @@ const transportador = require('../utils/mailer');
 const Usuario       = require('../models/Usuario');
 const Alerta        = require('../models/alertaModel');
 const MonitorRadar  = require('../models/MonitorRadar');
-const { PLANOS, obterTipoPlanoEfetivo } = require('../config/planos');
+const { PLANOS, obterTipoPlanoEfetivo, alertasTexto } = require('../config/planos');
 const { escaparHtml } = require('../utils/html');
 
 const PLANO_FREE = { tipo: 'free', status: 'ativo', validoAte: null, origem: null, mpAssinaturaId: null, lembreteRenovacaoEm: null };
@@ -85,7 +85,7 @@ async function processarPlanosExpirados() {
 async function enviarEmailDowngrade(usuario, excedentes, { eraTeste = false } = {}) {
   const listaPausados = excedentes.length > 0
     ? `
-      <p>Como o plano gratuito permite até <b>${PLANOS.free.maxAlertasAtivos} alertas ativos</b>,
+      <p>Como o plano gratuito permite até <b>${alertasTexto(PLANOS.free.maxAlertasAtivos)}</b>,
       pausamos ${excedentes.length} monitoramento(s):</p>
       <ul>${excedentes.map((a) => `<li>${escaparHtml(a.titulo || a.url)}</li>`).join('')}</ul>
       <p>Eles voltam a funcionar automaticamente assim que você renovar o Pro.</p>`

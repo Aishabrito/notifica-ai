@@ -12,6 +12,9 @@ const usuarioSchema = new mongoose.Schema({
     // Quem concedeu o Pro: assinatura paga ou cortesia dada pelo admin
     origem:         { type: String, enum: ['mercadopago', 'pix', 'cortesia', 'teste', null], default: null },
     mpAssinaturaId: { type: String, default: null }, // preapproval_id do Mercado Pago
+    // Assinatura no cartão: de quantos em quantos meses cobra e o valor cobrado
+    periodoMeses:   { type: Number, default: null },
+    valorCobranca:  { type: Number, default: null },
     // Pix não renova sozinho: data do último lembrete de renovação enviado
     lembreteRenovacaoEm: { type: Date, default: null },
   },
