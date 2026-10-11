@@ -47,6 +47,8 @@ router.get('/', autenticar, async (req, res) => {
       origemPlano: u.plano?.origem ?? null,
       telegramConectado: Boolean(u.telegram?.chatId),
       resumoSemanal: u.resumoSemanal !== false,
+      perfil: u.perfil ?? null,
+      boasVindasConcluida: Boolean(u.boasVindasConcluidaEm),
     },
   });
 });
@@ -63,9 +65,20 @@ router.patch('/', limiter, autenticar, async (req, res) => {
 
 // ─── PREFERÊNCIAS ──────────────────────────────────
 router.patch('/preferencias', limiter, autenticar, async (req, res) => {
-  if (typeof req.body?.resumoSemanal !== 'boolean') return res.status(400).json({ sucesso: false, mensagem: 'Nada para salvar.' });
-  await Usuario.updateOne({ _id: req.usuario._id }, { $set: { resumoSemanal: req.body.resumoSemanal } });
-  res.json({ sucesso: true, mensagem: req.body.resumoSemanal ? 'Resumo semanal ativado.' : 'Resumo semanal desativado.' });
+  const b = req.body ?? {};
+  const set = {};
+  if (typeof b.resumoSemanal === 'boolean') set.resumoSemanal = b.resumoSemanal;
+  if (b.perfil !== undefined) {
+    if (!['vestibulando', 'lista-espera', 'concurseiro', 'aprovado', null].includes(b.perfil)) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Perfil inválido.' });
+    }
+    set.perfil = b.perfil;
+  }
+  if (b.boasVindasConcluida === true) set.boasVindasConcluidaEm = new Date();
+  if (!Object.keys(set).length) return res.status(400).json({ sucesso: false, mensagem: 'Nada para salvar.' });
+  await Usuario.updateOne({ _id: req.usuario._id }, { $set: set });
+  const mensagem = 'resumoSemanal' in set ? (set.resumoSemanal ? 'Resumo semanal ativado.' : 'Resumo semanal desativado.') : 'Preferências salvas.';
+  res.json({ sucesso: true, mensagem });
 });
 
 // ─── TROCAR SENHA ──────────────────────────────────

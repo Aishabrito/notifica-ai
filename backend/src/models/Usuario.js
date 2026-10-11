@@ -34,6 +34,9 @@ const usuarioSchema = new mongoose.Schema({
   creditoDias:             { type: Number, default: 0 },
   // Resumo semanal por e-mail (segunda de manhã)
   resumoSemanal:          { type: Boolean, default: true },
+  // Perfil escolhido no primeiro acesso (personaliza o painel e as sugestões)
+  perfil:                 { type: String, enum: ['vestibulando', 'lista-espera', 'concurseiro', 'aprovado', null], default: null },
+  boasVindasConcluidaEm:  { type: Date, default: null },
   resumoSemanalEnviadoEm: { type: Date, default: null }, // dias de Pro guardados (bônus para quem paga no cartão)
   telegram: {
     chatId:       { type: String, default: null },

@@ -4,6 +4,7 @@ import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
 import Novidades from "../components/Novidades";
 import AtivarNotificacoes from "../components/AtivarNotificacoes";
+import BoasVindas from "../components/BoasVindas";
 import { CHAVE_PASTA_PENDENTE } from "./PastaPublica";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -91,6 +92,13 @@ export default function Home() {
 
   useEffect(() => {
     if (usuario) carregarPlano();
+  }, [usuario]);
+
+  // Boas-vindas: aparece até a pessoa escolher o perfil (ou pular)
+  const [mostrarBoasVindas, setMostrarBoasVindas] = useState(false);
+  useEffect(() => {
+    if (!usuario) return;
+    api.get("/api/conta").then(({ data }) => setMostrarBoasVindas(!data.conta?.boasVindasConcluida)).catch(() => {});
   }, [usuario]);
 
   const alterarFrequencia = async (id: string, intervaloHoras: number) => {
@@ -314,8 +322,11 @@ export default function Home() {
           </div>
         )}
 
-        {usuario && <AtivarNotificacoes />}
-        {usuario && <Novidades ehPro={ehPro} />}
+        {usuario && mostrarBoasVindas && (
+          <BoasVindas ehPro={ehPro} email={usuario.email} onConcluir={() => { setMostrarBoasVindas(false); carregarAlertas(); }} />
+        )}
+        {usuario && !mostrarBoasVindas && <AtivarNotificacoes />}
+        {usuario && !mostrarBoasVindas && <Novidades ehPro={ehPro} />}
 
         {/* FORM */}
         <div
