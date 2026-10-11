@@ -165,6 +165,7 @@ app.use('/api/prazos', prazoRouter);
 app.use('/api/pastas', require('./src/routes/pastaRoutes'));
 app.use('/api/push', require('./src/routes/pushRoutes'));
 app.use('/api/concursos', require('./src/routes/concursoRoutes'));
+app.use('/api/testar-pagina', require('./src/routes/testarPaginaRoutes'));
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);

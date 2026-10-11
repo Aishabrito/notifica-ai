@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import api from "../services/Api";
 import AtivarNotificacoes from "./AtivarNotificacoes";
+import { lerUrlPendente, limparUrlPendente } from "../utils/urlPendente";
 
 export type Perfil = "vestibulando" | "lista-espera" | "concurseiro" | "aprovado";
 type Modelo = { id: string; categoria: string; nome: string; descricao: string; url: string };
@@ -29,7 +30,9 @@ export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
   const [sugerido] = useState<string | null>(() => { try { return localStorage.getItem("notifica:perfil-sugerido"); } catch { return null; } });
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [modelos, setModelos] = useState<Modelo[]>([]);
-  const [url, setUrl] = useState("");
+  // Página testada na página inicial ("Teste agora") antes do cadastro
+  const [pendente] = useState(lerUrlPendente);
+  const [url, setUrl] = useState(pendente ?? "");
   const [nome, setNome] = useState("");
   const [msg, setMsg] = useState<{ tipo: "ok" | "erro" | ""; texto: string }>({ tipo: "", texto: "" });
   const [enviando, setEnviando] = useState(false);
@@ -55,6 +58,7 @@ export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
       if (comPosicao && nome.trim().length >= 4) {
         await api.patch(`/api/alertas/${data.alerta._id}/posicao`, { identificador: nome.trim() }).catch(() => {});
       }
+      if (alvo === pendente) limparUrlPendente();
       setMsg({ tipo: "ok", texto: `Pronto! Monitorando: ${data.titulo}` });
       setPasso(3);
     } catch (e: any) {
@@ -99,6 +103,16 @@ export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
             ))}
           </div>
         </>
+      )}
+
+      {passo === 2 && pendente && perfil !== "lista-espera" && (
+        <div className="mb-6 rounded-xl border border-emerald-400/40 bg-emerald-400/5 p-4">
+          <p className="text-sm font-bold mb-1">📌 A página que você testou</p>
+          <p className="font-mono text-[11px] text-neutral-400 break-all mb-3">{pendente}</p>
+          <button disabled={enviando} onClick={() => monitorar(pendente)} className="font-mono text-xs bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
+            {enviando ? "Lendo a página…" : "Monitorar esta página →"}
+          </button>
+        </div>
       )}
 
       {passo === 2 && perfil === "lista-espera" && (
