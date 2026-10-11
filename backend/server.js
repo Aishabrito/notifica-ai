@@ -38,6 +38,8 @@ const {
 const Alerta                    = require('./src/models/alertaModel');
 const Mudanca                   = require('./src/models/Mudanca');
 const adminRoutes               = require('./src/routes/adminRoutes');
+const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
+const { escaparHtml }           = require('./src/utils/html');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
@@ -134,6 +136,7 @@ app.use('/api/plano', planoRoutes);
 app.use('/api/radar', radarRoutes);
 app.use('/api/conta', contaRoutes);
 app.get('/api/mp-config', mpConfigHandler);
+app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
 app.use('/api/webhooks', webhookRouter);
 app.use('/api/webhooks', webhookTelegramRouter);
@@ -197,7 +200,7 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
       html: `
         <div style="font-family: Arial, sans-serif; padding: 20px;">
           <h2>Seu alerta está ativo!</h2>
-          <p>Estamos vigiando o site: <br><strong><a href="${url}">${tituloDoSite}</a></strong></p>
+          <p>Estamos vigiando o site: <br><strong><a href="${escaparHtml(url)}">${escaparHtml(tituloDoSite)}</a></strong></p>
           <p>Vamos te avisar por e-mail assim que detectarmos qualquer alteração.</p>
           <br>
           <p style="font-size: 12px; color: #666;">

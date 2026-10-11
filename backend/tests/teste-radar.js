@@ -93,7 +93,7 @@ const qd = http.createServer((req, res) => {
   ok(r.status === 200 && r.data.novas === 3, `busca manual: 3 publicações novas (${r.data?.novas}) — a de "Maria José da Silveira" é descartada`);
   const c1 = consultas.find(u => u.searchParams.get('querystring') === '"José da Silva"');
   const desde1 = c1?.searchParams.get('published_since');
-  ok(c1 && c1.searchParams.getAll('territory_ids').join() === '3304557,3303302' && Math.round((Date.now() - Date.parse(desde1)) / 864e5) === 30, '1ª busca: frase exata, só as cidades escolhidas, últimos 30 dias');
+  ok(c1 && c1.searchParams.getAll('territory_ids').join() === '3304557,3303302' && desde1 === new Date(Date.now() - 30 * 864e5).toISOString().slice(0, 10), '1ª busca: frase exata, só as cidades escolhidas, últimos 30 dias');
   ok(consultas.some(u => u.searchParams.get('querystring') === '"AB-123456"'), 'também busca pelo número de inscrição');
   const ocs = await OcorrenciaRadar.find({ monitor: monId }).lean();
   const porUrl = Object.fromEntries(ocs.map(o => [o.url, o.confirmacao]));
@@ -108,7 +108,7 @@ const qd = http.createServer((req, res) => {
   sent.length = 0; consultas.length = 0;
   r = await call('POST', `/api/radar/${monId}/buscar`, t);
   const desde2 = consultas[0]?.searchParams.get('published_since');
-  ok(r.data.novas === 0 && sent.length === 0 && Math.round((Date.now() - Date.parse(desde2)) / 864e5) === 3, '2ª busca: nada novo, sem e-mail, olha só os últimos 3 dias');
+  ok(r.data.novas === 0 && sent.length === 0 && desde2 === new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10), '2ª busca: nada novo, sem e-mail, olha só os últimos 3 dias');
 
   // ── listagem
   r = await call('GET', '/api/radar/ocorrencias', t);

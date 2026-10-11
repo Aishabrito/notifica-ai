@@ -263,4 +263,73 @@ router.get('/historico/:alertaId', autenticar, isAdmin, async (req, res) => {
   }
 });
 
+// ============================================================
+// 🩺 SAÚDE DO SISTEMA (o que precisa de atenção manual)
+// ============================================================
+// Mostra num lugar só: configurações faltando, fontes do Radar paradas,
+// rodadas do cron com erro e, com ?modelos=1, se cada modelo pronto ainda
+// abre e tem texto legível (sites de banca mudam de endereço sem aviso).
+async function verificarModelo(modelo) {
+  const axios = require('axios');
+  const { OPCOES_DOWNLOAD, interpretarResposta } = require('../utils/conteudoPagina');
+  const { validarUrlPublica } = require('../utils/urlPublica');
+  const { gerarHeaders } = require('../service/crawler');
+  const inicio = Date.now();
+  try {
+    const validacao = await validarUrlPublica(modelo.url);
+    if (!validacao.valido) return { id: modelo.id, ok: false, erro: validacao.motivo };
+    const resposta = await axios.get(modelo.url, { headers: gerarHeaders(), ...OPCOES_DOWNLOAD, timeout: 20000 });
+    const pagina = await interpretarResposta(resposta, { url: modelo.url });
+    const caracteres = pagina.texto.length;
+    return { id: modelo.id, ok: caracteres >= 200, status: resposta.status, caracteres, ms: Date.now() - inicio,
+      erro: caracteres < 200 ? 'Página quase sem texto (pode depender de JavaScript)' : null };
+  } catch (err) {
+    return { id: modelo.id, ok: false, status: err.response?.status ?? null, erro: err.code || err.message, ms: Date.now() - inicio };
+  }
+}
+
+router.get('/saude', autenticar, isAdmin, async (req, res) => {
+  try {
+    const { MODELOS } = require('../config/modelos');
+    const { iaConfigurada } = require('../service/ia');
+    const { criptografiaConfigurada } = require('../utils/cripto');
+    const { telegramConfigurado } = require('../service/telegram');
+    const { cidadesDisponiveis } = require('../config/radar');
+    const { DRIVERS } = require('../service/radar/radarService');
+
+    const configuracoes = [
+      { item: 'Mercado Pago (pagamentos)', ok: Boolean(process.env.MP_ACCESS_TOKEN && process.env.MP_PUBLIC_KEY), variaveis: 'MP_ACCESS_TOKEN, MP_PUBLIC_KEY' },
+      { item: 'Webhook do Mercado Pago', ok: Boolean(process.env.MP_WEBHOOK_SECRET), variaveis: 'MP_WEBHOOK_SECRET' },
+      { item: 'IA (resumos)', ok: iaConfigurada(), variaveis: 'GEMINI_API_KEY' },
+      { item: 'Radar do Diário Oficial', ok: criptografiaConfigurada(), variaveis: 'DADOS_CHAVE' },
+      { item: 'Telegram', ok: telegramConfigurado(), variaveis: 'TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET' },
+      { item: 'E-mail (Resend)', ok: Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_REMETENTE), variaveis: 'RESEND_API_KEY, EMAIL_REMETENTE' },
+    ];
+
+    // Diário sem edição há mais de 7 dias = fonte provavelmente parada
+    const fontes = await Promise.all(cidadesDisponiveis().map(async (cidade) => {
+      const driver = DRIVERS.find((d) => d.suporta(cidade.id));
+      let ultimaPublicacao = null, erro = null;
+      try { ultimaPublicacao = driver?.ultimaPublicacao ? await driver.ultimaPublicacao(cidade.id) : null; } catch (e) { erro = e.message; }
+      const dias = ultimaPublicacao ? Math.floor((Date.now() - Date.parse(ultimaPublicacao)) / 864e5) : null;
+      return { id: cidade.id, nome: cidade.nome, fonte: driver?.nome ?? null, ultimaPublicacao, ok: !erro && (dias === null ? !driver?.ultimaPublicacao : dias <= 7), erro };
+    }));
+
+    const desde = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const [rodadas24h, rodadasComErro] = await Promise.all([
+      LogCron.countDocuments({ dataExecucao: { $gte: desde } }),
+      LogCron.find({ dataExecucao: { $gte: desde }, $or: [{ sucesso: false }, { alertasComErro: { $gt: 0 } }] }).sort({ dataExecucao: -1 }).limit(5).lean(),
+    ]);
+
+    const modelos = req.query.modelos === '1'
+      ? await (async () => { const r = []; for (let i = 0; i < MODELOS.length; i += 4) r.push(...await Promise.all(MODELOS.slice(i, i + 4).map(verificarModelo))); return r; })()
+      : null;
+
+    res.json({ sucesso: true, configuracoes, fontes, cron: { rodadas24h, rodadasComErro }, modelos });
+  } catch (err) {
+    console.error('[Admin] Erro na saúde do sistema:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao verificar a saúde do sistema.' });
+  }
+});
+
 module.exports = router;

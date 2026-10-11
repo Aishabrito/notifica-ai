@@ -89,7 +89,7 @@ const srv = http.createServer((req, res) => {
   await call('POST', `/api/radar/${monId}/buscar`, t);
   const desdeQd = consultas.qd.at(-1).searchParams.get('published_since');
   const desdeDou = consultas.dou.at(-1).searchParams.get('publishFrom');
-  ok(Math.round((Date.now() - Date.parse(desdeQd)) / 864e5) === 3 && desdeDou === new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10).split('-').reverse().join('-'),
+  ok(desdeQd === new Date(Date.now() - 3 * 864e5).toISOString().slice(0, 10) && desdeDou === new Date(Date.now() - 13 * 864e5).toISOString().slice(0, 10).split('-').reverse().join('-'),
     'cada fonte busca a partir da sua última busca bem-sucedida (QD: 3 dias; DOU: 10 + 3 dias)');
 
   // ── página do DOU mudou de formato: erro tratado, sem derrubar nada

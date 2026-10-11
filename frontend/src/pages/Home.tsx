@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import ModelosProntos from "../components/ModelosProntos";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
@@ -180,15 +181,20 @@ export default function Home() {
       return;
     }
 
+    await cadastrarUrl(url);
+  };
+
+  // Usado pelo formulário e pelos modelos prontos
+  const cadastrarUrl = async (urlAlvo: string) => {
     setStatusMsg({ tipo: "loading", texto: "Iniciando monitoramento..." });
 
     try {
       const { data: d } = await api.post("/api/cadastrar-alerta", {
-        url,
+        url: urlAlvo,
         email: emailAtivo,
       });
       if (d.sucesso) {
-        setUrl("");
+        if (urlAlvo === url) setUrl("");
         await carregarAlertas(emailAtivo);
         setStatusMsg({ tipo: "sucesso", texto: `Monitorando: ${d.titulo}` });
       } else {
@@ -352,6 +358,14 @@ export default function Home() {
               )}
 
             </form>
+          )}
+
+          {ativos < LIMITE && (
+            <ModelosProntos
+              monitoradas={new Set(alertas.filter((a) => a.status === "ativo").map((a) => a.url))}
+              ocupado={statusMsg.tipo === "loading"}
+              onMonitorar={cadastrarUrl}
+            />
           )}
 
           {statusMsg.texto && (

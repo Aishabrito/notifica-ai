@@ -10,6 +10,7 @@ import { DashboardDados } from "./components/types";
 import StatCard from "./components/StatCard";
 import PainelSaudeCrawler from "./components/PainelSaudeCrawler";
 import PainelLogCrawler from "./components/PainelLogCrawler";
+import PainelSaudeSistema from "./components/PainelSaudeSistema";
 import TabelaUsuarios from "./components/TabelaUsuarios";
 import TabelaAlertas from "./components/TabelaAlertas";
 import TabelaFeedbacks from "./components/TabelaFeedbacks";
@@ -210,6 +211,7 @@ export default function AdminDashboard() {
         {/* ── Conteúdo das Abas com Proteção de Dados ── */}
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+            <PainelSaudeSistema />
             <PainelSaudeCrawler health={dados?.crawlerHealth} />
             <PainelLogCrawler logs={dados?.crawlerHealth?.logs ?? []} />
           </div>
