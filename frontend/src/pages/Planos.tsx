@@ -128,7 +128,8 @@ export default function Planos() {
 
   const ehPro = info?.plano.efetivo === "pro";
   const temCartao = info?.plano.origem === "mercadopago" && info.plano.status === "ativo";
-  const podeAssinarCartao = !temCartao;
+  const proPermanente = ehPro && !info?.plano.validoAte;
+  const podeAssinarCartao = !temCartao && !proPermanente;
   const podePagarPix = !temCartao && !(ehPro && !info?.plano.validoAte);
 
   // ─── Cartão: Card Payment Brick (o cartão é tokenizado pelo Mercado Pago) ─
@@ -381,21 +382,21 @@ export default function Planos() {
                 </h2>
 
                 {/* PERÍODO */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 mb-6">
                   {planos.map((p) => (
                     <button key={p.periodo} onClick={() => { setPeriodo(p.periodo); setPix(null); }}
-                      className={`relative text-left rounded-xl border p-4 transition-colors ${planoEscolhido?.periodo === p.periodo ? "border-emerald-400 bg-emerald-400/5" : "border-neutral-800 hover:border-neutral-600"}`}>
+                      className={`relative text-left rounded-xl border p-2.5 sm:p-4 transition-colors ${planoEscolhido?.periodo === p.periodo ? "border-emerald-400 bg-emerald-400/5" : "border-neutral-800 hover:border-neutral-600"}`}>
                       {p.economiaPct > 0 && (
-                        <span className="absolute -top-2.5 right-3 font-mono text-[10px] font-bold bg-emerald-400 text-black px-2 py-0.5 rounded-full">-{p.economiaPct}%</span>
+                        <span className="absolute -top-2.5 right-1.5 sm:right-3 font-mono text-[9px] sm:text-[10px] font-bold bg-emerald-400 text-black px-1.5 sm:px-2 py-0.5 rounded-full">-{p.economiaPct}%</span>
                       )}
-                      <p className="font-bold text-sm">{p.nome}</p>
-                      <p className="text-2xl font-black text-emerald-400">{brl(p.porMes)}<span className="text-xs text-neutral-500 font-normal">/mês</span></p>
-                      <p className="text-[11px] text-neutral-500 mt-1">{p.meses === 1 ? "cobrado todo mês" : `${brl(p.valor)} ${p.meses === 12 ? "por ano" : `a cada ${p.meses} meses`}`}</p>
+                      <p className="font-bold text-xs sm:text-sm">{p.nome}</p>
+                      <p className="text-base sm:text-2xl font-black text-emerald-400 leading-tight">{brl(p.porMes)}<span className="block sm:inline text-[10px] sm:text-xs text-neutral-500 font-normal">/mês</span></p>
+                      <p className="text-[10px] sm:text-[11px] text-neutral-500 mt-1 leading-tight">{p.meses === 1 ? "cobrado todo mês" : `${brl(p.valor)} ${p.meses === 12 ? "por ano" : `a cada ${p.meses} meses`}`}</p>
                     </button>
                   ))}
                 </div>
 
-                <div className="flex gap-2 mb-6">
+                <div className="flex flex-wrap gap-2 mb-6">
                   {podeAssinarCartao && (
                     <button onClick={() => { setMetodo("cartao"); setPix(null); }} className={`font-mono text-xs px-4 py-2 rounded-lg border ${metodo === "cartao" ? "border-emerald-400 text-emerald-400" : "border-neutral-800 text-neutral-500"}`}>
                       💳 Cartão — renova sozinho

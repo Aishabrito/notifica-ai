@@ -276,7 +276,7 @@ export default function Home() {
           {usuario && (
             <button
               onClick={handleLogout}
-              className="font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-3 md:px-4 py-2 rounded-lg transition-colors shrink-0"
+              className="hidden md:block font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-3 md:px-4 py-2 rounded-lg transition-colors shrink-0"
             >
               Sair →
             </button>
@@ -463,16 +463,6 @@ export default function Home() {
                         </button>
                       </div>
                     )}
-                    {usuario && (
-                      <MinhaPosicao
-                        alertaId={alerta._id}
-                        posicao={alerta.posicao}
-                        onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
-                        chamadas={alerta.chamadas}
-                        estimativa={alerta.estimativa}
-                        onChamadas={(c, e) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, chamadas: c, estimativa: e } : a)))}
-                      />
-                    )}
                   </div>
                   <button
                     onClick={() => handleCancelar(alerta._id)}
@@ -481,6 +471,16 @@ export default function Home() {
                     [ remover ]
                   </button>
                 </div>
+                {usuario && (
+                  <MinhaPosicao
+                    alertaId={alerta._id}
+                    posicao={alerta.posicao}
+                    onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
+                    chamadas={alerta.chamadas}
+                    estimativa={alerta.estimativa}
+                    onChamadas={(c, e) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, chamadas: c, estimativa: e } : a)))}
+                  />
+                )}
 
                 {historicoAberto === alerta._id && (
                   <div className="mt-4 border-t border-white/5 pt-4 space-y-3">
