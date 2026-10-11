@@ -4,6 +4,10 @@ import SeletorAparencia from '../components/SeletorAparencia';
 import { Footer } from '../components/footer';
 import { FaqSection } from '../components/faq-section';
 import { PUBLICOS, Celular, SecaoPublico, AntesDepois, Confianca, type Publico } from '../components/landing/PublicoAlvo';
+import TesteAgora from '../components/landing/TesteAgora';
+import ProximasDatas from '../components/landing/ProximasDatas';
+import Comparacao from '../components/landing/Comparacao';
+import CompartilharTurma from '../components/landing/CompartilharTurma';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
@@ -17,6 +21,9 @@ function Navbar() {
         <a href="#pra-voce" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden md:block">
           Como funciona
         </a>
+        <Link to="/calendario" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden md:block">
+          Calendário
+        </Link>
         <a href="#planos" className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-white transition-colors hidden md:block">
           Planos
         </a>
@@ -201,20 +208,28 @@ export default function LandingPage({ publicoInicial = 'vestibulando' }: { publi
               ))}
             </div>
 
-            <Link
-              to={`/cadastro?perfil=${publico}`}
+            <a
+              href="#teste-agora"
               className="font-mono text-[10px] uppercase tracking-widest text-neutral-500 hover:text-emerald-400 border-b border-purple-500/20 pb-1 transition-colors"
             >
-              ou crie seu alerta grátis agora →
-            </Link>
+              ou cole um link e teste agora, sem cadastro →
+            </a>
           </div>
 
           <Celular />
         </section>
 
+        <TesteAgora publico={publico} />
+
         <AntesDepois publico={publico} />
 
         <SecaoPublico publico={publico} onTrocar={setPublico} />
+
+        <ProximasDatas publico={publico} />
+
+        <Comparacao />
+
+        <CompartilharTurma publico={publico} />
 
         <Confianca />
 
