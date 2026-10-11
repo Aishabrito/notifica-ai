@@ -13,6 +13,19 @@ const alertaSchema = new mongoose.Schema({
   falhasSeguidas:    { type: Number, default: 0 },
   // Há uma tarefa aberta no painel admin por causa deste alerta
   tarefaAberta:      { type: Boolean, default: false },
+  // Minha posição na lista: como o nome/inscrição aparece (cifrado) e o último resultado
+  posicao: {
+    type: new mongoose.Schema({
+      identificadorCifrado: String,
+      encontrado:    Boolean,
+      numero:        Number,
+      trechoCifrado: String,
+      verificadoEm:  Date,
+      mudouEm:       Date,
+      historico:     [{ _id: false, encontrado: Boolean, numero: Number, em: Date }],
+    }, { _id: false }),
+    default: undefined,
+  },
   ultimoErro:        { type: String, default: null },
   ultimaVerificacao: { type: Date, default: null },
   ultimaNotificacao: { type: Date, default: null },

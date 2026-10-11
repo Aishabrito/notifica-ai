@@ -9,6 +9,7 @@ const { notificarMudanca } = require('./telegram');
 const { validarUrlPublica } = require('../utils/urlPublica');
 const { abrirTarefa, resolverTarefa } = require('./tarefasAdmin');
 const { registrarPrazosDaMudanca } = require('./prazos');
+const { atualizarPosicao, avisarMudancaPosicao } = require('./posicaoLista');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -239,6 +240,16 @@ async function verificarAlerta(alerta, buscarPagina) {
     alerta.ultimoConteudo    = pagina.texto.slice(0, MAX_SNAPSHOT);
     alerta.linksPdf          = pagina.linksPdf;
     alerta.tipoConteudo      = pagina.tipo;
+
+    // 📍 Minha posição: relê quando a página muda (ou na primeira vez)
+    if (alerta.posicao?.identificadorCifrado && (hashAnterior !== hashAtual || !alerta.posicao.verificadoEm)) {
+      try {
+        const mudancaPosicao = atualizarPosicao(alerta, pagina.texto);
+        if (mudancaPosicao) avisarMudancaPosicao(alerta, mudancaPosicao).catch((err) => console.error('[Posição] Falha ao avisar:', err.message));
+      } catch (err) {
+        console.error('[Posição] Falha ao ler posição:', err.message);
+      }
+    }
 
     if (!hashAnterior) {
       await alerta.save();

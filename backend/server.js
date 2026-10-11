@@ -41,6 +41,8 @@ const adminRoutes               = require('./src/routes/adminRoutes');
 const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
 const { escaparHtml }           = require('./src/utils/html');
 const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
+const { atualizarPosicao, posicaoParaApi } = require('./src/service/posicaoLista');
+const { cifrar, criptografiaConfigurada } = require('./src/utils/cripto');
 const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
 const { executarCodigoVermelho } = require('./src/service/prazos');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
@@ -236,7 +238,8 @@ app.post('/api/cadastrar-alerta', limiterCadastrarAlerta, autenticar, verificarL
 app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
-    return res.json({ sucesso: true, alertas });
+    // posição: o dono vê o identificador decifrado, nunca o valor cifrado
+    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a) })) });
   } catch (err) {
     return res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
@@ -286,6 +289,34 @@ app.patch('/api/reativar-alerta/:id', limiterAlertasGeral, autenticar, async (re
 });
 
 // Histórico de mudanças de um alerta (protegido) — com o resumo da IA quando houver
+// 📍 Minha posição na lista: { identificador } para ativar, null para desligar
+app.patch('/api/alertas/:id/posicao', limiterAlertasGeral, autenticar, async (req, res) => {
+  try {
+    if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+    if (!criptografiaConfigurada()) return res.status(503).json({ sucesso: false, mensagem: 'Recurso indisponível no momento.' });
+    const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id }).select('+ultimoConteudo');
+    if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+
+    const identificador = req.body?.identificador == null ? null : String(req.body.identificador).replace(/\s+/g, ' ').trim();
+    if (identificador === null || identificador === '') {
+      alerta.posicao = undefined;
+      await alerta.save();
+      return res.json({ sucesso: true, posicao: null });
+    }
+    if (identificador.length < 4 || identificador.length > 120) {
+      return res.status(400).json({ sucesso: false, mensagem: 'Escreva o nome completo ou o número de inscrição, como aparece na lista.' });
+    }
+    alerta.posicao = { identificadorCifrado: cifrar(identificador), historico: [] };
+    // Já procura na última versão guardada da página
+    if (alerta.ultimoConteudo) atualizarPosicao(alerta, alerta.ultimoConteudo);
+    await alerta.save();
+    res.json({ sucesso: true, posicao: posicaoParaApi(alerta) });
+  } catch (err) {
+    console.error('[Posição] Erro ao configurar:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar.' });
+  }
+});
+
 app.get('/api/alertas/:id/historico', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id }).select('_id').lean();

@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import ModelosProntos from "../components/ModelosProntos";
+import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
@@ -14,6 +15,7 @@ interface Alerta {
   criadoEm: string;
   intervaloHoras?: number;
   ultimaVerificacao?: string | null;
+  posicao?: Posicao | null;
 }
 
 interface Mudanca {
@@ -429,6 +431,13 @@ export default function Home() {
                           {historicoAberto === alerta._id ? "fechar histórico" : "histórico de mudanças"}
                         </button>
                       </div>
+                    )}
+                    {usuario && (
+                      <MinhaPosicao
+                        alertaId={alerta._id}
+                        posicao={alerta.posicao}
+                        onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
+                      />
                     )}
                   </div>
                   <button
