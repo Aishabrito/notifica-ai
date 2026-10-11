@@ -43,7 +43,13 @@ for (const suite of SUITES) {
   if (quebrou) falhas += Math.max(erros, 1);
   console.log(`${quebrou ? '❌' : '✅'} ${suite}: ${oks} ok, ${erros} falha(s)${r.status !== 0 && !erros ? ` (saiu com código ${r.status})` : ''}`);
   if (quebrou) {
-    console.log(saida.split('\n').filter((l) => l.startsWith('❌') || /Error/.test(l)).slice(0, 20).join('\n'));
+    const linhas = saida.split('\n').filter((l) => l.startsWith('❌') || /Error/.test(l)).slice(0, 20);
+    console.log(linhas.join('\n'));
+    // No GitHub Actions, vira anotação na verificação (o log do Mongo esconde o resto)
+    if (process.env.GITHUB_ACTIONS) {
+      const detalhe = (linhas.length ? linhas : saida.trim().split('\n').slice(-15)).join('\n');
+      console.log(`::error title=${suite}::${detalhe.replace(/%/g, '%25').replace(/\r/g, '').replace(/\n/g, '%0A')}`);
+    }
   }
 }
 console.log(`\n${total} cenários, ${falhas} falha(s).`);

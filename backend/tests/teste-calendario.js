@@ -53,7 +53,8 @@ const srv = http.createServer((req, res) => {
   r = await call('POST', '/api/testar-pagina', null, { url: 'http://127.0.0.1:4589/lista' });
   ok(r.status === 429 && /crie sua conta/i.test(r.data.mensagem), 'limite por minuto: convida a criar conta');
 
-  // ── Calendário
+  // ── Calendário (o servidor semeia ao conectar; aqui garantimos antes de olhar)
+  await cal.semearCalendario();
   r = await call('GET', '/api/calendario');
   const enem = r.data.eventos.find((e) => e.titulo.includes('ENEM 2026 — 1º dia'));
   const sisu = r.data.eventos.find((e) => e.titulo.includes('SISU 2027'));
