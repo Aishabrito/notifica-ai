@@ -3,6 +3,7 @@ import ModelosProntos from "../components/ModelosProntos";
 import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
 import Novidades from "../components/Novidades";
+import AtivarNotificacoes from "../components/AtivarNotificacoes";
 import { CHAVE_PASTA_PENDENTE } from "./PastaPublica";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -313,6 +314,7 @@ export default function Home() {
           </div>
         )}
 
+        {usuario && <AtivarNotificacoes />}
         {usuario && <Novidades ehPro={ehPro} />}
 
         {/* FORM */}

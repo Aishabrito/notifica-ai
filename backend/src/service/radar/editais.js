@@ -53,6 +53,11 @@ async function avisarEditais(usuario, interesse, novos) {
         <hr><p style="font-size:12px;color:#666;">Gerencie seus interesses em <a href="${frontend}/radar">${frontend}/radar</a>.</p>
       </div>`,
   });
+  await require('../push').enviarPush(usuario._id, {
+    titulo: `📢 Edital à vista: ${interesse.termo}`,
+    corpo: `${novos.length} publicação(ões) de concurso com o seu cargo. Toque para ver.`,
+    url: '/radar', tag: `editais-${interesse._id}`,
+  });
   if (usuario.telegram?.chatId) {
     const telegram = require('../telegram');
     if (telegram.telegramConfigurado()) {

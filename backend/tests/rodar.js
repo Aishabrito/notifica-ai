@@ -25,6 +25,7 @@ const SUITES = [
   'teste-pastas.js',     // pastas compartilháveis
   'teste-resumo-semanal.js', // resumo semanal por e-mail
   'teste-cortesia.js',   // contas Pro de cortesia
+  'teste-push.js',       // notificação no celular
 ];
 
 let falhas = 0;

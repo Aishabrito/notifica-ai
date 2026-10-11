@@ -123,6 +123,7 @@ async function avisarMudancaPosicao(alerta, mudanca) {
       </div>`,
   });
   const usuario = alerta.usuario;
+  await require('./push').enviarPush(usuario?._id ?? usuario, { titulo: `${emoji} ${titulo}`, corpo: site, url: '/dashboard', tag: `posicao-${alerta._id}`, urgente: true });
   if (usuario?.telegram?.chatId) {
     const telegram = require('./telegram');
     if (telegram.telegramConfigurado()) {
