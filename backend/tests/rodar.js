@@ -26,6 +26,7 @@ const SUITES = [
   'teste-resumo-semanal.js', // resumo semanal por e-mail
   'teste-cortesia.js',   // contas Pro de cortesia
   'teste-push.js',       // notificação no celular
+  'teste-chamadas.js',   // histórico das chamadas da lista de espera
 ];
 
 let falhas = 0;

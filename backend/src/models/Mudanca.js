@@ -14,6 +14,7 @@ const mudancaSchema = new mongoose.Schema({
       resumo:    String,
       datas:     [{ _id: false, data: String, descricao: String, hora: String, tipo: String }],
       documentos: { type: [String], default: undefined },
+      chamada:    { type: new mongoose.Schema({ numero: Number, ultimaPosicao: Number }, { _id: false }), default: undefined },
     }, { _id: false }),
     default: undefined,
   },

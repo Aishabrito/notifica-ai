@@ -42,7 +42,7 @@ const adminRoutes               = require('./src/routes/adminRoutes');
 const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
 const { escaparHtml }           = require('./src/utils/html');
 const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
-const { atualizarPosicao, posicaoParaApi } = require('./src/service/posicaoLista');
+const { atualizarPosicao, posicaoParaApi, registrarChamada, estimarChamadas, minhaPosicao } = require('./src/service/posicaoLista');
 const { cifrar, criptografiaConfigurada } = require('./src/utils/cripto');
 const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
 const { executarCodigoVermelho } = require('./src/service/prazos');
@@ -265,7 +265,7 @@ app.get('/api/alertas', limiterAlertasGeral, autenticar, async (req, res) => {
   try {
     const alertas = await Alerta.find({ usuario: req.usuario._id }).sort({ criadoEm: -1 });
     // posição: o dono vê o identificador decifrado, nunca o valor cifrado
-    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a) })) });
+    return res.json({ sucesso: true, alertas: alertas.map((a) => ({ ...a.toObject(), posicao: posicaoParaApi(a), estimativa: estimarChamadas(a.chamadas, minhaPosicao(a)) })) });
   } catch (err) {
     return res.status(500).json({ sucesso: false, mensagem: 'Erro ao buscar dados.' });
   }
@@ -341,6 +341,31 @@ app.patch('/api/alertas/:id/posicao', limiterAlertasGeral, autenticar, async (re
     console.error('[Posição] Erro ao configurar:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao salvar.' });
   }
+});
+
+// Lista de espera: "a 2ª chamada foi até a posição 65" (registrado pela pessoa)
+app.post('/api/alertas/:id/chamadas', limiterAlertasGeral, autenticar, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+  if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const ate = Number(req.body?.ate);
+  const numero = req.body?.numero ? Number(req.body.numero) : null;
+  if (!Number.isInteger(ate) || ate < 1 || ate > 99999 || (numero !== null && (!Number.isInteger(numero) || numero < 1 || numero > 99))) {
+    return res.status(400).json({ sucesso: false, mensagem: 'Informe até qual posição a chamada foi (número inteiro).' });
+  }
+  const r = registrarChamada(alerta, { numero, ate }, 'manual');
+  if (!r.registrada) return res.status(409).json({ sucesso: false, mensagem: 'Essa chamada já está registrada.' });
+  await alerta.save();
+  res.json({ sucesso: true, chamadas: alerta.chamadas, estimativa: estimarChamadas(alerta.chamadas, minhaPosicao(alerta)) });
+});
+
+app.delete('/api/alertas/:id/chamadas/:chamadaId', limiterAlertasGeral, autenticar, async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id)) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  const alerta = await Alerta.findOne({ _id: req.params.id, usuario: req.usuario._id });
+  if (!alerta) return res.status(404).json({ sucesso: false, mensagem: 'Alerta não encontrado.' });
+  alerta.chamadas = (alerta.chamadas ?? []).filter((c) => String(c._id) !== req.params.chamadaId);
+  await alerta.save();
+  res.json({ sucesso: true, chamadas: alerta.chamadas, estimativa: estimarChamadas(alerta.chamadas, minhaPosicao(alerta)) });
 });
 
 app.get('/api/alertas/:id/historico', limiterAlertasGeral, autenticar, async (req, res) => {

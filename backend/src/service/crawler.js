@@ -10,7 +10,7 @@ const { validarUrlPublica } = require('../utils/urlPublica');
 const { abrirTarefa, resolverTarefa } = require('./tarefasAdmin');
 const { registrarPrazosDaMudanca } = require('./prazos');
 const { enviarPush } = require('./push');
-const { atualizarPosicao, avisarMudancaPosicao } = require('./posicaoLista');
+const { atualizarPosicao, avisarMudancaPosicao, registrarChamada, avisarPosicaoAlcancada } = require('./posicaoLista');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -324,6 +324,13 @@ async function verificarAlerta(alerta, buscarPagina) {
       }).catch(() => {});
     } else {
       console.log(`[Crawler] 🔕 Mudança irrelevante em ${alerta.url} — sem e-mail`);
+    }
+
+    // Lista de espera: a IA leu até que posição a chamada foi
+    if (resumo?.chamada?.ultimaPosicao) {
+      const r = registrarChamada(alerta, { numero: resumo.chamada.numero, ate: resumo.chamada.ultimaPosicao }, 'ia');
+      if (r.registrada) await alerta.save();
+      if (r.alcancou) avisarPosicaoAlcancada(alerta, resumo.chamada.ultimaPosicao).catch(() => {});
     }
 
     // Pro: as datas achadas pela IA viram prazos (Código Vermelho e agenda)

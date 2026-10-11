@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import ModelosProntos from "../components/ModelosProntos";
-import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
+import MinhaPosicao, { type Posicao, type Chamada, type Estimativa } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
 import Novidades from "../components/Novidades";
 import AtivarNotificacoes from "../components/AtivarNotificacoes";
@@ -21,6 +21,8 @@ interface Alerta {
   intervaloHoras?: number;
   ultimaVerificacao?: string | null;
   posicao?: Posicao | null;
+  chamadas?: Chamada[];
+  estimativa?: Estimativa | null;
 }
 
 interface Mudanca {
@@ -466,6 +468,9 @@ export default function Home() {
                         alertaId={alerta._id}
                         posicao={alerta.posicao}
                         onMudou={(p) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, posicao: p } : a)))}
+                        chamadas={alerta.chamadas}
+                        estimativa={alerta.estimativa}
+                        onChamadas={(c, e) => setAlertas((prev) => prev.map((a) => (a._id === alerta._id ? { ...a, chamadas: c, estimativa: e } : a)))}
                       />
                     )}
                   </div>

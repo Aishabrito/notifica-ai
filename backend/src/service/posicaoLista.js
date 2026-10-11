@@ -147,4 +147,59 @@ function posicaoParaApi(alerta) {
   };
 }
 
-module.exports = { localizarPosicao, atualizarPosicao, avisarMudancaPosicao, posicaoParaApi, normalizar };
+// ─── Histórico das chamadas ─────────────────────────
+const MAX_CHAMADAS = 30;
+
+// Posição atual ou, se o nome saiu da lista (ex.: foi chamado), a última conhecida
+function minhaPosicao(alerta) {
+  const p = alerta.posicao;
+  if (!p) return null;
+  return p.numero ?? [...(p.historico ?? [])].reverse().find((h) => h.numero)?.numero ?? null;
+}
+
+// Registra "a Nª chamada foi até a posição X". Ignora repetição (mesma
+// chamada ou mesmo 'até'). Devolve true quando a posição da pessoa foi alcançada.
+function registrarChamada(alerta, { numero = null, ate }, origem = 'manual') {
+  const lista = alerta.chamadas ?? [];
+  const repetida = lista.some((c) => c.ate === ate || (numero && c.numero === numero));
+  if (repetida) return { registrada: false, alcancou: false };
+  alerta.chamadas = [...lista, { numero, ate, em: new Date(), origem }].sort((a, b) => a.ate - b.ate).slice(-MAX_CHAMADAS);
+  const minha = minhaPosicao(alerta);
+  const jaChegou = lista.some((c) => minha && c.ate >= minha);
+  return { registrada: true, alcancou: Boolean(minha && ate >= minha && !jaChegou) };
+}
+
+// Ritmo das chamadas e estimativa de quantas faltam (null se não der para estimar)
+function estimarChamadas(chamadas, minhaPosicao) {
+  const ordenadas = [...(chamadas ?? [])].sort((a, b) => a.ate - b.ate);
+  if (!ordenadas.length || !minhaPosicao) return null;
+  const ultima = ordenadas[ordenadas.length - 1].ate;
+  if (ultima >= minhaPosicao) return { faltamPosicoes: 0, chamadasEstimadas: 0, ritmo: null };
+  const ritmo = ordenadas.length === 1 ? ultima : (ultima - ordenadas[0].ate) / (ordenadas.length - 1);
+  return {
+    faltamPosicoes: minhaPosicao - ultima,
+    ritmo: ritmo > 0 ? Math.round(ritmo) : null,
+    chamadasEstimadas: ritmo > 0 ? Math.ceil((minhaPosicao - ultima) / ritmo) : null,
+  };
+}
+
+async function avisarPosicaoAlcancada(alerta, ate) {
+  const site = alerta.titulo || alerta.url;
+  await transportador.sendMail({
+    from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+    to: alerta.email,
+    subject: `🎉 A chamada chegou na sua posição! (até ${ate}º)`,
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 560px;">
+        <h2 style="margin-top:0">🎉 A chamada chegou na sua posição!</h2>
+        <p>A última chamada em <a href="${escaparHtml(alerta.url)}">${escaparHtml(site)}</a> foi até a posição <strong>${ate}</strong> — e você estava em <strong>${minhaPosicao(alerta)}º</strong>.</p>
+        <p><strong>Confira a lista oficial agora</strong> e veja o prazo de matrícula ou de entrega de documentos.</p>
+        <p style="font-size:12px;color:#888">A posição é lida automaticamente: confira sempre na publicação oficial.</p>
+      </div>`,
+  }).catch((err) => console.error('[Chamadas] Falha no e-mail:', err.message));
+  await require('./push').enviarPush(alerta.usuario?._id ?? alerta.usuario, {
+    titulo: '🎉 A chamada chegou na sua posição!', corpo: `${site}: chamada até a ${ate}ª posição. Confira agora!`, url: alerta.url, tag: `chamada-${alerta._id}`, urgente: true,
+  });
+}
+
+module.exports = { minhaPosicao, registrarChamada, estimarChamadas, avisarPosicaoAlcancada, localizarPosicao, atualizarPosicao, avisarMudancaPosicao, posicaoParaApi, normalizar };

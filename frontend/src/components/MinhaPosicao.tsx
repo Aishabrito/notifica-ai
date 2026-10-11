@@ -10,11 +10,80 @@ export interface Posicao {
   historico: { encontrado: boolean; numero: number | null; em: string }[];
 }
 
-type Props = { alertaId: string; posicao: Posicao | null | undefined; onMudou: (p: Posicao | null) => void };
+export interface Chamada { _id: string; numero: number | null; ate: number; em: string; origem: "ia" | "manual" }
+export interface Estimativa { faltamPosicoes: number; ritmo: number | null; chamadasEstimadas: number | null }
+
+type Props = {
+  alertaId: string;
+  posicao: Posicao | null | undefined;
+  onMudou: (p: Posicao | null) => void;
+  chamadas?: Chamada[];
+  estimativa?: Estimativa | null;
+  onChamadas?: (c: Chamada[], e: Estimativa | null) => void;
+};
+
+// Histórico das chamadas + quanto falta até a sua posição
+function Chamadas({ alertaId, chamadas = [], estimativa, minha, onChamadas }: { alertaId: string; chamadas?: Chamada[]; estimativa?: Estimativa | null; minha: number | null; onChamadas?: Props["onChamadas"] }) {
+  const [ate, setAte] = useState("");
+  const [numero, setNumero] = useState("");
+  const [erro, setErro] = useState("");
+  const ordenadas = [...chamadas].sort((a, b) => a.ate - b.ate);
+  const ultima = ordenadas[ordenadas.length - 1]?.ate ?? 0;
+  const progresso = minha ? Math.min(100, Math.round((ultima / minha) * 100)) : 0;
+
+  const registrar = async (e: React.FormEvent) => {
+    e.preventDefault(); setErro("");
+    try {
+      const { data } = await api.post(`/api/alertas/${alertaId}/chamadas`, { ate: Number(ate), numero: numero ? Number(numero) : undefined });
+      onChamadas?.(data.chamadas, data.estimativa); setAte(""); setNumero("");
+    } catch (err: any) { setErro(err.response?.data?.mensagem ?? "Não foi possível registrar."); }
+  };
+  const remover = async (id: string) => {
+    const { data } = await api.delete(`/api/alertas/${alertaId}/chamadas/${id}`);
+    onChamadas?.(data.chamadas, data.estimativa);
+  };
+
+  return (
+    <div className="mt-3 pt-3 border-t border-white/5 space-y-2">
+      {minha && ordenadas.length > 0 && (
+        <>
+          <div className="h-2 rounded-full bg-neutral-800 overflow-hidden" role="progressbar" aria-valuenow={progresso} aria-valuemin={0} aria-valuemax={100}>
+            <div className="h-full bg-emerald-400 transition-all" style={{ width: `${progresso}%` }} />
+          </div>
+          <p className="text-xs text-neutral-300">
+            {estimativa && estimativa.faltamPosicoes === 0
+              ? <>🎉 <strong>A chamada já passou da sua posição!</strong> Confira a lista oficial.</>
+              : <>Chamaram até a <strong>{ultima}ª</strong> · você é <strong>{minha}º</strong> · faltam <strong>{estimativa?.faltamPosicoes ?? minha - ultima}</strong>
+                {estimativa?.chamadasEstimadas ? <> · no ritmo atual (~{estimativa.ritmo} por chamada), <strong>{estimativa.chamadasEstimadas === 1 ? "mais 1 chamada" : `mais ${estimativa.chamadasEstimadas} chamadas`}</strong></> : null}</>}
+          </p>
+        </>
+      )}
+      {ordenadas.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {ordenadas.map((c) => (
+            <span key={c._id} className="inline-flex items-center gap-1 font-mono text-[10px] border border-neutral-800 rounded-full px-2 py-0.5 text-neutral-400">
+              {c.numero ? `${c.numero}ª` : "chamada"} até {c.ate}º{c.origem === "ia" && " ✨"}
+              <button onClick={() => remover(c._id)} className="text-neutral-600 hover:text-red-400" aria-label="Remover chamada">✕</button>
+            </span>
+          ))}
+        </div>
+      )}
+      <form onSubmit={registrar} className="flex flex-wrap items-center gap-1.5 text-[11px] text-neutral-500">
+        <span>Registrar chamada:</span>
+        <input value={numero} onChange={(e) => setNumero(e.target.value.replace(/\D/g, ""))} placeholder="nº" className="w-10 bg-transparent border-b border-neutral-800 outline-none text-center" aria-label="Número da chamada" />
+        <span>ª foi até a posição</span>
+        <input value={ate} onChange={(e) => setAte(e.target.value.replace(/\D/g, ""))} placeholder="65" required className="w-14 bg-transparent border-b border-neutral-800 outline-none text-center" aria-label="Última posição chamada" />
+        <button className="font-mono text-[10px] text-emerald-400 hover:text-emerald-300 ml-1">salvar</button>
+      </form>
+      {erro && <p className="text-[11px] text-red-400">{erro}</p>}
+      {ordenadas.length === 0 && <p className="text-[10px] text-neutral-600">No Pro, a IA registra sozinha quando sai uma chamada nova (✨).</p>}
+    </div>
+  );
+}
 
 // 📍 Minha posição na lista: a pessoa diz como o nome aparece e a gente
 // acompanha a posição a cada mudança da página.
-export default function MinhaPosicao({ alertaId, posicao, onMudou }: Props) {
+export default function MinhaPosicao({ alertaId, posicao, onMudou, chamadas, estimativa, onChamadas }: Props) {
   const [editando, setEditando] = useState(false);
   const [valor, setValor] = useState(posicao?.identificador ?? "");
   const [erro, setErro] = useState("");
@@ -79,13 +148,15 @@ export default function MinhaPosicao({ alertaId, posicao, onMudou }: Props) {
           {posicao.encontrado && posicao.trecho && (
             <p className="font-mono text-[10px] text-neutral-500 mt-1 break-words">{posicao.trecho}</p>
           )}
-          <p className="text-[10px] text-neutral-600 mt-1">Avisamos por e-mail quando mudar.</p>
+          <p className="text-[10px] text-neutral-600 mt-1">Avisamos quando mudar e quando a chamada chegar em você.</p>
         </div>
-        <div className="flex flex-col gap-1 shrink-0 text-right">
+        <div className="flex flex-col gap-1 shrink-0 text-right order-last">
           <button onClick={() => setEditando(true)} className="font-mono text-[10px] text-neutral-500 hover:text-white">editar</button>
           <button onClick={() => { if (confirm("Parar de acompanhar sua posição?")) { setValor(""); salvar(null); } }} className="font-mono text-[10px] text-neutral-600 hover:text-red-400">desligar</button>
         </div>
       </div>
+      <Chamadas alertaId={alertaId} chamadas={chamadas} estimativa={estimativa} onChamadas={onChamadas}
+        minha={posicao.numero ?? [...posicao.historico].reverse().find((h) => h.numero != null)?.numero ?? null} />
     </div>
   );
 }
