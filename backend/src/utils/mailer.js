@@ -18,7 +18,8 @@ const transportador = {
   },
 
   // attachments: [{ filename, content }] — content em Buffer ou string base64
-  async sendMail({ from, to, subject, html, text, attachments }) {
+  // headers: cabeçalhos extras (ex.: List-Unsubscribe)
+  async sendMail({ from, to, subject, html, text, attachments, headers }) {
     const { data, error } = await resend.emails.send({
       from,
       to: Array.isArray(to) ? to : [to],
@@ -26,6 +27,7 @@ const transportador = {
       html,
       text,
       ...(attachments?.length ? { attachments } : {}),
+      ...(headers ? { headers } : {}),
     });
 
     if (error) {

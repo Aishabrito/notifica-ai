@@ -46,6 +46,8 @@ const { atualizarPosicao, posicaoParaApi } = require('./src/service/posicaoLista
 const { cifrar, criptografiaConfigurada } = require('./src/utils/cripto');
 const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
 const { executarCodigoVermelho } = require('./src/service/prazos');
+const { enviarResumosSemanais, tokenSairValido } = require('./src/service/resumoSemanal');
+const { pagina: paginaSimples } = require('./src/utils/paginaSimples');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
@@ -65,6 +67,21 @@ app.use('/cancelar', cancelamentoRoutes);
 app.use('/verificar-email', verificacaoRoutes);
 app.use('/prazo-feito', prazoFeitoRouter);
 app.use('/agenda', agendaPublicaRouter);
+
+// Sair do resumo semanal pelo link do e-mail (GET confirma, POST desliga)
+app.get('/resumo-semanal/sair/:id/:token', (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !tokenSairValido(req.params.id, req.params.token)) {
+    return res.status(400).send(paginaSimples('Link inválido', '<h1>Link inválido</h1>'));
+  }
+  res.send(paginaSimples('Resumo semanal', '<h1>Parar o resumo semanal?</h1><p>Seus alertas continuam funcionando normalmente.</p><form method="POST"><button type="submit">Sim, não quero mais o resumo</button></form>'));
+});
+app.post('/resumo-semanal/sair/:id/:token', async (req, res) => {
+  if (!mongoose.isValidObjectId(req.params.id) || !tokenSairValido(req.params.id, req.params.token)) {
+    return res.status(400).send(paginaSimples('Link inválido', '<h1>Link inválido</h1>'));
+  }
+  await Usuario.updateOne({ _id: req.params.id }, { $set: { resumoSemanal: false } });
+  res.send(paginaSimples('Pronto', '<h1>Pronto!</h1><p>Você não vai mais receber o resumo semanal. Dá para ligar de novo em Minha conta.</p>'));
+});
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -384,6 +401,15 @@ cron.schedule('40 7,19 * * *', async () => {
 // ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
 // ============================================
+// Resumo semanal: segunda, 7h50 (Brasília)
+cron.schedule('50 7 * * 1', async () => {
+  try {
+    await enviarResumosSemanais();
+  } catch (err) {
+    console.error('[Resumo semanal] Erro:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 // Código Vermelho: lembretes de prazo 72h, 24h e 3h antes
 cron.schedule('5 * * * *', async () => {
   try {

@@ -8,7 +8,7 @@ import api from "../services/Api";
 
 interface Conta {
   nome: string; email: string; emailVerificado: boolean; criadoEm: string;
-  plano: string; origemPlano: string | null; telegramConectado: boolean;
+  plano: string; origemPlano: string | null; telegramConectado: boolean; resumoSemanal?: boolean;
 }
 type Msg = { tipo: "" | "sucesso" | "erro"; texto: string };
 
@@ -77,6 +77,21 @@ export default function Conta() {
         )}
 
         <IndiqueGanhe />
+
+        {/* E-MAILS */}
+        {conta && (
+        <section className="border border-white/5 rounded-2xl p-6 space-y-3">
+          <h2 className="font-mono text-[10px] text-neutral-400 uppercase tracking-widest">E-mails</h2>
+          <label className="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" className="accent-emerald-400 mt-1 w-4 h-4" checked={conta.resumoSemanal !== false} disabled={enviando}
+              onChange={(e) => { const ligado = e.target.checked; executar(() => api.patch("/api/conta/preferencias", { resumoSemanal: ligado }), () => setConta({ ...conta, resumoSemanal: ligado })); }} />
+            <span>
+              <span className="text-sm">Resumo semanal</span>
+              <span className="block text-xs text-neutral-500">Toda segunda: o que mudou nas suas páginas, prazos da semana, Radar e editais. Os alertas de mudança continuam chegando na hora.</span>
+            </span>
+          </label>
+        </section>
+        )}
 
         {/* APARÊNCIA */}
         <section className="border border-white/5 rounded-2xl p-6 space-y-3">

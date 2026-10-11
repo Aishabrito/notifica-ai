@@ -46,6 +46,7 @@ router.get('/', autenticar, async (req, res) => {
       plano: u.plano?.tipo ?? 'free',
       origemPlano: u.plano?.origem ?? null,
       telegramConectado: Boolean(u.telegram?.chatId),
+      resumoSemanal: u.resumoSemanal !== false,
     },
   });
 });
@@ -58,6 +59,13 @@ router.patch('/', limiter, autenticar, async (req, res) => {
   }
   await Usuario.updateOne({ _id: req.usuario._id }, { nome });
   res.json({ sucesso: true, mensagem: 'Nome atualizado.' });
+});
+
+// ─── PREFERÊNCIAS ──────────────────────────────────
+router.patch('/preferencias', limiter, autenticar, async (req, res) => {
+  if (typeof req.body?.resumoSemanal !== 'boolean') return res.status(400).json({ sucesso: false, mensagem: 'Nada para salvar.' });
+  await Usuario.updateOne({ _id: req.usuario._id }, { $set: { resumoSemanal: req.body.resumoSemanal } });
+  res.json({ sucesso: true, mensagem: req.body.resumoSemanal ? 'Resumo semanal ativado.' : 'Resumo semanal desativado.' });
 });
 
 // ─── TROCAR SENHA ──────────────────────────────────

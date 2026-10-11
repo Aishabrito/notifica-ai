@@ -23,6 +23,7 @@ const SUITES = [
   'teste-editais.js',    // radar de editais por interesse
   'teste-indicacao.js',  // indique e ganhe
   'teste-pastas.js',     // pastas compartilháveis
+  'teste-resumo-semanal.js', // resumo semanal por e-mail
 ];
 
 let falhas = 0;

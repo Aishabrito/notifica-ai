@@ -31,7 +31,10 @@ const usuarioSchema = new mongoose.Schema({
   codigoIndicacao:         { type: String },
   indicadoPor:             { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', default: null, index: true },
   indicacaoRecompensadaEm: { type: Date, default: null },
-  creditoDias:             { type: Number, default: 0 }, // dias de Pro guardados (bônus para quem paga no cartão)
+  creditoDias:             { type: Number, default: 0 },
+  // Resumo semanal por e-mail (segunda de manhã)
+  resumoSemanal:          { type: Boolean, default: true },
+  resumoSemanalEnviadoEm: { type: Date, default: null }, // dias de Pro guardados (bônus para quem paga no cartão)
   telegram: {
     chatId:       { type: String, default: null },
     conectadoEm:  { type: Date, default: null },
