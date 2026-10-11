@@ -26,6 +26,7 @@ type Props = { ehPro: boolean; email: string; onConcluir: () => void };
 // 👋 Boas-vindas no 1º acesso: escolhe o perfil e já sai com tudo configurado
 export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
   const [passo, setPasso] = useState<1 | 2 | 3>(1);
+  const [sugerido] = useState<string | null>(() => { try { return localStorage.getItem("notifica:perfil-sugerido"); } catch { return null; } });
   const [perfil, setPerfil] = useState<Perfil | null>(null);
   const [modelos, setModelos] = useState<Modelo[]>([]);
   const [url, setUrl] = useState("");
@@ -91,8 +92,8 @@ export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
           <p className="text-sm text-neutral-400 mb-6">A gente já deixa tudo configurado para você.</p>
           <div className="grid sm:grid-cols-2 gap-3">
             {PERFIS.map((p) => (
-              <button key={p.id} onClick={() => escolher(p.id)} className="text-left rounded-xl border border-neutral-800 hover:border-emerald-400/60 bg-neutral-900/30 p-4 transition-colors">
-                <p className="text-lg font-bold"><span aria-hidden>{p.emoji}</span> {p.titulo}</p>
+              <button key={p.id} onClick={() => escolher(p.id)} className={`text-left rounded-xl border hover:border-emerald-400/60 bg-neutral-900/30 p-4 transition-colors ${sugerido === p.id ? "border-emerald-400/60 ring-1 ring-emerald-400/30" : "border-neutral-800"}`}>
+                <p className="text-lg font-bold flex justify-between gap-2"><span><span aria-hidden>{p.emoji}</span> {p.titulo}</span>{sugerido === p.id && <span className="font-mono text-[9px] uppercase tracking-widest text-emerald-400 self-center">sugerido</span>}</p>
                 <p className="text-xs text-neutral-500">{p.texto}</p>
               </button>
             ))}

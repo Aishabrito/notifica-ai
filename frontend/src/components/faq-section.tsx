@@ -3,12 +3,12 @@ import { FaqItem } from "./types";
 import { Reveal, Label } from "./reveal";
 
 const FAQ_ITEMS: FaqItem[] = [
-  { q: "Precisa instalar alguma coisa?",             a: "Não. Nenhuma extensão, nenhum aplicativo. Você cola o link e o seu e-mail — é o único passo. Funciona em qualquer navegador, em qualquer dispositivo." },
-  { q: "Funciona com SISU, PROUNI e Diário Oficial?", a: "Sim. Sites do governo e portais de concurso são exatamente o tipo de página que o Notifica.ai monitora melhor. Se você consegue abrir no navegador sem fazer login, a gente monitora." },
-  { q: "Com que frequência a página é verificada?",  a: "No plano gratuito, de 6 em 6 horas — quatro vezes por dia, todo dia. No plano Pro, você escolhe: a cada 6 horas, 1 hora ou 15 minutos. Para listas de espera com prazo de 2 dias, o Pro é o mais indicado." },
-  { q: "Como cancelo um alerta?",                    a: "Todo e-mail tem um link de cancelamento no rodapé. Um clique e acabou — sem login, sem formulário, sem burocracia." },
-  { q: "E se o site não mudar por semanas?",         a: "Você não recebe nenhum e-mail. Só avisamos quando algo muda de verdade — sem spam, sem notificações desnecessárias." },
-  { q: "Posso monitorar mais de um site?",           a: "No plano gratuito você monitora 1 página — ótimo para testar com a lista do SISU ou o edital que mais importa. No Pro os alertas são ilimitados: lista, resultado e edital ao mesmo tempo, com resumo do que mudou feito por IA e o Radar do Diário Oficial." },
+  { q: "Precisa instalar alguma coisa?",               a: "Não. Funciona no navegador do celular ou do computador. Se quiser, dá para instalar como app (sem loja) para receber notificação na tela." },
+  { q: "Serve para a lista de espera da minha faculdade?", a: "Sim. SISU, ProUni, Fies e a página de chamadas de qualquer universidade: se você abre no navegador sem login, a gente monitora. Informe sua posição e mostramos quanto falta para chegar em você." },
+  { q: "Como sei se fui nomeado(a)?",                   a: "No Pro, o Radar procura seu nome no Diário Oficial da União e nos diários municipais. Se for uma nomeação, o aviso chega como urgente, já com o prazo de posse e a lista de documentos." },
+  { q: "Com que frequência a página é verificada?",    a: "No plano grátis, de 6 em 6 horas, todo dia. No Pro, você escolhe: a cada 6 horas, 1 hora ou 15 minutos. Para chamada com prazo curto, o Pro é o mais indicado." },
+  { q: "Vou receber um monte de mensagem?",            a: "Não. Só avisamos quando algo muda de verdade. E todo aviso tem um link para cancelar com 1 clique." },
+  { q: "Posso monitorar mais de um site?",             a: "No grátis você monitora 1 página, ótimo para a lista ou o edital que mais importa. No Pro é ilimitado, com resumo do que mudou feito por IA e o Radar do Diário Oficial." },
 ];
 
 export const FaqSection = () => {
@@ -17,7 +17,7 @@ export const FaqSection = () => {
   const toggle = (i: number) => setOpen(open === i ? null : i);
 
   return (
-    <section className="px-16 py-24 border-b border-neutral-900">
+    <section id="duvidas" className="px-6 md:px-20 py-16 md:py-24 border-t border-white/5">
       <Reveal>
         <Label>// dúvidas frequentes</Label>
         <h2 className="text-4xl font-black tracking-tighter mb-10">Tirou alguma dúvida?</h2>
@@ -29,7 +29,7 @@ export const FaqSection = () => {
             <div className="bg-neutral-900 rounded overflow-hidden">
               <button
                 onClick={() => toggle(i)}
-                className="w-full flex justify-between items-center px-6 py-5 text-left hover:bg-neutral-800 transition-colors cursor-pointer"
+                className="w-full flex justify-between items-center px-5 md:px-6 py-5 text-left hover:bg-neutral-800 transition-colors cursor-pointer"
               >
                 <span className="font-bold text-sm tracking-tight">{item.q}</span>
                 <span className={`text-emerald-400 font-mono text-lg ml-6 shrink-0 transition-transform duration-300 ${open === i ? "rotate-45" : ""}`}>
