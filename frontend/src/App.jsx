@@ -21,6 +21,7 @@ import Radar          from './pages/Radar';
 import Conta          from './pages/Conta';
 import Prazos         from './pages/Prazos';
 import PastaPublica   from './pages/PastaPublica';
+import Calendario     from './pages/Calendario';
 
 // O painel admin tem visual próprio: não recebe tema/cor escolhidos
 function AparenciaPorRota() {
@@ -40,6 +41,7 @@ export default function App() {
             <Route path="/vestibular"    element={<LandingPage publicoInicial="vestibulando" />} />
             <Route path="/concursos"     element={<LandingPage publicoInicial="concurseiro" />} />
             <Route path="/como-funciona" element={<ComoFunciona />} />
+            <Route path="/calendario"    element={<Calendario />} />
             <Route path="/login"         element={<Login />} />
             <Route path="/cadastro"      element={<Cadastro />} />
             <Route path="/termos"        element={<Termos />} />

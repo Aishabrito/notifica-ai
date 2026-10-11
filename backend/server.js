@@ -121,6 +121,11 @@ mongoose.connect(process.env.MONGODB_URI, {
     } catch (errMigracao) {
       console.error('[Plano] Falha na migração de planos legados:', errMigracao.message);
     }
+    try {
+      await require('./src/service/calendario').semearCalendario();
+    } catch (errCalendario) {
+      console.error('[Calendário] Falha ao semear datas:', errCalendario.message);
+    }
   })
   .catch((err) => {
     console.error('Erro de conexão MongoDB:', err.message);
@@ -166,6 +171,7 @@ app.use('/api/pastas', require('./src/routes/pastaRoutes'));
 app.use('/api/push', require('./src/routes/pushRoutes'));
 app.use('/api/concursos', require('./src/routes/concursoRoutes'));
 app.use('/api/testar-pagina', require('./src/routes/testarPaginaRoutes'));
+app.use('/api/calendario', require('./src/routes/calendarioRoutes'));
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
@@ -448,6 +454,15 @@ cron.schedule('5 * * * *', async () => {
     await executarCodigoVermelho();
   } catch (err) {
     console.error('[Prazos] Erro no Código Vermelho:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
+// Calendário: avisos 7 dias antes, na véspera e no dia (8h10)
+cron.schedule('10 8 * * *', async () => {
+  try {
+    await require('./src/service/calendario').enviarLembretesCalendario();
+  } catch (err) {
+    console.error('[Calendário] Erro nos lembretes:', err.message);
   }
 }, { timezone: 'America/Sao_Paulo' });
 

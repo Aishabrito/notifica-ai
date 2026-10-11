@@ -28,6 +28,7 @@ const SUITES = [
   'teste-push.js',       // notificação no celular
   'teste-chamadas.js',   // histórico das chamadas da lista de espera
   'teste-nomeacao.js',   // nomeação, posse e validade do concurso
+  'teste-calendario.js', // "teste agora" e calendário ENEM/SISU/concursos
 ];
 
 let falhas = 0;
