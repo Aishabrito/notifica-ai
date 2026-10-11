@@ -101,7 +101,7 @@ const qd = http.createServer((req, res) => {
   ok(ocs.length === 3, 'mesma publicação achada por nome e inscrição não duplica');
   ok(!JSON.stringify(ocs).includes('JOSE DA SILVA') && ocs.every(o => o.trechosCifrados.startsWith('v1:')), 'trechos (que citam o nome) cifrados no banco');
   await sleep(200);
-  ok(sent.length === 1 && sent[0].subject.includes('3 publicações') && sent[0].html.includes('<mark') && sent[0].html.includes('&lt;b&gt;aprovado') && sent[0].html.includes('homônimos'), 'um e-mail com as 3, nome destacado, HTML escapado, aviso de homônimo');
+  ok(sent.length === 1 && sent[0].subject.includes('URGENTE') && sent[0].html.includes('Pode ser a sua nomeação') && sent[0].html.includes('<mark') && sent[0].html.includes('&lt;b&gt;aprovado') && sent[0].html.includes('homônimos'), 'um e-mail com as 3 (urgente: uma é convocação para posse), nome destacado, HTML escapado, aviso de homônimo');
   ok((await LogRadar.countDocuments({ monitor: monId, sucesso: true, manual: true })) === 2 && !JSON.stringify(await LogRadar.find().lean()).includes('Silva'), 'log de auditoria por consulta, sem o nome buscado');
 
   // 2ª busca: janela = última busca - 3 dias, sem duplicar nem reenviar

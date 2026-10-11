@@ -164,6 +164,7 @@ app.use('/api/conta', contaRoutes);
 app.use('/api/prazos', prazoRouter);
 app.use('/api/pastas', require('./src/routes/pastaRoutes'));
 app.use('/api/push', require('./src/routes/pushRoutes'));
+app.use('/api/concursos', require('./src/routes/concursoRoutes'));
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
@@ -173,11 +174,9 @@ app.use('/api/telegram', telegramRouter);
 
 // Publicações do Radar também vão para o Telegram de quem conectou
 aoEncontrarOcorrencias(telegram.notificarOcorrencias);
-aoEncontrarOcorrencias((usuario, _dados, ocorrencias) => require('./src/service/push').enviarPush(usuario._id, {
-  titulo: '📰 Você foi citado(a) no Diário Oficial',
-  corpo: `${ocorrencias.length} publicação(ões) com seus dados. Toque para ver.`,
-  url: '/radar', tag: 'radar', urgente: true,
-}));
+aoEncontrarOcorrencias((usuario, _dados, ocorrencias) => require('./src/service/push').enviarPush(usuario._id, ocorrencias.some((o) => o.nomeacao)
+  ? { titulo: '🚨 Parece a sua nomeação!', corpo: 'Saiu publicação de nomeação/convocação com o seu nome. Confira o prazo de posse agora.', url: '/prazos', tag: 'radar-nomeacao', urgente: true }
+  : { titulo: '📰 Você foi citado(a) no Diário Oficial', corpo: `${ocorrencias.length} publicação(ões) com seus dados. Toque para ver.`, url: '/radar', tag: 'radar', urgente: true }));
 
 app.get('/teste', (_req, res) => res.json({ online: true, timestamp: new Date() }));
 app.get('/api/health', (_req, res) => res.json({ status: 'ok', timestamp: new Date() }));
@@ -461,6 +460,11 @@ cron.schedule('20 6 * * *', async () => {
 }, { timezone: 'America/Sao_Paulo' });
 
 cron.schedule('0 3 * * *', async () => {
+  try {
+    await require('./src/service/nomeacao').lembrarValidades();
+  } catch (err) {
+    console.error('[Validade] Erro:', err.message);
+  }
   try {
     await aplicarCortesias();
     await processarPlanosExpirados();

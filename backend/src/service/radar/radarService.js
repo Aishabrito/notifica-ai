@@ -16,6 +16,7 @@ const dou = require('./dou');
 const DRIVERS = [queridoDiario, dou];
 
 const { abrirTarefa, resolverTarefa } = require('../tarefasAdmin');
+const { ehNomeacao, criarPrazoPosse } = require('../nomeacao');
 const DIA_MS = 24 * 60 * 60 * 1000;
 const PAUSA_ENTRE_CONSULTAS_MS = 1000; // educação com a API pública
 
@@ -95,12 +96,15 @@ async function enviarEmailOcorrencias(usuario, dados, ocorrencias) {
   await transportador.sendMail({
     from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
     to: usuario.email,
-    subject: ocorrencias.length === 1
-      ? `📰 Você foi citado(a) no ${nomeDiario(ocorrencias[0].cidadeId)}`
-      : `📰 Você foi citado(a) em ${ocorrencias.length} publicações de Diário Oficial`,
+    subject: ocorrencias.some((o) => o.nomeacao)
+      ? `🚨 URGENTE: parece uma nomeação/convocação no ${nomeDiario(ocorrencias.find((o) => o.nomeacao).cidadeId)} — confira o prazo de posse`
+      : ocorrencias.length === 1
+        ? `📰 Você foi citado(a) no ${nomeDiario(ocorrencias[0].cidadeId)}`
+        : `📰 Você foi citado(a) em ${ocorrencias.length} publicações de Diário Oficial`,
     html: `
       <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 640px;">
         <h2>Encontramos você no Diário Oficial</h2>
+        ${ocorrencias.some((o) => o.nomeacao) ? `<p style="background:#fee2e2;border-left:4px solid #dc2626;padding:10px 12px;border-radius:6px"><strong>🚨 Pode ser a sua nomeação ou convocação.</strong> O prazo para tomar posse costuma ser curto (30 dias no serviço público federal). Abra a publicação agora e confira o prazo e os documentos — já criamos um prazo com o checklist em <a href="${process.env.FRONTEND_URL || 'https://notifica.dev.br'}/prazos">Prazos</a>.</p>` : ''}
         <p>O Radar do Notifica.ai achou ${ocorrencias.length === 1 ? 'uma publicação' : `${ocorrencias.length} publicações`} que ${ocorrencias.length === 1 ? 'cita' : 'citam'} os dados que você cadastrou.</p>
         ${itens}
         <hr>
@@ -184,8 +188,9 @@ async function processarMonitor(monitor, { manual = false } = {}) {
               edicao: pub.edicao,
               trechosCifrados: cifrar(JSON.stringify(pub.trechos)),
               confirmacao,
+              nomeacao: ehNomeacao(pub.trechos),
             });
-            novas.push({ ...pub, _id: ocorrencia._id, cidadeId: pub.cidadeId, dataPublicacao: pub.data, confirmacao });
+            novas.push({ ...pub, _id: ocorrencia._id, cidadeId: pub.cidadeId, dataPublicacao: pub.data, confirmacao, nomeacao: ocorrencia.nomeacao });
             novasNesta += 1;
           } catch (err) {
             if (err.code !== 11000) throw err; // 11000 = já registrada antes
@@ -233,6 +238,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
 
   if (novas.length > 0) {
     const usuario = monitor.usuario?.email ? monitor.usuario : await require('../../models/Usuario').findById(monitor.usuario).select('nome email plano telegram');
+    for (const o of novas.filter((n) => n.nomeacao)) await criarPrazoPosse(usuario._id, o, nomeDiario(o.cidadeId));
     try {
       await enviarEmailOcorrencias(usuario, dados, novas);
       await OcorrenciaRadar.updateMany({ _id: { $in: novas.map((n) => n._id) } }, { notificadoEm: new Date() });

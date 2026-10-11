@@ -3,6 +3,8 @@
 export interface Novidade { id: string; emoji: string; titulo: string; texto: string; link?: string; acao?: string; pro?: boolean }
 
 export const NOVIDADES: Novidade[] = [
+  { id: "2026-10-nomeacao", emoji: "🏛️", titulo: "Aprovado(a)? Não perca a nomeação", texto: "Acompanhe a validade do concurso e, com o Radar, receba aviso urgente na nomeação — com o prazo de posse e o checklist de documentos.", link: "/radar", acao: "Cadastrar meu concurso" },
+  { id: "2026-10-chamadas", emoji: "📊", titulo: "Quantas chamadas faltam até você", texto: "Registre as chamadas da lista de espera e veja quanto falta até a sua posição — a IA registra sozinha no Pro.", link: "/dashboard", acao: "Ver minha lista" },
   { id: "2026-10-push", emoji: "📲", titulo: "Avisos no celular, na hora", texto: "Ative as notificações e receba o aviso na tela do celular assim que algo mudar — mais rápido que o e-mail.", link: "/conta", acao: "Ativar notificações" },
   { id: "2026-10-prazos", emoji: "⏰", titulo: "Prazos e Código Vermelho", texto: "A IA acha as datas do edital (até o prazo de recurso do gabarito) e te lembra 72h, 24h e 3h antes. Dá para colocar tudo na sua agenda.", link: "/prazos", acao: "Ver meus prazos", pro: true },
   { id: "2026-10-posicao", emoji: "📍", titulo: "Sua posição na lista de espera", texto: "Diga como seu nome aparece na lista e avisamos quando você subir — ou quando for chamado(a).", link: "/dashboard", acao: "Ativar em um alerta" },
