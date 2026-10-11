@@ -24,6 +24,7 @@ const SUITES = [
   'teste-indicacao.js',  // indique e ganhe
   'teste-pastas.js',     // pastas compartilháveis
   'teste-resumo-semanal.js', // resumo semanal por e-mail
+  'teste-cortesia.js',   // contas Pro de cortesia
 ];
 
 let falhas = 0;

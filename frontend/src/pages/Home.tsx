@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import ModelosProntos from "../components/ModelosProntos";
 import MinhaPosicao, { type Posicao } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
+import Novidades from "../components/Novidades";
 import { CHAVE_PASTA_PENDENTE } from "./PastaPublica";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
@@ -312,6 +313,8 @@ export default function Home() {
           </div>
         )}
 
+        {usuario && <Novidades ehPro={ehPro} />}
+
         {/* FORM */}
         <div
           className="mb-10 md:mb-14 p-6 md:p-8 rounded-2xl border border-white/5"
@@ -334,7 +337,7 @@ export default function Home() {
                 className="font-mono text-xs bg-emerald-400 text-black px-6 py-2.5 rounded-lg font-bold hover:bg-emerald-300 transition-colors">
                 Fazer upgrade →
               </button>
-              <p className="text-[11px] text-neutral-600 mt-2">Cartão ou Pix — sem precisar de conta no Mercado Pago.</p>
+              <p className="text-[11px] text-neutral-600 mt-2">Cartão ou Pix · cancele quando quiser.</p>
             </div>
           ) : (
             <form onSubmit={handleCadastrar} className="space-y-3">

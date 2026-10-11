@@ -131,7 +131,7 @@ function Planos() {
     <section id="planos" className="px-6 md:px-20 py-20 md:py-28 border-t border-white/5">
       <p className="font-mono text-[10px] text-purple-400 tracking-[0.3em] uppercase mb-3">// planos</p>
       <h2 className="font-black text-4xl md:text-5xl tracking-tighter mb-3">Comece grátis. Vire Pro quando precisar.</h2>
-      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix, sem precisar de conta no Mercado Pago. Cancele quando quiser.</p>
+      <p className="text-neutral-500 mb-12 max-w-xl">Pague no cartão ou no Pix. Sem fidelidade: cancele quando quiser.</p>
       <div className="grid md:grid-cols-2 gap-6 max-w-4xl">
         {planos.map((p) => (
           <div key={p.nome} className={`rounded-2xl p-8 border ${p.destaque ? 'border-purple-500/40 bg-purple-500/5' : 'border-white/10'}`}>

@@ -40,6 +40,7 @@ router.post('/cadastro', async (req, res) => {
       return res.status(409).json({ sucesso: false, mensagem: 'E-mail já cadastrado.' });
 
     const usuario = await Usuario.create({ nome, email, senha });
+    await require('../service/planoService').aplicarCortesias(usuario.email).catch(() => {});
     if (req.body.indicacao) {
       await require('../service/indicacao').vincularIndicacao(usuario, req.body.indicacao)
         .catch((err) => console.error('[Indicação] Falha ao vincular:', err.message));
@@ -73,10 +74,14 @@ router.post('/login', async (req, res) => {
   console.log('🔑 Tentativa de login:', req.body.email);
   try {
     const { email, senha } = req.body;
-    const usuario = await Usuario.findOne({ email });
+    let usuario = await Usuario.findOne({ email });
 
     if (!usuario || !(await usuario.verificarSenha(senha))) {
       return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
+    }
+    // Contas de cortesia (config/cortesias.js) viram Pro já no login
+    if (await require('../service/planoService').aplicarCortesias(usuario.email).catch(() => 0)) {
+      usuario = await Usuario.findById(usuario._id);
     }
 
     const token = gerarToken(usuario._id);

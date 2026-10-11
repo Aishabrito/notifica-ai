@@ -29,7 +29,7 @@ const { telegramRouter, webhookTelegramRouter } = require('./src/routes/telegram
 const telegram                  = require('./src/service/telegram');
 const { assinaturaRouter, webhookRouter, mpConfigHandler } = require('./src/routes/assinaturaRoutes');
 const { gerarLinkCancelamento } = require('./src/utils/linkCancelamento');
-const { processarPlanosExpirados, enviarLembretesRenovacao } = require('./src/service/planoService');
+const { processarPlanosExpirados, enviarLembretesRenovacao, aplicarCortesias } = require('./src/service/planoService');
 const { obterRegrasPlano }      = require('./src/config/planos');
 const {
   verificarLimitePlano,
@@ -117,6 +117,7 @@ mongoose.connect(process.env.MONGODB_URI, {
     try {
       const migrados = await Usuario.migrarPlanosLegados();
       if (migrados > 0) console.log(`[Plano] ${migrados} usuário(s) migrados para o novo formato de plano.`);
+      await aplicarCortesias();
     } catch (errMigracao) {
       console.error('[Plano] Falha na migração de planos legados:', errMigracao.message);
     }
@@ -430,6 +431,7 @@ cron.schedule('20 6 * * *', async () => {
 
 cron.schedule('0 3 * * *', async () => {
   try {
+    await aplicarCortesias();
     await processarPlanosExpirados();
   } catch (err) {
     console.error('[Plano] Erro no job de planos expirados:', err.message);

@@ -9,8 +9,8 @@
 
 const PERIODOS = [
   { periodo: 'mensal',    meses: 1,  dias: 30,  variavel: 'MP_PRECO_MENSAL',    padrao: '20.00', nome: 'Mensal' },
-  { periodo: 'semestral', meses: 6,  dias: 182, variavel: 'MP_PRECO_SEMESTRAL', padrao: '90.00', nome: 'Semestral' },
-  { periodo: 'anual',     meses: 12, dias: 365, variavel: 'MP_PRECO_ANUAL',     padrao: '90.00', nome: 'Anual' },
+  { periodo: 'semestral', meses: 6,  dias: 182, variavel: 'MP_PRECO_SEMESTRAL', padrao: '75.00', nome: 'Semestral' },  // R$ 12,50/mês
+  { periodo: 'anual',     meses: 12, dias: 365, variavel: 'MP_PRECO_ANUAL',     padrao: '120.00', nome: 'Anual' },     // R$ 10/mês
 ];
 
 function preco(variavel, padrao) {
