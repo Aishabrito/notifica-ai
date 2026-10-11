@@ -4,7 +4,7 @@
 function escaparIcs(texto) {
   return String(texto ?? '')
     .replace(/\\/g, '\\\\')
-    .replace(/;/g, '\;')
+    .replace(/;/g, '\\;')
     .replace(/,/g, '\\,')
     .replace(/\r?\n/g, '\\n');
 }
@@ -48,4 +48,69 @@ function gerarIcs(eventos, { titulo, url, uidBase }) {
   return linhas.join('\r\n');
 }
 
-module.exports = { gerarIcs };
+// Momento limite de um prazo: a hora informada (ou 23:59) no horário de Brasília.
+// O Brasil não tem horário de verão desde 2019, então o fuso é sempre -03:00.
+function momentoLimite({ data, hora }) {
+  return new Date(`${data}T${hora || '23:59'}:00-03:00`);
+}
+
+const utcIcs = (d) => d.toISOString().replace(/[-:]/g, '').replace(/\.\d{3}/, '');
+
+// Quebra linhas longas (RFC 5545: até 75 octetos por linha)
+function dobrar(linha) {
+  const partes = [];
+  let resto = linha;
+  while (Buffer.byteLength(resto) > 74) {
+    let corte = 74;
+    while (Buffer.byteLength(resto.slice(0, corte)) > 74) corte--;
+    partes.push(resto.slice(0, corte));
+    resto = ` ${resto.slice(corte)}`;
+  }
+  partes.push(resto);
+  return partes.join('\r\n');
+}
+
+/**
+ * Agenda assinável com todos os prazos da pessoa, com lembretes 1 dia e
+ * 3 horas antes. Google Agenda, Apple e Outlook atualizam sozinhos.
+ * @param {Array} prazos – documentos Prazo
+ */
+function gerarFeedIcs(prazos, { nome = 'Notifica.ai — Prazos', baseUrl = '' } = {}) {
+  const agora = utcIcs(new Date());
+  const linhas = [
+    'BEGIN:VCALENDAR',
+    'VERSION:2.0',
+    'PRODID:-//Notifica.ai//Agenda//PT-BR',
+    'CALSCALE:GREGORIAN',
+    'METHOD:PUBLISH',
+    `X-WR-CALNAME:${escaparIcs(nome)}`,
+    'X-WR-TIMEZONE:America/Sao_Paulo',
+    'REFRESH-INTERVAL;VALUE=DURATION:PT6H',
+    'X-PUBLISHED-TTL:PT6H',
+  ];
+  for (const p of prazos) {
+    const titulo = `${p.concluidoEm ? '✅ ' : ''}${p.titulo}${p.contexto ? ` — ${p.contexto}` : ''}`;
+    const inicio = p.hora
+      ? [`DTSTART:${utcIcs(momentoLimite(p))}`, `DTEND:${utcIcs(new Date(momentoLimite(p).getTime() + 30 * 60 * 1000))}`]
+      : [`DTSTART;VALUE=DATE:${dataIcs(p.data)}`, `DTEND;VALUE=DATE:${dataIcs(p.data, 1)}`];
+    linhas.push(
+      'BEGIN:VEVENT',
+      `UID:prazo-${p._id}@notifica.dev.br`,
+      `DTSTAMP:${agora}`,
+      ...inicio,
+      `SUMMARY:${escaparIcs(titulo)}`,
+      `DESCRIPTION:${escaparIcs(`${p.url ? `Confira no documento oficial: ${p.url}\n` : ''}Gerenciar prazos: ${baseUrl}/prazos`)}`,
+      ...(p.url ? [`URL:${escaparIcs(p.url)}`] : []),
+    );
+    if (!p.concluidoEm) {
+      for (const gatilho of ['-P1D', '-PT3H']) {
+        linhas.push('BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:${escaparIcs(p.titulo)}`, `TRIGGER:${gatilho}`, 'END:VALARM');
+      }
+    }
+    linhas.push('END:VEVENT');
+  }
+  linhas.push('END:VCALENDAR');
+  return linhas.map(dobrar).join('\r\n');
+}
+
+module.exports = { gerarIcs, gerarFeedIcs, momentoLimite };

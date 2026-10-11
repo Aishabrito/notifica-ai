@@ -8,6 +8,7 @@ const { resumirMudanca } = require('./resumoMudanca');
 const { notificarMudanca } = require('./telegram');
 const { validarUrlPublica } = require('../utils/urlPublica');
 const { abrirTarefa, resolverTarefa } = require('./tarefasAdmin');
+const { registrarPrazosDaMudanca } = require('./prazos');
 const Alerta        = require('../models/alertaModel');
 const Mudanca       = require('../models/Mudanca');
 const { intervaloEfetivo, obterTipoPlanoEfetivo } = require('../config/planos');
@@ -306,6 +307,11 @@ async function verificarAlerta(alerta, buscarPagina) {
       notificarMudanca(alerta.usuario, alerta, resumo).catch(() => {});
     } else {
       console.log(`[Crawler] 🔕 Mudança irrelevante em ${alerta.url} — sem e-mail`);
+    }
+
+    // Pro: as datas achadas pela IA viram prazos (Código Vermelho e agenda)
+    if (ehPro && resumo?.relevante && resumo.datas?.length) {
+      await registrarPrazosDaMudanca(alerta, resumo).catch((err) => console.error('[Prazos] Falha:', err.message));
     }
 
     // Salva registro no histórico de mudanças

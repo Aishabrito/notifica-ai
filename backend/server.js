@@ -41,6 +41,8 @@ const adminRoutes               = require('./src/routes/adminRoutes');
 const { CATEGORIAS, MODELOS }   = require('./src/config/modelos');
 const { escaparHtml }           = require('./src/utils/html');
 const { gerarTarefasDeSaude }   = require('./src/service/saudeSistema');
+const { prazoRouter, agendaPublicaRouter, prazoFeitoRouter } = require('./src/routes/prazoRoutes');
+const { executarCodigoVermelho } = require('./src/service/prazos');
 const feedbackRoutes            = require('./src/routes/feedbackRoutes');
 
 const app = express();
@@ -58,6 +60,8 @@ app.use(cookieParser());
 // que não está na lista de origens do frontend.
 app.use('/cancelar', cancelamentoRoutes);
 app.use('/verificar-email', verificacaoRoutes);
+app.use('/prazo-feito', prazoFeitoRouter);
+app.use('/agenda', agendaPublicaRouter);
 
 const ALLOWED_ORIGINS = process.env.CORS_ORIGINS
   ? process.env.CORS_ORIGINS.split(',').map((o) => o.trim())
@@ -136,6 +140,7 @@ app.use('/api/feedbacks', feedbackRoutes);
 app.use('/api/plano', planoRoutes);
 app.use('/api/radar', radarRoutes);
 app.use('/api/conta', contaRoutes);
+app.use('/api/prazos', prazoRouter);
 app.get('/api/mp-config', mpConfigHandler);
 app.get('/api/modelos', (_req, res) => res.json({ sucesso: true, categorias: CATEGORIAS, modelos: MODELOS }));
 app.use('/api/assinatura', assinaturaRouter);
@@ -341,6 +346,15 @@ cron.schedule('40 7,19 * * *', async () => {
 // ============================================
 // 💎 CRON DE PLANOS — 03h (Brasília): rebaixa assinaturas vencidas
 // ============================================
+// Código Vermelho: lembretes de prazo 72h, 24h e 3h antes
+cron.schedule('5 * * * *', async () => {
+  try {
+    await executarCodigoVermelho();
+  } catch (err) {
+    console.error('[Prazos] Erro no Código Vermelho:', err.message);
+  }
+}, { timezone: 'America/Sao_Paulo' });
+
 // Checklist do admin: confere configuração e diários todo dia; modelos prontos às segundas
 cron.schedule('20 6 * * *', async () => {
   try {

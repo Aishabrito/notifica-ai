@@ -18,6 +18,7 @@ const SUITES = [
   'teste-dou.js',        // Radar: Diário Oficial da União e janela por fonte
   'teste-modelos.js',    // modelos prontos e saúde do sistema
   'teste-tarefas.js',    // checklist de tarefas do admin
+  'teste-prazos.js',     // prazos, Código Vermelho, agenda e checklist
 ];
 
 let falhas = 0;

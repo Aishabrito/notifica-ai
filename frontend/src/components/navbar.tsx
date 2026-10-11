@@ -46,6 +46,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
           {logado ? (
             <>
               <Link to="/dashboard" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Painel</Link>
+              <Link to="/prazos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Prazos</Link>
               <Link to="/radar" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Radar DO</Link>
               <Link to="/planos" className="font-mono text-xs text-neutral-400 hover:text-white tracking-wide">Planos</Link>
               <Link to="/conta" className="font-mono text-xs text-neutral-500 hover:text-white tracking-wide truncate max-w-50" title="Minha conta">
@@ -85,6 +86,7 @@ export const Navbar = ({ logado = false }: NavbarProps) => {
                 {usuario?.email}
               </span>
               <Link to="/dashboard" onClick={fecharMenu} className="font-mono text-sm text-white">Painel</Link>
+              <Link to="/prazos" onClick={fecharMenu} className="font-mono text-sm text-white">Prazos</Link>
               <Link to="/radar" onClick={fecharMenu} className="font-mono text-sm text-white">Radar do Diário Oficial</Link>
               <Link to="/planos" onClick={fecharMenu} className="font-mono text-sm text-white">Planos</Link>
               <Link to="/conta" onClick={fecharMenu} className="font-mono text-sm text-white">Minha conta</Link>

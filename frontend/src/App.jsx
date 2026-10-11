@@ -19,6 +19,7 @@ import AdminDashboard from "./pages/Admin/AdminDashboard";
 import Planos         from './pages/Planos';
 import Radar          from './pages/Radar';
 import Conta          from './pages/Conta';
+import Prazos         from './pages/Prazos';
 
 // O painel admin tem visual próprio: não recebe tema/cor escolhidos
 function AparenciaPorRota() {
@@ -50,6 +51,11 @@ export default function App() {
             <Route path="/radar" element={
               <PrivateRoute>
                 <Radar />
+              </PrivateRoute>
+            } />
+            <Route path="/prazos" element={
+              <PrivateRoute>
+                <Prazos />
               </PrivateRoute>
             } />
             <Route path="/conta" element={
