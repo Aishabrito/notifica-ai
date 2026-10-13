@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { lerUrlPendente, limparUrlPendente } from "../utils/urlPendente";
 import ModelosProntos from "../components/ModelosProntos";
 import MinhaPosicao, { type Posicao, type Chamada, type Estimativa } from "../components/MinhaPosicao";
 import MinhasPastas from "../components/MinhasPastas";
@@ -53,7 +54,7 @@ export default function Home() {
   const navigate = useNavigate();
   const [alertas, setAlertas]         = useState<Alerta[]>([]);
   const [carregando, setCarregando]   = useState(true);
-  const [url, setUrl]                 = useState("");
+  const [url, setUrl]                 = useState(() => lerUrlPendente() ?? "");
   const [emailManual, setEmailManual] = useState("");
   const [statusMsg, setStatusMsg]     = useState({ tipo: "", texto: "" });
   // Limite de alertas ativos vindo do backend (null = ilimitado, plano Pro)
@@ -222,6 +223,7 @@ export default function Home() {
       });
       if (d.sucesso) {
         if (urlAlvo === url) setUrl("");
+        if (urlAlvo === lerUrlPendente()) limparUrlPendente();
         await carregarAlertas(emailAtivo);
         setStatusMsg({ tipo: "sucesso", texto: `Monitorando: ${d.titulo}` });
       } else {

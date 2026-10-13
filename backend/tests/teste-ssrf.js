@@ -34,6 +34,13 @@ const sleep = (ms) => new Promise(r => setTimeout(r, ms));
     ok(r.status === 400, `cadastro recusa ${url}`);
   }
 
+  // 1b. "Teste agora" (público, sem login) também não acessa a rede interna
+  for (const url of ['http://169.254.169.254/latest/meta-data/', 'http://127.0.0.1:4570/']) {
+    const r = await fetch('http://localhost:3991/api/testar-pagina', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ url }) });
+    ok(r.status === 400, `teste agora recusa ${url}`);
+  }
+  ok(acessosInternos.length === 0, 'teste agora: nenhum acesso chegou à rede interna');
+
   // 2. página pública com link de PDF apontando para a rede interna
   //    (simulamos a resposta da página pública com um stub do axios.get)
   const getOrig = axios.get;

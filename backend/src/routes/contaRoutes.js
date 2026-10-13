@@ -190,6 +190,7 @@ router.delete('/', limiter, autenticar, async (req, res) => {
       require('../models/Prazo').deleteMany({ usuario: usuario._id }),
       require('../models/Pasta').deleteMany({ usuario: usuario._id }),
       require('../service/nomeacao').Concurso.deleteMany({ usuario: usuario._id }),
+      require('../service/calendario').LembreteCalendario.deleteMany({ usuario: usuario._id }),
       require('../service/push').PushInscricao.deleteMany({ usuario: usuario._id }),
       require('../models/InteresseEdital').InteresseEdital.deleteMany({ usuario: usuario._id }),
       require('../models/InteresseEdital').EditalEncontrado.deleteMany({ usuario: usuario._id }),

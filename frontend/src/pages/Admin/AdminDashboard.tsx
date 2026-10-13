@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks } from "lucide-react";
+import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks, CalendarDays } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
 import { DashboardDados } from "./components/types"; 
@@ -12,11 +12,12 @@ import PainelSaudeCrawler from "./components/PainelSaudeCrawler";
 import PainelLogCrawler from "./components/PainelLogCrawler";
 import PainelSaudeSistema from "./components/PainelSaudeSistema";
 import ChecklistTarefas from "./components/ChecklistTarefas";
+import GerenciarCalendario from "./components/GerenciarCalendario";
 import TabelaUsuarios from "./components/TabelaUsuarios";
 import TabelaAlertas from "./components/TabelaAlertas";
 import TabelaFeedbacks from "./components/TabelaFeedbacks";
 
-type Tab = "tarefas" | "visao-geral" | "usuarios" | "alertas" | "feedbacks";
+type Tab = "tarefas" | "visao-geral" | "usuarios" | "alertas" | "feedbacks" | "calendario";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -63,6 +64,7 @@ export default function AdminDashboard() {
     { id: "usuarios",    label: "Usuários",    icon: Users },
     { id: "alertas",     label: "Alertas",     icon: Bell },
     { id: "feedbacks",   label: "Feedbacks",   icon: MessageSquare },
+    { id: "calendario",  label: "Calendário",  icon: CalendarDays },
   ];
 
   return (
@@ -213,6 +215,7 @@ export default function AdminDashboard() {
 
         {/* ── Conteúdo das Abas com Proteção de Dados ── */}
         {tab === "tarefas" && <ChecklistTarefas onMudou={setTarefasAbertas} />}
+        {tab === "calendario" && <GerenciarCalendario />}
 
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
@@ -245,7 +248,7 @@ export default function AdminDashboard() {
         )}
 
         {/* Loading State para abas */}
-        {tab !== "visao-geral" && tab !== "tarefas" && loading && !dados && (
+        {tab !== "visao-geral" && tab !== "tarefas" && tab !== "calendario" && loading && !dados && (
           <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-8 animate-pulse h-64" />
         )}
 
