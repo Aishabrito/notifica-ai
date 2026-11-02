@@ -87,23 +87,25 @@ export default function FeedbackModal() {
         >
           {/* Card */}
           <div
-            className="w-full max-w-md rounded-2xl border border-white/[0.07] shadow-2xl overflow-hidden"
-            style={{ background: "linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(108,52,131,0.03) 100%)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Enviar feedback"
+            className="w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden bg-(--cartao) text-(--texto)"
           >
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
               <div>
                 <p className="font-mono text-[9px] text-purple-400 uppercase tracking-[0.2em]">
                   // feedback
                 </p>
-                <h2 className="text-sm font-bold text-white mt-0.5 tracking-tight">
+                <h2 className="text-sm font-bold text-(--texto) mt-0.5 tracking-tight">
                   Deixe sua mensagem
                 </h2>
               </div>
               <button
                 onClick={fechar}
-                className="font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-2.5 py-1.5 rounded-lg transition-all"
+                className="font-mono text-[10px] uppercase tracking-widest text-neutral-400 hover:text-(--texto) border border-neutral-800 hover:border-neutral-600 px-2.5 py-1.5 rounded-lg transition-all"
               >
                 [ esc ]
               </button>
@@ -118,13 +120,13 @@ export default function FeedbackModal() {
                   <div className="w-12 h-12 rounded-full border border-emerald-400/20 bg-emerald-400/5 flex items-center justify-center mx-auto mb-4">
                     <span className="text-emerald-400 text-xl font-black">✓</span>
                   </div>
-                  <p className="font-bold tracking-tight text-white">Feedback enviado!</p>
-                  <p className="font-mono text-[11px] text-neutral-600 mt-1">
+                  <p className="font-bold tracking-tight text-(--texto)">Feedback enviado!</p>
+                  <p className="font-mono text-[11px] text-neutral-400 mt-1">
                     Obrigado! A gente lê tudo e responde no seu e-mail.
                   </p>
                   <button
                     onClick={fechar}
-                    className="mt-6 font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white transition-colors"
+                    className="mt-6 font-mono text-[10px] uppercase tracking-widest text-neutral-400 hover:text-(--texto) transition-colors"
                   >
                     fechar →
                   </button>
@@ -136,7 +138,7 @@ export default function FeedbackModal() {
                   {/* Email — exibido apenas para usuários não logados */}
                   {!usuario && (
                     <div>
-                      <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">
+                      <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">
                         Seu e-mail
                       </label>
                       <input
@@ -145,9 +147,9 @@ export default function FeedbackModal() {
                         value={emailManual}
                         onChange={(e) => setEmail(e.target.value)}
                         className="
-                          w-full bg-neutral-900/50 border border-neutral-800
-                          rounded-lg px-4 py-3 font-mono text-xs text-white
-                          placeholder-neutral-700 outline-none
+                          w-full bg-(--campo) border border-neutral-800
+                          rounded-lg px-4 py-3 font-mono text-xs text-(--texto)
+                          placeholder-neutral-500 outline-none
                           focus:border-purple-500/50 transition-all
                         "
                       />
@@ -156,7 +158,7 @@ export default function FeedbackModal() {
 
                   {/* Tipo */}
                   <div>
-                    <p className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">É sobre</p>
+                    <p className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">É sobre</p>
                     <div className="flex flex-wrap gap-1.5">
                       {TIPOS.map((t) => (
                         <button
@@ -165,7 +167,7 @@ export default function FeedbackModal() {
                           onClick={() => setTipo(t.id)}
                           aria-pressed={tipo === t.id}
                           className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
-                            tipo === t.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-300" : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
+                            tipo === t.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-500" : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
                           }`}
                         >
                           {t.rotulo}
@@ -176,7 +178,7 @@ export default function FeedbackModal() {
 
                   {/* Mensagem */}
                   <div>
-                    <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">
+                    <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">
                       Mensagem
                     </label>
                     <textarea
@@ -186,9 +188,9 @@ export default function FeedbackModal() {
                       value={mensagem}
                       onChange={(e) => setMensagem(e.target.value)}
                       className="
-                        w-full bg-neutral-900/50 border border-neutral-800
-                        rounded-lg px-4 py-3 font-mono text-xs text-white resize-none
-                        placeholder-neutral-700 outline-none
+                        w-full bg-(--campo) border border-neutral-800
+                        rounded-lg px-4 py-3 font-mono text-xs text-(--texto) resize-none
+                        placeholder-neutral-500 outline-none
                         focus:border-purple-500/50 transition-all
                       "
                     />
@@ -226,7 +228,7 @@ export default function FeedbackModal() {
 
                   {/* Info para usuários logados */}
                   {usuario && (
-                    <p className="font-mono text-[9px] text-neutral-700 text-center">
+                    <p className="font-mono text-[9px] text-neutral-500 text-center">
                       enviando como <span className="text-neutral-500">{usuario.email}</span>
                     </p>
                   )}
