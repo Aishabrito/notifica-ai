@@ -50,8 +50,25 @@ const SEMENTES = [
     descricao: 'O MEC ainda não publicou o edital. Ative o aviso e mandamos a data assim que sair.', link: 'https://acessounico.mec.gov.br/sisu' },
 ];
 
+// Concursos: datas levantadas em sites de notícia (nov/2026). Entram OCULTAS —
+// a equipe confere no edital/site da banca e publica no admin (ícone do olho).
+const SEMENTES_CONCURSOS = [
+  { chave: 'tcdf-2026-prova', titulo: 'TCDF — provas objetiva e discursiva', publico: 'concurseiro', data: '2026-11-22',
+    descricao: 'Cebraspe. Analista Administrativo de Controle Externo, em Brasília. Locais de prova previstos para 06/11.', link: 'https://www.cebraspe.org.br/concursos' },
+  { chave: 'enam-2026-2-prova', titulo: 'ENAM 2026.2 — prova objetiva', publico: 'concurseiro', data: '2026-11-29',
+    descricao: 'FGV. Exame Nacional da Magistratura, das 13h às 18h. Gabarito preliminar previsto para 01/12.', link: 'https://conhecimento.fgv.br/exames/enam/6exame' },
+  { chave: 'transpetro-2026-prova', titulo: 'Transpetro — prova objetiva', publico: 'concurseiro', data: '2026-12-06',
+    descricao: 'Cesgranrio. Prova remarcada de 29/11 para 06/12 (choque com o Enade), em todas as capitais.', link: 'https://www.cesgranrio.org.br/concursos' },
+  { chave: 'cgu-2026-prova', titulo: 'CGU — provas objetiva e discursiva', publico: 'concurseiro', data: '2026-12-13',
+    descricao: 'Cebraspe. Auditor Federal de Finanças e Controle, nas 27 capitais.', link: 'https://www.cebraspe.org.br/concursos' },
+  { chave: 'camara-2027-prova', titulo: 'Câmara dos Deputados — prova', publico: 'concurseiro', data: '2027-01-17', previsao: true,
+    descricao: 'Analista Legislativo. Data ainda em previsão.', link: 'https://www.camara.leg.br/' },
+  { chave: 'trf3-2027-prova', titulo: 'TRF 3ª Região — prova objetiva', publico: 'concurseiro', data: '2027-01-31', previsao: true,
+    descricao: 'Técnico e Analista Judiciário. Data ainda em previsão.', link: 'https://www.trf3.jus.br/' },
+].map((e) => ({ ...e, publicado: false }));
+
 async function semearCalendario() {
-  for (const { chave, ...resto } of SEMENTES) {
+  for (const { chave, ...resto } of [...SEMENTES, ...SEMENTES_CONCURSOS]) {
     await EventoCalendario.updateOne({ chave }, { $setOnInsert: { chave, ...resto } }, { upsert: true })
       .catch((err) => { if (err.code !== 11000) throw err; });
   }
@@ -155,6 +172,6 @@ async function enviarLembretesCalendario(agora = new Date()) {
 }
 
 module.exports = {
-  EventoCalendario, LembreteCalendario, SEMENTES, semearCalendario, proximosEventos, eventoParaApi,
+  EventoCalendario, LembreteCalendario, SEMENTES, SEMENTES_CONCURSOS, semearCalendario, proximosEventos, eventoParaApi,
   validarEvento, lembrarEvento, aoAlterarEvento, enviarLembretesCalendario,
 };
