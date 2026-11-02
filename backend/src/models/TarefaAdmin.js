@@ -5,7 +5,7 @@ const mongoose = require('mongoose');
 // se o mesmo problema volta enquanto a tarefa está aberta, só conta mais uma ocorrência.
 const tarefaAdminSchema = new mongoose.Schema({
   chave:      { type: String, default: null },
-  tipo:       { type: String, enum: ['alerta-pausado', 'fonte-radar', 'ia', 'pagamento', 'modelo', 'configuracao', 'manual'], required: true },
+  tipo:       { type: String, enum: ['alerta-pausado', 'fonte-radar', 'ia', 'pagamento', 'modelo', 'configuracao', 'email', 'manual'], required: true },
   prioridade: { type: String, enum: ['alta', 'normal'], default: 'normal' },
   titulo:     { type: String, required: true, maxlength: 200 },
   descricao:  { type: String, default: '', maxlength: 2000 },

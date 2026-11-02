@@ -126,6 +126,12 @@ mongoose.connect(process.env.MONGODB_URI, {
     } catch (errCalendario) {
       console.error('[Calendário] Falha ao semear datas:', errCalendario.message);
     }
+    // Cobertura do Radar: carrega o que já se sabia e confere de novo em segundo plano
+    const cobertura = require('./src/service/radar/cobertura');
+    cobertura.carregarCobertura()
+      .then(() => (process.env.NODE_ENV === 'test' ? null : cobertura.atualizarCobertura()))
+      .then((n) => n !== null && n !== undefined && console.log(`[Radar] Cobertura conferida: ${n} cidade(s) extra com diário recente.`))
+      .catch((err) => console.error('[Radar] Falha na cobertura:', err.message));
   })
   .catch((err) => {
     console.error('Erro de conexão MongoDB:', err.message);
@@ -469,6 +475,8 @@ cron.schedule('10 8 * * *', async () => {
 // Checklist do admin: confere configuração e diários todo dia; modelos prontos às segundas
 cron.schedule('20 6 * * *', async () => {
   try {
+    // Antes da saúde: decide quais cidades extras têm diário recente
+    await require('./src/service/radar/cobertura').atualizarCobertura().catch((err) => console.error('[Radar] Falha na cobertura:', err.message));
     await gerarTarefasDeSaude({ modelos: new Date().getDay() === 1 });
   } catch (err) {
     console.error('[Saúde] Erro na verificação diária:', err.message);

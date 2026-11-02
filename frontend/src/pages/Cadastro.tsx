@@ -45,7 +45,8 @@ export default function Cadastro() {
         if (perfilSugerido === "vestibulando" || perfilSugerido === "concurseiro") {
           try { localStorage.setItem("notifica:perfil-sugerido", perfilSugerido); } catch { /* sem storage */ }
         }
-        navigate("/login");
+        // A conta já sai logada: vai direto para as boas-vindas no painel
+        navigate("/dashboard");
       }
     } catch {
       setErro("Não foi possível conectar ao servidor. Verifique sua conexão.");
@@ -194,9 +195,11 @@ export default function Cadastro() {
 
               {/* Checkbox Termos */}
               <label className="flex items-start gap-3 cursor-pointer group py-1">
+                {/* Caixa de verdade (invisível): o toque no texto também marca, e funciona no teclado */}
+                <input type="checkbox" checked={aceito} onChange={(e) => setAceito(e.target.checked)} className="peer sr-only" />
                 <div
-                  onClick={() => setAceito(!aceito)}
-                  className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all duration-300 ${
+                  aria-hidden="true"
+                  className={`mt-0.5 w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-all duration-300 peer-focus-visible:ring-2 peer-focus-visible:ring-emerald-400 ${
                     aceito
                       ? "bg-emerald-400 border-emerald-400"
                       : "border-neutral-700 group-hover:border-purple-500/60"

@@ -7,7 +7,7 @@ require('../../models/Usuario'); // registra o modelo usado no populate('usuario
 const { cifrar, decifrar } = require('../../utils/cripto');
 const { escaparHtml } = require('../../utils/html');
 const { obterTipoPlanoEfetivo } = require('../../config/planos');
-const { RADAR, cidadeDisponivel, nomeDiario } = require('../../config/radar');
+const { RADAR, cidadeAtendida, nomeDiario } = require('../../config/radar');
 const queridoDiario = require('./queridoDiario');
 const dou = require('./dou');
 
@@ -153,7 +153,7 @@ async function processarMonitor(monitor, { manual = false } = {}) {
   const termos = [dados.nome, dados.inscricao && dados.inscricao.length >= 4 ? dados.inscricao : null].filter(Boolean);
 
   // Só consulta cidades ainda disponíveis (RADAR_CIDADES pode ter mudado)
-  const cidades = monitor.cidades.filter(cidadeDisponivel);
+  const cidades = monitor.cidades.filter(cidadeAtendida);
   if (cidades.length === 0) return { novas: 0, resultados: 0, erros: 0 };
 
   const novas = [];

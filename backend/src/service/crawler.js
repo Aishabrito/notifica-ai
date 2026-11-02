@@ -22,7 +22,14 @@ const { gerarLinkCancelamento } = require('../utils/linkCancelamento');
 const LIMITE_FALHAS = 3;
 const CONCORRENCIA  = 5; // verificações simultâneas por rodada
 const MAX_SNAPSHOT  = 200000; // caracteres do texto guardado para comparar versões
-const EMAIL_ADM     = process.env.EMAIL_REMETENTE;
+// Quem recebe os avisos da administração: EMAIL_ADMIN (separados por vírgula)
+// ou, sem a variável, as contas com papel de admin. Antes ia para o próprio
+// remetente (noreply), que ninguém lê.
+async function emailsDaAdministracao() {
+  const daVariavel = String(process.env.EMAIL_ADMIN ?? '').split(',').map((e) => e.trim()).filter(Boolean);
+  if (daVariavel.length) return daVariavel;
+  return require('../models/Usuario').find({ role: 'admin' }).distinct('email');
+}
 
 // ============================================
 // 🛠️ FUNÇÕES AUXILIARES
@@ -168,6 +175,8 @@ async function enviarEmailMudanca(alerta, { resumo = null, ehPro = false } = {})
         <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
       `,
       attachments,
+      // Botão "Cancelar inscrição" do Gmail/Outlook (um clique faz o POST do link)
+      headers: { 'List-Unsubscribe': `<${urlCancelamento}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
     });
     console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
   } catch (erro) {
@@ -180,24 +189,26 @@ async function enviarEmailMudanca(alerta, { resumo = null, ehPro = false } = {})
 // 📧 E-MAIL DE ALERTA ADM (para a Aísha)
 // ============================================
 async function enviarEmailADM(alerta, erro) {
+  const destinatarios = await emailsDaAdministracao();
+  if (!destinatarios.length) return;
   await transportador.sendMail({
     from: `"Notifica.ai 🚀" <${process.env.EMAIL_REMETENTE}>`,
-    to: EMAIL_ADM,
+    to: destinatarios,
     subject: `⚠️ Alerta pausado automaticamente — ${alerta.url}`,
     html: `
       <h2>⚠️ Um alerta foi pausado por falhas repetidas</h2>
       <table style="border-collapse: collapse; width: 100%;">
         <tr>
           <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">URL</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${alerta.url}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${escaparHtml(alerta.url)}</td>
         </tr>
         <tr>
           <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Usuário</td>
-          <td style="padding: 8px; border: 1px solid #ddd;">${alerta.email}</td>
+          <td style="padding: 8px; border: 1px solid #ddd;">${escaparHtml(alerta.email)}</td>
         </tr>
         <tr>
           <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Erro</td>
-          <td style="padding: 8px; border: 1px solid #ddd; color: #c0392b;">${erro}</td>
+          <td style="padding: 8px; border: 1px solid #ddd; color: #c0392b;">${escaparHtml(String(erro))}</td>
         </tr>
         <tr>
           <td style="padding: 8px; font-weight: bold; border: 1px solid #ddd;">Falhas seguidas</td>
@@ -314,6 +325,14 @@ async function verificarAlerta(alerta, buscarPagina) {
         await alerta.save();
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+        // A mudança já foi registrada: sem isto a pessoa só saberia pelo celular/Telegram
+        await abrirTarefa({
+          chave: 'email:falha-aviso-mudanca', tipo: 'email', prioridade: 'alta',
+          titulo: 'E-mail de mudança não foi enviado',
+          descricao: `Último erro: ${String(erroEmail.message).slice(0, 300)}. Confira a chave e o domínio no Resend. `
+            + 'As mudanças sem e-mail ficam no histórico (emailEnviado: false).',
+          link: 'https://resend.com/emails', alerta: alerta._id,
+        });
       }
       // Telegram (Pro que conectou): não bloqueia nem depende do e-mail
       notificarMudanca(alerta.usuario, alerta, resumo).catch(() => {});
@@ -448,4 +467,4 @@ async function executarMonitoramento(alertas, { concorrencia = CONCORRENCIA } = 
   return { alertasVerificados: alertas.length, alertasComMudanca, alertasComErro };
 }
 
-module.exports = { executarMonitoramento, gerarHeaders };
+module.exports = { executarMonitoramento, gerarHeaders, emailsDaAdministracao };

@@ -101,6 +101,12 @@ const srv = http.createServer((req, res) => {
   ok((await cal.LembreteCalendario.findOne({ evento: enem.id })).enviados.length === 0, 'nova data: os avisos recomeçam');
   r = await call('GET', '/api/calendario/admin', ta);
   ok(r.data.eventos.find((e) => e.id === enem.id).interessados === 1, 'admin vê quantas pessoas pediram aviso');
+  // Datas de concurso semeadas entram ocultas: a equipe confere e publica
+  const cgu = r.data.eventos.find((e) => e.titulo.startsWith('CGU'));
+  ok(cgu && cgu.publicado === false && cgu.publico === 'concurseiro' && !(await cal.proximosEventos(em('2026-11-02'))).some((e) => e.id === cgu.id), 'concursos semeados: ocultos até a equipe conferir');
+  await call('PATCH', `/api/calendario/admin/${cgu.id}`, ta, { publicado: true });
+  await cal.semearCalendario();
+  ok((await cal.proximosEventos(em('2026-11-02'))).some((e) => e.id === cgu.id && e.data === '2026-12-13'), 'publicar no admin mostra a data, e ela não volta a ficar oculta');
 
   // Ocultar: some do público e não volta quando o servidor reinicia
   await call('PATCH', `/api/calendario/admin/${sisu.id}`, ta, { publicado: false });

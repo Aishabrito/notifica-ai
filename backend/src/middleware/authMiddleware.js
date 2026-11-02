@@ -1,6 +1,8 @@
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
 
+const UMA_HORA = 60 * 60 * 1000;
+
 const autenticar = async (req, res, next) => {
   try {
     const cookieToken = req.cookies?.token;
@@ -16,6 +18,10 @@ const autenticar = async (req, res, next) => {
       return res.status(401).json({ sucesso: false, mensagem: 'Usuário não encontrado.' });
 
     req.usuario = usuario; // disponível em req.usuario nas rotas protegidas
+    // "Quem usou" no painel da dona: grava no máximo 1x por hora, sem atrasar a resposta
+    if (!usuario.ultimoAcessoEm || Date.now() - usuario.ultimoAcessoEm.getTime() > UMA_HORA) {
+      Usuario.updateOne({ _id: usuario._id }, { ultimoAcessoEm: new Date() }).catch(() => {});
+    }
     next();
   } catch {
     res.status(401).json({ sucesso: false, mensagem: 'Token inválido ou expirado.' });
@@ -29,4 +35,14 @@ const isAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { autenticar, isAdmin };
+// Rotas públicas que aproveitam o login quando existe (ex.: feedback)
+const identificarSeLogado = async (req, _res, next) => {
+  try {
+    const authHeader = req.headers?.authorization;
+    const token = req.cookies?.token || (authHeader?.startsWith('Bearer ') ? authHeader.slice(7) : null);
+    if (token) req.usuario = await Usuario.findById(jwt.verify(token, process.env.JWT_SECRET).id).select('-senha');
+  } catch { /* visitante */ }
+  next();
+};
+
+module.exports = { autenticar, isAdmin, identificarSeLogado };

@@ -327,7 +327,7 @@ export default function Home() {
         )}
 
         {usuario && mostrarBoasVindas && (
-          <BoasVindas ehPro={ehPro} email={usuario.email} onConcluir={() => { setMostrarBoasVindas(false); carregarAlertas(); }} />
+          <BoasVindas ehPro={ehPro} email={usuario.email} onConcluir={() => { setMostrarBoasVindas(false); carregarAlertas(); }} onMonitorou={() => carregarAlertas()} />
         )}
         {usuario && !mostrarBoasVindas && <AtivarNotificacoes />}
         {usuario && !mostrarBoasVindas && <Novidades ehPro={ehPro} />}

@@ -45,6 +45,8 @@ const usuarioSchema = new mongoose.Schema({
     codigoExpira: { type: Date, default: null },
   },
   criadoEm: { type: Date, default: Date.now },
+  // Último uso do site (login ou qualquer ação logada; atualizado no máx. 1x por hora)
+  ultimoAcessoEm: { type: Date, default: null },
 
   // Recuperação de senha via código OTP
   codigoReset:        { type: String, default: null },

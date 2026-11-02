@@ -116,6 +116,7 @@ const pdf = (arq) => ({ tipo: 'application/pdf', corpo: fs.readFileSync(`${SP}/$
   const ics = mailPro[0] && Buffer.from(mailPro[0].attachments[0].content, 'base64').toString();
   ok(mailPro[0]?.attachments?.[0]?.filename === 'prazos.ics' && ics.includes('DTSTART;VALUE=DATE:20270520') && !ics.includes('2020') && ics.split('BEGIN:VEVENT').length === 2, 'anexo .ics com a data da prova (datas passadas/inválidas descartadas)');
   ok(mailFree && mailFree.subject.startsWith('🚨 Atualização detectada') && mailFree.html.includes('No plano Pro') && !mailFree.attachments, 'Free recebe o aviso genérico + convite para o Pro');
+  ok(/^<http:\/\/x\/cancelar\/[a-f0-9]{24}\/[a-f0-9]{64}>$/.test(mailFree?.headers?.['List-Unsubscribe'] ?? '') && mailFree.headers['List-Unsubscribe-Post'] === 'List-Unsubscribe=One-Click', 'aviso de mudança tem "Cancelar inscrição" de 1 clique (Gmail/Outlook)');
   const mud = await Mudanca.find({ 'resumo.titulo': { $exists: true } }).lean();
   ok(mud.length === 2 && mud[0].pdfsNovos[0].endsWith('/docs/retificacao2.pdf'), 'histórico guarda o resumo e o PDF novo');
 
@@ -135,6 +136,21 @@ const pdf = (arq) => ({ tipo: 'application/pdf', corpo: fs.readFileSync(`${SP}/$
   await executarRodada(); await sleep(200);
   ok(sent.filter(m => m.to.startsWith('pro')).every(m => m.subject.startsWith('🚨 Atualização detectada')) && sent.length === 3, 'IA falhou → todos recebem o aviso genérico');
   falharIA = false;
+
+  // ── e-mail fora do ar → a mudança fica no histórico e vira tarefa para o admin
+  const mailer = require(B + '/src/utils/mailer');
+  const enviarOriginal = mailer.sendMail;
+  mailer.sendMail = async () => { throw new Error('Resend: domínio não verificado'); };
+  respostaIA = { relevante: true, titulo: 'Inscrições prorrogadas até 02/05', resumo: 'O prazo de inscrição foi prorrogado.', datas: [] };
+  const semEmailAntes = await Mudanca.countDocuments({ emailEnviado: false });
+  paginas[rotaEdital] = html('Inscrições prorrogadas até 02/05. Prova objetiva em 20/05.', []);
+  await Alerta.updateMany({}, { proximaVerificacao: new Date(Date.now() - 1000) });
+  await executarRodada(); await sleep(200);
+  const TarefaAdmin = require(B + '/src/models/TarefaAdmin');
+  const tarefaEmail = await TarefaAdmin.findOne({ chave: 'email:falha-aviso-mudanca', status: 'aberta' }).lean();
+  ok(tarefaEmail?.ocorrencias === 3 && tarefaEmail.prioridade === 'alta' && tarefaEmail.descricao.includes('domínio não verificado'), 'e-mail falhou: abre 1 tarefa no admin (conta as ocorrências)');
+  ok(await Mudanca.countDocuments({ emailEnviado: false }) - semEmailAntes === 3, 'mudança sem e-mail fica registrada como não enviada');
+  mailer.sendMail = enviarOriginal;
 
   // ── sem GEMINI_API_KEY → não chama IA
   sent.length = 0; chamadasIA.length = 0; delete process.env.GEMINI_API_KEY;

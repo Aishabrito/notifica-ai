@@ -57,16 +57,46 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       contagemPorUsuario[uid] = (contagemPorUsuario[uid] ?? 0) + 1;
     }
 
+    // Quanto cada pessoa já pagou (Pix + cobranças do cartão aprovadas)
+    const pagoPorUsuario = {};
+    for (const p of await Transacao.aggregate([
+      { $match: { tipo: { $in: ['pix', 'cobranca'] }, processadoEm: { $ne: null }, status: 'approved' } },
+      { $group: { _id: '$usuario', total: { $sum: '$valor' }, pagamentos: { $sum: 1 } } },
+    ])) pagoPorUsuario[String(p._id)] = { total: Math.round(p.total * 100) / 100, pagamentos: p.pagamentos };
+
     const users = usuariosRaw.map((u) => ({
       _id:      String(u._id),
+      nome:     u.nome,
       email:    u.email,
       role:     u.role,
+      perfil:   u.perfil ?? null,
+      emailVerificado: Boolean(u.emailVerificado),
       plano:    obterTipoPlanoEfetivo(u),
       planoOrigem:    u.plano?.origem ?? null,
+      planoStatus:    u.plano?.status ?? null,
       planoValidoAte: u.plano?.validoAte ?? null,
       criadoEm: u.criadoEm,
+      ultimoAcessoEm: u.ultimoAcessoEm ?? null,
       alertas:  contagemPorUsuario[String(u._id)] ?? 0,
+      totalPago: pagoPorUsuario[String(u._id)]?.total ?? 0,
+      pagamentos: pagoPorUsuario[String(u._id)]?.pagamentos ?? 0,
+      telegram: Boolean(u.telegram?.chatId),
     }));
+
+    // Cadastros e uso (para a visão geral)
+    const DIA = 24 * 60 * 60 * 1000;
+    const desde = (dias) => Date.now() - dias * DIA;
+    const contar = (campo, dias) => usuariosRaw.filter((u) => u[campo] && new Date(u[campo]).getTime() >= desde(dias)).length;
+    const crescimento = {
+      cadastrosHoje: usuariosRaw.filter((u) => u.criadoEm && new Date(u.criadoEm) >= hoje).length,
+      cadastros7d: contar('criadoEm', 7),
+      cadastros30d: contar('criadoEm', 30),
+      ativos7d: contar('ultimoAcessoEm', 7),
+      ativos30d: contar('ultimoAcessoEm', 30),
+      emailsConfirmados: usuariosRaw.filter((u) => u.emailVerificado).length,
+      feedbacksNovos: feedbacks.filter((f) => (f.status ?? 'novo') === 'novo' && !f.lido).length,
+      reclamacoesAbertas: feedbacks.filter((f) => f.tipo === 'reclamacao' && f.status !== 'resolvido').length,
+    };
 
     const alertas = alertasRaw.map((a) => ({
       _id:               String(a._id),
@@ -115,7 +145,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }
     }
     const pix30d = await Transacao.aggregate([
-      { $match: { tipo: 'pix', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+      { $match: { tipo: 'pix', status: 'approved', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
       { $group: { _id: null, total: { $sum: '$valor' }, quantidade: { $sum: 1 } } },
     ]);
     const pagantes = proPorOrigem.mercadopago + proPorOrigem.pix;
@@ -141,6 +171,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
         radar: { monitoresAtivos: radarMonitores, ocorrencias30d: radarOcorrencias30d },
         tarefasAbertas: await require('../models/TarefaAdmin').countDocuments({ status: 'aberta' }),
         receita,
+        crescimento,
         totalUsers:      usuariosRaw.length,
         totalAlerts:     alertasRaw.filter((a) => a.status === 'ativo').length,
         alertasPausados,
@@ -154,6 +185,53 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
   } catch (err) {
     console.error('Erro no Dashboard ADM:', err.message);
     res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar o painel do administrador.' });
+  }
+});
+
+// ============================================================
+// 💰 PAGAMENTOS: quem pagou, quanto e quando
+// ============================================================
+// Pix avulso e cada cobrança aprovada do cartão. Tentativas que não foram
+// pagas (Pix expirado, cartão recusado) aparecem com o status do Mercado Pago.
+const ROTULO_STATUS = { approved: 'Pago', authorized: 'Assinatura ativa', pending: 'Aguardando', in_process: 'Em análise', rejected: 'Recusado', cancelled: 'Cancelado', paused: 'Pausada', expired: 'Expirado', criada: 'Iniciado', refunded: 'Devolvido', charged_back: 'Contestado no banco' };
+
+router.get('/pagamentos', autenticar, isAdmin, async (req, res) => {
+  try {
+    const transacoes = await Transacao.find({}).sort({ criadoEm: -1 }).limit(1000).populate('usuario', 'nome email').lean();
+    const pagamentos = transacoes.map((t) => ({
+      _id: String(t._id),
+      tipo: t.tipo, // pix | cobranca (cartão) | assinatura (adesão ao cartão)
+      oferta: t.oferta,
+      valor: t.valor,
+      pago: Boolean(t.processadoEm) && t.status === 'approved' && t.tipo !== 'assinatura',
+      status: t.status,
+      statusTexto: ROTULO_STATUS[t.status] ?? t.status,
+      data: t.processadoEm ?? t.criadoEm,
+      usuario: t.usuario ? { id: String(t.usuario._id), nome: t.usuario.nome, email: t.usuario.email } : null,
+    })).sort((a, b) => new Date(b.data) - new Date(a.data));
+
+    // Recebido por mês (horário de Brasília), últimos 12 meses
+    const porMes = {};
+    for (const p of pagamentos) {
+      if (!p.pago) continue;
+      const mes = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo', year: 'numeric', month: '2-digit' }).format(new Date(p.data));
+      porMes[mes] = Math.round(((porMes[mes] ?? 0) + p.valor) * 100) / 100;
+    }
+    const meses = Object.entries(porMes).sort(([a], [b]) => b.localeCompare(a)).slice(0, 12).map(([mes, total]) => ({ mes, total }));
+    const pagos = pagamentos.filter((p) => p.pago);
+    res.json({
+      sucesso: true,
+      pagamentos,
+      resumo: {
+        totalRecebido: Math.round(pagos.reduce((s, p) => s + p.valor, 0) * 100) / 100,
+        pagamentosAprovados: pagos.length,
+        pessoasQuePagaram: new Set(pagos.map((p) => p.usuario?.id).filter(Boolean)).size,
+        meses,
+      },
+    });
+  } catch (err) {
+    console.error('[Admin] Erro ao listar pagamentos:', err.message);
+    res.status(500).json({ sucesso: false, mensagem: 'Erro ao carregar os pagamentos.' });
   }
 });
 

@@ -22,12 +22,19 @@ import Conta          from './pages/Conta';
 import Prazos         from './pages/Prazos';
 import PastaPublica   from './pages/PastaPublica';
 import Calendario     from './pages/Calendario';
+import FeedbackModal  from './components/modals/feedbackModal';
 
 // O painel admin tem visual próprio: não recebe tema/cor escolhidos
 function AparenciaPorRota() {
   const { pathname } = useLocation();
   useEffect(() => { ativarAparencia(!pathname.startsWith('/admin')); }, [pathname]);
   return null;
+}
+
+// Botão de reclamações e sugestões em todas as páginas (menos no admin)
+function FeedbackPorRota() {
+  const { pathname } = useLocation();
+  return pathname.startsWith('/admin') ? null : <FeedbackModal />;
 }
 
 export default function App() {
@@ -84,6 +91,7 @@ export default function App() {
 
             <Route path="*" element={<NotFound />} />
           </Routes>
+          <FeedbackPorRota />
         </div>
       </Router>
     </AuthProvider>

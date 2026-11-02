@@ -4,7 +4,7 @@ const { InteresseEdital, EditalEncontrado } = require('../../models/InteresseEdi
 require('../../models/Usuario');
 const { escaparHtml } = require('../../utils/html');
 const { obterTipoPlanoEfetivo } = require('../../config/planos');
-const { cidadeDisponivel, nomeDiario } = require('../../config/radar');
+const { cidadeAtendida, nomeDiario } = require('../../config/radar');
 
 // ============================================
 // 📢 RADAR DE EDITAIS POR INTERESSE (Pro)
@@ -70,7 +70,7 @@ async function avisarEditais(usuario, interesse, novos) {
 async function processarInteresse(interesse, { avisar = true } = {}) {
   const { DRIVERS } = require('./radarService');
   const usuario = interesse.usuario?.email ? interesse.usuario : await require('../../models/Usuario').findById(interesse.usuario).select('email nome plano telegram');
-  const cidades = interesse.cidades.filter(cidadeDisponivel);
+  const cidades = interesse.cidades.filter(cidadeAtendida);
   const novos = [];
   let erros = 0;
 

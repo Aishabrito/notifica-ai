@@ -9,12 +9,12 @@ export default function Privacidade() {
       <main className="max-w-3xl mx-auto px-6 pt-32 pb-24">
         <p className="font-mono text-[10px] text-purple-400 uppercase tracking-widest mb-4">// legal</p>
         <h1 className="text-4xl font-black tracking-tighter mb-2">Política de Privacidade</h1>
-        <p className="font-mono text-xs text-neutral-600 mb-12">Última atualização: outubro de 2026</p>
+        <p className="font-mono text-xs text-neutral-600 mb-12">Última atualização: novembro de 2026</p>
 
         {[
           {
             titulo: "1. Dados que coletamos",
-            texto: "Coletamos apenas o necessário para o funcionamento do serviço: nome, endereço de e-mail, telefone (opcional), as URLs que você escolhe monitorar e, se você conectar, o identificador do seu chat no Telegram. Não coletamos dados de navegação ou localização. Dados de cartão são digitados diretamente no formulário do Mercado Pago e nunca passam pelos nossos servidores; guardamos apenas a referência da assinatura ou do pagamento Pix."
+            texto: "Coletamos apenas o necessário para o funcionamento do serviço: nome, endereço de e-mail, telefone (opcional), as URLs que você escolhe monitorar e, se você conectar, o identificador do seu chat no Telegram. Também registramos a data do seu último acesso, só para sabermos quantas pessoas usam o serviço. Não coletamos dados de navegação ou localização. Dados de cartão são digitados diretamente no formulário do Mercado Pago e nunca passam pelos nossos servidores; guardamos apenas a referência da assinatura ou do pagamento Pix."
           },
           {
             titulo: "1.1 Radar do Diário Oficial (plano Pro)",
@@ -23,6 +23,10 @@ export default function Privacidade() {
           {
             titulo: "1.2 Outros recursos",
             texto: "Minha posição na lista: se você ativar, guardamos de forma cifrada o nome ou a inscrição que você informar e o trecho da página onde ele aparece, só para mostrar e avisar sua posição; desligar apaga esses dados. Prazos: guardamos as datas e o checklist de documentos dos seus prazos. Agenda sincronizada: o link da agenda funciona como uma senha — quem o tiver vê seus prazos; você pode gerar um novo a qualquer momento, o que invalida o anterior. Pastas compartilhadas: o link público mostra o nome da pasta, as páginas e só o seu primeiro nome, nunca o e-mail. Indique e ganhe: registramos quem indicou cada conta para conceder as recompensas. Resumo semanal: enviado às segundas; você pode desligá-lo em Minha conta ou pelo link do próprio e-mail. Notificações no celular: se você ativar, guardamos o endereço técnico de entrega do seu navegador (sem dados pessoais) só para enviar os avisos; desativar ou excluir a conta apaga esse registro. Concursos em que foi aprovado(a): guardamos o nome do concurso, a data da homologação e, se informar, sua classificação, para calcular a validade e lembrar você. Calendário: quando você toca em Me avise, registramos qual data você quer lembrar, para mandar os avisos; cancelar apaga o registro. Teste agora (página inicial, sem cadastro): lemos a página só para responder o teste e não guardamos o link junto com dados seus; o link fica salvo apenas no seu navegador até você criar o alerta."
+          },
+          {
+            titulo: "1.3 Mensagens de feedback",
+            texto: "Se você mandar uma reclamação, sugestão ou dúvida pelo botão de feedback, guardamos o e-mail, o tipo e o texto da mensagem, a página do site onde você estava e, se estiver logado(a), a ligação com a sua conta. Usamos isso só para ler, responder por e-mail e melhorar o serviço. A resposta enviada também fica guardada.",
           },
           {
             titulo: "2. Como usamos seus dados",
@@ -46,7 +50,7 @@ export default function Privacidade() {
           },
           {
             titulo: "7. Cookies",
-            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). No seu navegador também ficam guardadas suas preferências de aparência (tema e cor) e, se você chegou por um convite, o código de indicação até o cadastro. Não utilizamos cookies de rastreamento ou publicidade."
+            texto: "Utilizamos apenas um cookie essencial para manter sua sessão autenticada (httpOnly, secure). Como alguns celulares bloqueiam esse cookie, uma cópia do código da sessão também fica guardada no seu navegador e é apagada quando você sai da conta. No seu navegador também ficam guardadas suas preferências de aparência (tema e cor) e, se você chegou por um convite, o código de indicação até o cadastro. Não utilizamos cookies de rastreamento ou publicidade."
           },
         ].map((item) => (
           <div key={item.titulo} className="mb-8">

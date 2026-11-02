@@ -42,6 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
  // Verifica sessão ativa ao carregar o app
   useEffect(() => {
     const controller = new AbortController();
+    let desmontado = false;
     const timeout = setTimeout(() => controller.abort(), 8000); // Se o Render demorar mais de 8s, ele desiste e vai pro login
 
     api.get("/api/auth/me", { signal: controller.signal })
@@ -55,11 +56,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       })
       .finally(() => {
         clearTimeout(timeout);
-        setCarregando(false);
+        // Verificação cancelada ao desmontar (ex.: React em modo estrito roda 2x):
+        // não pode marcar "carregado" sem usuário, senão o /admin manda para /dashboard
+        if (!desmontado) setCarregando(false);
       });
 
-    return () => { 
-      clearTimeout(timeout); 
+    return () => {
+      desmontado = true;
+      clearTimeout(timeout);
       controller.abort(); 
     };
   }, []);

@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-const API = "https://notifica-ai.onrender.com";
+import api from "../../services/Api";
+
+const TIPOS = [
+  { id: "reclamacao", rotulo: "😠 Reclamação" },
+  { id: "sugestao", rotulo: "💡 Sugestão" },
+  { id: "duvida", rotulo: "❓ Dúvida" },
+  { id: "elogio", rotulo: "💚 Elogio" },
+] as const;
+type Tipo = (typeof TIPOS)[number]["id"];
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -9,6 +17,7 @@ export default function FeedbackModal() {
 
   const [aberto, setAberto]     = useState<boolean>(false);
   const [mensagem, setMensagem] = useState<string>("");
+  const [tipo, setTipo]         = useState<Tipo | null>(null);
   const [emailManual, setEmail] = useState<string>("");
   const [status, setStatus]     = useState<Status>("idle");
   const [erro, setErro]         = useState<string>("");
@@ -18,6 +27,7 @@ export default function FeedbackModal() {
 
   const resetar = (): void => {
     setMensagem("");
+    setTipo(null);
     setEmail("");
     setStatus("idle");
     setErro("");
@@ -38,22 +48,10 @@ export default function FeedbackModal() {
     setErro("");
 
     try {
-      const r = await fetch(`${API}/api/feedbacks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: emailFinal, mensagem }),
-      });
-
-      const d = await r.json();
-
-      if (d.sucesso) {
-        setStatus("success");
-      } else {
-        throw new Error(d.mensagem ?? "Erro ao enviar.");
-      }
+      await api.post("/api/feedbacks", { email: emailFinal, mensagem, tipo: tipo ?? "outro", pagina: window.location.pathname });
+      setStatus("success");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erro ao enviar. Tente novamente.";
+      const msg = (e as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem ?? "Erro ao enviar. Tente novamente.";
       setErro(msg);
       setStatus("error");
     }
@@ -89,23 +87,25 @@ export default function FeedbackModal() {
         >
           {/* Card */}
           <div
-            className="w-full max-w-md rounded-2xl border border-white/[0.07] shadow-2xl overflow-hidden"
-            style={{ background: "linear-gradient(145deg, rgba(255,255,255,0.04) 0%, rgba(108,52,131,0.03) 100%)" }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Enviar feedback"
+            className="w-full max-w-md rounded-2xl border border-neutral-800 shadow-2xl overflow-hidden bg-(--cartao) text-(--texto)"
           >
 
             {/* Header */}
-            <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.07]">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-neutral-800">
               <div>
                 <p className="font-mono text-[9px] text-purple-400 uppercase tracking-[0.2em]">
                   // feedback
                 </p>
-                <h2 className="text-sm font-bold text-white mt-0.5 tracking-tight">
+                <h2 className="text-sm font-bold text-(--texto) mt-0.5 tracking-tight">
                   Deixe sua mensagem
                 </h2>
               </div>
               <button
                 onClick={fechar}
-                className="font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white border border-neutral-800 hover:border-neutral-600 px-2.5 py-1.5 rounded-lg transition-all"
+                className="font-mono text-[10px] uppercase tracking-widest text-neutral-400 hover:text-(--texto) border border-neutral-800 hover:border-neutral-600 px-2.5 py-1.5 rounded-lg transition-all"
               >
                 [ esc ]
               </button>
@@ -120,13 +120,13 @@ export default function FeedbackModal() {
                   <div className="w-12 h-12 rounded-full border border-emerald-400/20 bg-emerald-400/5 flex items-center justify-center mx-auto mb-4">
                     <span className="text-emerald-400 text-xl font-black">✓</span>
                   </div>
-                  <p className="font-bold tracking-tight text-white">Feedback enviado!</p>
-                  <p className="font-mono text-[11px] text-neutral-600 mt-1">
-                    Obrigado. Vamos analisar sua mensagem.
+                  <p className="font-bold tracking-tight text-(--texto)">Feedback enviado!</p>
+                  <p className="font-mono text-[11px] text-neutral-400 mt-1">
+                    Obrigado! A gente lê tudo e responde no seu e-mail.
                   </p>
                   <button
                     onClick={fechar}
-                    className="mt-6 font-mono text-[10px] uppercase tracking-widest text-neutral-700 hover:text-white transition-colors"
+                    className="mt-6 font-mono text-[10px] uppercase tracking-widest text-neutral-400 hover:text-(--texto) transition-colors"
                   >
                     fechar →
                   </button>
@@ -138,7 +138,7 @@ export default function FeedbackModal() {
                   {/* Email — exibido apenas para usuários não logados */}
                   {!usuario && (
                     <div>
-                      <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">
+                      <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">
                         Seu e-mail
                       </label>
                       <input
@@ -147,29 +147,50 @@ export default function FeedbackModal() {
                         value={emailManual}
                         onChange={(e) => setEmail(e.target.value)}
                         className="
-                          w-full bg-neutral-900/50 border border-neutral-800
-                          rounded-lg px-4 py-3 font-mono text-xs text-white
-                          placeholder-neutral-700 outline-none
+                          w-full bg-(--campo) border border-neutral-800
+                          rounded-lg px-4 py-3 font-mono text-xs text-(--texto)
+                          placeholder-neutral-500 outline-none
                           focus:border-purple-500/50 transition-all
                         "
                       />
                     </div>
                   )}
 
+                  {/* Tipo */}
+                  <div>
+                    <p className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">É sobre</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TIPOS.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTipo(t.id)}
+                          aria-pressed={tipo === t.id}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                            tipo === t.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-500" : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
+                          }`}
+                        >
+                          {t.rotulo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Mensagem */}
                   <div>
-                    <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">
+                    <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-400 mb-1.5">
                       Mensagem
                     </label>
                     <textarea
                       rows={4}
-                      placeholder="Conte o que achou, sugira algo ou reporte um problema..."
+                      maxLength={2000}
+                      placeholder={tipo === "reclamacao" ? "O que aconteceu? Se puder, diga a página ou o link." : "Conte o que achou, sugira algo ou reporte um problema..."}
                       value={mensagem}
                       onChange={(e) => setMensagem(e.target.value)}
                       className="
-                        w-full bg-neutral-900/50 border border-neutral-800
-                        rounded-lg px-4 py-3 font-mono text-xs text-white resize-none
-                        placeholder-neutral-700 outline-none
+                        w-full bg-(--campo) border border-neutral-800
+                        rounded-lg px-4 py-3 font-mono text-xs text-(--texto) resize-none
+                        placeholder-neutral-500 outline-none
                         focus:border-purple-500/50 transition-all
                       "
                     />
@@ -207,7 +228,7 @@ export default function FeedbackModal() {
 
                   {/* Info para usuários logados */}
                   {usuario && (
-                    <p className="font-mono text-[9px] text-neutral-700 text-center">
+                    <p className="font-mono text-[9px] text-neutral-500 text-center">
                       enviando como <span className="text-neutral-500">{usuario.email}</span>
                     </p>
                   )}

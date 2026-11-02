@@ -22,10 +22,10 @@ const CATEGORIAS: Record<Perfil, string[]> = {
   aprovado: ["orgaos", "bancas"],
 };
 
-type Props = { ehPro: boolean; email: string; onConcluir: () => void };
+type Props = { ehPro: boolean; email: string; onConcluir: () => void; onMonitorou?: () => void };
 
 // 👋 Boas-vindas no 1º acesso: escolhe o perfil e já sai com tudo configurado
-export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
+export default function BoasVindas({ ehPro, email, onConcluir, onMonitorou }: Props) {
   const [passo, setPasso] = useState<1 | 2 | 3>(1);
   const [sugerido] = useState<string | null>(() => { try { return localStorage.getItem("notifica:perfil-sugerido"); } catch { return null; } });
   const [perfil, setPerfil] = useState<Perfil | null>(null);
@@ -60,6 +60,7 @@ export default function BoasVindas({ ehPro, email, onConcluir }: Props) {
       }
       if (alvo === pendente) limparUrlPendente();
       setMsg({ tipo: "ok", texto: `Pronto! Monitorando: ${data.titulo}` });
+      onMonitorou?.(); // o contador do painel já mostra a página nova
       setPasso(3);
     } catch (e: any) {
       setMsg({ tipo: "erro", texto: e.response?.data?.mensagem ?? "Não foi possível monitorar esta página." });
