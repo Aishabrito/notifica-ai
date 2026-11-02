@@ -92,7 +92,7 @@ async function gerarTarefasDeSaude({ modelos = false } = {}) {
     if (c.ok) await resolverTarefa(chave, 'Resolvido: a configuração foi preenchida.');
     else await abrirTarefa({
       chave, tipo: 'configuracao', titulo: `Configurar: ${c.item}`,
-      descricao: `Falta preencher no Render (Environment): ${c.variaveis}. Veja o passo a passo em backend/.env.example.`,
+      descricao: `Falta preencher no Render (Environment): ${c.variaveis}. Veja o passo a passo em docs/PRODUCAO.md.`,
       link: 'https://dashboard.render.com/',
     });
   }

@@ -110,6 +110,8 @@ A cada 5 minutos (horário de Brasília) o agendador pega os alertas cuja próxi
 
 ## 🌐 Deploy
 
+Checklist do que configurar no Render, no Vercel, no Mercado Pago e no Resend: [docs/PRODUCAO.md](docs/PRODUCAO.md).
+
 | Serviço | URL |
 |---|---|
 | Frontend | [notifica.dev.br](https://notifica.dev.br) |

@@ -157,5 +157,12 @@ const DIA = 864e5;
   const tarefaCartao = await TarefaAdmin.findOne({ chave: 'estorno:888' }).lean();
   ok(tarefaCartao?.titulo.includes('estornado') && tarefaCartao.titulo.includes('ana@x.com'), 'cartão estornado: tarefa no admin com o e-mail da pessoa');
 
+  // Avisos da administração (alerta pausado) vão para a dona, não para o noreply
+  const { emailsDaAdministracao } = require(B + '/src/service/crawler');
+  ok(JSON.stringify(await emailsDaAdministracao()) === '["dona@x.com"]', 'sem EMAIL_ADMIN: avisos vão para as contas admin');
+  process.env.EMAIL_ADMIN = 'aisha@gmail.com, socia@x.com';
+  ok((await emailsDaAdministracao()).join('|') === 'aisha@gmail.com|socia@x.com', 'com EMAIL_ADMIN: vão para os e-mails escolhidos');
+  delete process.env.EMAIL_ADMIN;
+
   process.exit();
 })().catch(e => { console.error(e); process.exit(1); });
