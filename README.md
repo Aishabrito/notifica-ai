@@ -12,12 +12,15 @@ O **Notifica.ai** nasceu de um problema real: a angústia de esperar uma atualiz
 
 ## 🚀 O que o Notifica.ai faz
 
-- 🔍 **Monitoramento inteligente:** Web scraping automatizado com suporte a seletores CSS customizados.
-- 🔐 **Autenticação segura:** Cadastro e login com autenticação via JWT armazenado em cookies HTTP-only.
-- 📊 **Painel do Usuário:** Gerenciamento centralizado de alertas (criação, listagem, remoção e reativação).
-- 👑 **Painel Administrativo:** Dashboard robusto com métricas globais, feedbacks e histórico de logs de execução do Vigia.
-- 🤖 **O Vigia (Cron Job):** Rotina diária agendada (às 10h e 15h) para varredura e detecção de mudanças.
-- 📧 **Notificações por e-mail:** Alertas automáticos e e-mails de confirmação transacionais com link direto de cancelamento.
+- 🔍 **Monitoramento de páginas:** a pessoa cola o link (site da banca, SISU, edital em PDF) e é avisada quando o conteúdo muda.
+- ⚡ **Teste agora (sem cadastro):** mostra na hora se conseguimos ler a página.
+- 🤖 **Resumo com IA (Pro):** em vez do diff, uma frase dizendo o que mudou, com as datas virando prazos.
+- 📰 **Radar do Diário Oficial (Pro):** procura o nome da pessoa no DOU e nos diários municipais e reconhece nomeação e convocação.
+- 📅 **Calendário e Prazos:** ENEM, SISU e concursos, com aviso 7 dias antes, na véspera e no dia. Código Vermelho para prazos curtos.
+- 📈 **Posição na lista de espera:** histórico das chamadas, quanto falta e estimativa no ritmo atual.
+- 🔔 **Avisos por e-mail, no celular (Web Push, app instalável) e no Telegram.**
+- 💎 **Planos Free e Pro:** Free com 1 página a cada 6h; Pro ilimitado, a cada 15 min, pago com cartão ou Pix pelo Mercado Pago.
+- 👑 **Painel administrativo:** métricas, saúde do crawler, tarefas automáticas, feedbacks e gestão do calendário.
 
 ---
 
@@ -80,15 +83,15 @@ Gera hash MD5 inicial e persiste no MongoDB
 ↓
 Dispara e-mail de confirmação com Resend
 ↓
-Vigia executa varredura (10h e 15h)
+Vigia confere no intervalo do plano (6h no Free, até 15 min no Pro)
 ↓
 Detectou diferença no hash? → Dispara alerta por e-mail e registra log
 
 
 ### O Vigia (Cron Job)
 
-O motor de automação opera em horários programados (10:00 e 15:00 - Horário de Brasília) executando o seguinte ciclo:
-1. Busca todos os alertas ativos no banco de dados.
+A cada 5 minutos (horário de Brasília) o agendador pega os alertas cuja próxima checagem já venceu, conforme o intervalo de cada plano, e executa o ciclo:
+1. Reserva os alertas vencidos (sem duplicar entre instâncias).
 2. Executa requisições controladas e gera a "impressão digital" (hash MD5) do conteúdo limpo/seletor.
 3. Compara o hash atual com o estado anterior armazenado.
 4. Se houver divergência, envia o alerta por e-mail, atualiza o hash de referência e persiste as métricas da execução na coleção `LogCron`.
@@ -119,9 +122,11 @@ O motor de automação opera em horários programados (10:00 e 15:00 - Horário 
 - [x] Autenticação de usuários e controle de sessões via JWT
 - [x] Painel administrativo com métricas e logs operacionais
 - [x] Suporte à filtragem por seletor CSS específico
-- [ ] Notificações instantâneas via WhatsApp / Webhook
-- [ ] Histórico visual de mudanças detectadas no DOM
-- [ ] Plano com checagem em intervalos reduzidos (ex: a cada 30 min)
+- [x] Plano Pro com checagem a cada 15 min (Mercado Pago)
+- [x] Notificação no celular (Web Push) e no Telegram
+- [x] Resumo da mudança com IA e Radar do Diário Oficial
+- [x] Calendário ENEM/SISU/concursos com lembretes
+- [ ] Notificações via WhatsApp / Webhook
 
 ---
 
