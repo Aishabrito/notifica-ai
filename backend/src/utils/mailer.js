@@ -1,7 +1,19 @@
 require('dotenv').config();
 const { Resend } = require('resend');
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// O cliente só é criado no primeiro envio: sem RESEND_API_KEY o servidor
+// precisa ligar mesmo assim (a aba Tarefas do admin avisa o que falta).
+let cliente = null;
+const obterCliente = () => {
+  if (!cliente) cliente = new Resend(process.env.RESEND_API_KEY);
+  return cliente;
+};
+
+// Limite de envio (429) e instabilidade do Resend (5xx) passam com uma nova tentativa
+const TENTATIVAS = 3;
+let esperar = (ms) => new Promise((r) => setTimeout(r, ms));
+const erroPassageiro = (error) => error?.statusCode === 429 || error?.statusCode >= 500
+  || /rate_limit|internal_server_error|application_error/.test(String(error?.name));
 
 // Interface compatível com nodemailer para não precisar alterar
 // nenhuma chamada sendMail() já existente no projeto.
@@ -20,7 +32,10 @@ const transportador = {
   // attachments: [{ filename, content }] — content em Buffer ou string base64
   // headers: cabeçalhos extras (ex.: List-Unsubscribe)
   async sendMail({ from, to, subject, html, text, attachments, headers }) {
-    const { data, error } = await resend.emails.send({
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error(`RESEND_API_KEY não configurada: e-mail não enviado (destinatário: ${to}, assunto: ${subject})`);
+    }
+    const mensagem = {
       from,
       to: Array.isArray(to) ? to : [to],
       subject,
@@ -28,14 +43,25 @@ const transportador = {
       text,
       ...(attachments?.length ? { attachments } : {}),
       ...(headers ? { headers } : {}),
-    });
+    };
 
-    if (error) {
-      throw new Error(`Resend: ${error.message || 'erro desconhecido'} (destinatário: ${to}, assunto: ${subject})`);
+    let error = null;
+    for (let tentativa = 1; tentativa <= TENTATIVAS; tentativa++) {
+      let data = null;
+      try {
+        ({ data, error } = await obterCliente().emails.send(mensagem));
+      } catch (err) {
+        error = { name: 'application_error', message: err.message }; // falha de rede
+      }
+      if (!error) return data;
+      if (!erroPassageiro(error) || tentativa === TENTATIVAS) break;
+      await esperar(1000 * 2 ** (tentativa - 1)); // 1s, 2s
     }
-
-    return data;
+    throw new Error(`Resend: ${error.message || 'erro desconhecido'} (destinatário: ${to}, assunto: ${subject})`);
   },
+
+  // Só para testes
+  _definirCliente(c, espera) { cliente = c; if (espera) esperar = espera; },
 };
 
 transportador.verify();

@@ -27,6 +27,7 @@ const ROTULO_TIPO: Record<string, string> = {
   pagamento: "Pagamento",
   modelo: "Modelo pronto",
   configuracao: "Configuração",
+  email: "E-mail",
   manual: "Lembrete",
 };
 

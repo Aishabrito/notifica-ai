@@ -29,6 +29,7 @@ const SUITES = [
   'teste-chamadas.js',   // histórico das chamadas da lista de espera
   'teste-nomeacao.js',   // nomeação, posse e validade do concurso
   'teste-calendario.js', // "teste agora" e calendário ENEM/SISU/concursos
+  'teste-email.js',      // envio de e-mail: sem chave, novas tentativas
 ];
 
 let falhas = 0;

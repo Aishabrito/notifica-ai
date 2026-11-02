@@ -168,6 +168,8 @@ async function enviarEmailMudanca(alerta, { resumo = null, ehPro = false } = {})
         <p><small>Não quer mais receber? <a href="${urlCancelamento}">Cancelar monitoramento</a></small></p>
       `,
       attachments,
+      // Botão "Cancelar inscrição" do Gmail/Outlook (um clique faz o POST do link)
+      headers: { 'List-Unsubscribe': `<${urlCancelamento}>`, 'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click' },
     });
     console.log(`[Crawler] 📧 E-mail enviado com sucesso para: ${alerta.email}`);
   } catch (erro) {
@@ -314,6 +316,14 @@ async function verificarAlerta(alerta, buscarPagina) {
         await alerta.save();
       } catch (erroEmail) {
         console.error('[Crawler] ❌ Falha ao enviar e-mail de mudança:', erroEmail.message);
+        // A mudança já foi registrada: sem isto a pessoa só saberia pelo celular/Telegram
+        await abrirTarefa({
+          chave: 'email:falha-aviso-mudanca', tipo: 'email', prioridade: 'alta',
+          titulo: 'E-mail de mudança não foi enviado',
+          descricao: `Último erro: ${String(erroEmail.message).slice(0, 300)}. Confira a chave e o domínio no Resend. `
+            + 'As mudanças sem e-mail ficam no histórico (emailEnviado: false).',
+          link: 'https://resend.com/emails', alerta: alerta._id,
+        });
       }
       // Telegram (Pro que conectou): não bloqueia nem depende do e-mail
       notificarMudanca(alerta.usuario, alerta, resumo).catch(() => {});
