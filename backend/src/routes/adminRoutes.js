@@ -60,7 +60,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
     // Quanto cada pessoa já pagou (Pix + cobranças do cartão aprovadas)
     const pagoPorUsuario = {};
     for (const p of await Transacao.aggregate([
-      { $match: { tipo: { $in: ['pix', 'cobranca'] }, processadoEm: { $ne: null } } },
+      { $match: { tipo: { $in: ['pix', 'cobranca'] }, processadoEm: { $ne: null }, status: 'approved' } },
       { $group: { _id: '$usuario', total: { $sum: '$valor' }, pagamentos: { $sum: 1 } } },
     ])) pagoPorUsuario[String(p._id)] = { total: Math.round(p.total * 100) / 100, pagamentos: p.pagamentos };
 
@@ -145,7 +145,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
       }
     }
     const pix30d = await Transacao.aggregate([
-      { $match: { tipo: 'pix', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
+      { $match: { tipo: 'pix', status: 'approved', processadoEm: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) } } },
       { $group: { _id: null, total: { $sum: '$valor' }, quantidade: { $sum: 1 } } },
     ]);
     const pagantes = proPorOrigem.mercadopago + proPorOrigem.pix;
@@ -193,7 +193,7 @@ router.get('/dashboard', autenticar, isAdmin, async (req, res) => {
 // ============================================================
 // Pix avulso e cada cobrança aprovada do cartão. Tentativas que não foram
 // pagas (Pix expirado, cartão recusado) aparecem com o status do Mercado Pago.
-const ROTULO_STATUS = { approved: 'Pago', authorized: 'Assinatura ativa', pending: 'Aguardando', in_process: 'Em análise', rejected: 'Recusado', cancelled: 'Cancelado', paused: 'Pausada', expired: 'Expirado', criada: 'Iniciado' };
+const ROTULO_STATUS = { approved: 'Pago', authorized: 'Assinatura ativa', pending: 'Aguardando', in_process: 'Em análise', rejected: 'Recusado', cancelled: 'Cancelado', paused: 'Pausada', expired: 'Expirado', criada: 'Iniciado', refunded: 'Devolvido', charged_back: 'Contestado no banco' };
 
 router.get('/pagamentos', autenticar, isAdmin, async (req, res) => {
   try {
@@ -203,7 +203,7 @@ router.get('/pagamentos', autenticar, isAdmin, async (req, res) => {
       tipo: t.tipo, // pix | cobranca (cartão) | assinatura (adesão ao cartão)
       oferta: t.oferta,
       valor: t.valor,
-      pago: Boolean(t.processadoEm) && t.tipo !== 'assinatura',
+      pago: Boolean(t.processadoEm) && t.status === 'approved' && t.tipo !== 'assinatura',
       status: t.status,
       statusTexto: ROTULO_STATUS[t.status] ?? t.status,
       data: t.processadoEm ?? t.criadoEm,

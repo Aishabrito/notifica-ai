@@ -10,6 +10,8 @@ const { SUBSCRIPTION_OFFERS, PIX_OFFERS, resolveOffer, resolvePixOffer } = requi
 const { obterTipoPlanoEfetivo, PLANOS } = require('../config/planos');
 const {
   sincronizarAssinatura,
+  ESTORNOS,
+  avisarCobrancaRecusada,
   usuarioDaReferencia,
   processarPagamentoPix,
   temAssinaturaPagaAtiva,
@@ -180,7 +182,7 @@ router.post('/subscriptions/:id/:acao', limiterAssinatura, autenticar, exigirMer
     await mp.alterarStatusAssinatura(req.params.id, novoStatus);
     // Não espera o webhook: lê o estado atualizado e sincroniza na hora
     const assinatura = await mp.buscarAssinatura(req.params.id);
-    await sincronizarAssinatura(assinatura);
+    await sincronizarAssinatura(assinatura, { pelaPessoa: true });
 
     const ate = req.usuario.plano?.validoAte
       ? new Date(req.usuario.plano.validoAte).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' })
@@ -295,7 +297,7 @@ router.get('/pix/:id', autenticar, exigirMercadoPago, async (req, res) => {
       await processarPagamentoPix(pagamento);
     }
     const atualizada = await Transacao.findById(transacao._id).lean();
-    res.json({ sucesso: true, status: atualizada.status, aprovado: Boolean(atualizada.processadoEm) });
+    res.json({ sucesso: true, status: atualizada.status, aprovado: Boolean(atualizada.processadoEm) && atualizada.status === 'approved' });
   } catch (err) {
     console.error('[Assinatura] Erro ao consultar Pix:', err.message);
     res.status(502).json({ sucesso: false, mensagem: 'Não foi possível consultar o pagamento agora.' });
@@ -340,20 +342,48 @@ webhookRouter.post('/mercadopago', async (req, res) => {
       // Primeira cobrança aprovada no cartão: vale a recompensa de quem indicou
       const aprovada = cobranca?.payment?.status === 'approved' || cobranca?.status === 'processed';
       const pagante = assinaturaCobrada && usuarioDaReferencia(assinaturaCobrada.external_reference);
-      if (aprovada && pagante) {
-        // Fica registrada para a aba Pagamentos do admin (uma vez por cobrança)
+      const recusada = cobranca?.payment?.status === 'rejected';
+      if ((aprovada || recusada) && pagante) {
+        // Cada cobrança fica registrada para a aba Pagamentos do admin
+        const ref = `cobranca:${dataId}`;
         const adesao = await Transacao.findOne({ tipo: 'assinatura', mpId: String(assinaturaCobrada.id) }).select('oferta').lean();
         const valor = Number(cobranca.transaction_amount ?? assinaturaCobrada.auto_recurring?.transaction_amount) || 0;
-        await Transacao.updateOne(
-          { externalReference: `cobranca:${dataId}` },
-          { $setOnInsert: { tipo: 'cobranca', usuario: pagante, externalReference: `cobranca:${dataId}`, oferta: adesao?.oferta ?? 'assinatura', valor, mpId: String(dataId), status: 'approved', processadoEm: new Date() } },
-          { upsert: true }
-        ).catch((err) => { if (err.code !== 11000) throw err; });
-        await require('../service/indicacao').recompensarIndicacao(pagante);
+        const novo = { tipo: 'cobranca', usuario: pagante, externalReference: ref, oferta: adesao?.oferta ?? 'assinatura', mpId: String(dataId) };
+        const semDuplicar = (err) => { if (err.code !== 11000) throw err; return null; };
+        if (aprovada) {
+          // Recusada antes e aprovada numa nova tentativa: vira "pago" uma vez só
+          await Transacao.updateOne(
+            { externalReference: ref, processadoEm: null },
+            { $set: { status: 'approved', processadoEm: new Date(), valor }, $setOnInsert: novo },
+            { upsert: true }
+          ).catch(semDuplicar);
+          await require('../service/indicacao').recompensarIndicacao(pagante);
+        } else {
+          const r = await Transacao.updateOne({ externalReference: ref }, { $setOnInsert: { ...novo, valor, status: 'rejected' } }, { upsert: true }).catch(semDuplicar);
+          // Avisa uma vez por cobrança (o MP retenta e manda o mesmo aviso várias vezes)
+          if (r?.upsertedCount) {
+            const usuario = await Usuario.findById(pagante).select('nome email');
+            if (usuario) await avisarCobrancaRecusada(usuario);
+          }
+        }
       }
     } else if (tipo === 'payment') {
       // Pix avulso (cobranças das assinaturas também chegam aqui e são ignoradas)
-      resultado = await processarPagamentoPix(await mp.buscarPagamento(String(dataId)));
+      const pagamento = await mp.buscarPagamento(String(dataId));
+      resultado = await processarPagamentoPix(pagamento);
+      // Estorno ou contestação de uma cobrança do cartão: a dona precisa conferir
+      if (resultado === 'ignorada:nao-e-pix' && ESTORNOS.includes(pagamento?.status)) {
+        const usuarioId = usuarioDaReferencia(pagamento.external_reference);
+        const usuario = usuarioId ? await Usuario.findById(usuarioId).select('email') : null;
+        await require('../service/tarefasAdmin').abrirTarefa({
+          chave: `estorno:${dataId}`, tipo: 'pagamento', prioridade: 'alta',
+          titulo: `Cartão ${pagamento.status === 'charged_back' ? 'contestado' : 'estornado'}: ${usuario?.email ?? 'pessoa não identificada'}`,
+          descricao: `Pagamento ${dataId} de R$ ${Number(pagamento.transaction_amount || 0).toFixed(2)} mudou para "${pagamento.status}". `
+            + 'Confira no Mercado Pago, responda à contestação se for o caso e, se o dinheiro voltou para a pessoa, cancele a assinatura dela.',
+          link: 'https://www.mercadopago.com.br/activities', usuario: usuario?._id ?? null,
+        });
+        resultado = `estorno-cartao:${pagamento.status}`;
+      }
     } else {
       return res.sendStatus(200); // outros eventos não interessam
     }

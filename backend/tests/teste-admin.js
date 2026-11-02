@@ -115,5 +115,47 @@ const DIA = 864e5;
   ok(d.crescimento.reclamacoesAbertas === 0 && d.crescimento.feedbacksNovos >= 2, 'contagem de mensagens novas e reclamações abertas');
   ok(d.feedbacks.some((f) => f.tipo === 'sugestao' && f.status === 'novo'), 'feedbacks chegam com tipo e status');
 
+  // ── Pagamentos que dão errado
+  const pays = {};
+  mp.buscarPagamento = async (id) => pays[id];
+  const TarefaAdmin = require(B + '/src/models/TarefaAdmin');
+  const webhook = (tipo, id) => fetch(`${base}/api/webhooks/mercadopago?data.id=${id}&type=${tipo}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+
+  // Renovação recusada no cartão: avisa a pessoa uma vez, mesmo com o MP retentando
+  sent.length = 0;
+  cobrancas.c10 = { id: 'c10', preapproval_id: 'pre_ana', status: 'recycling', transaction_amount: 120, payment: { status: 'rejected' } };
+  await webhook('subscription_authorized_payment', 'c10'); await webhook('subscription_authorized_payment', 'c10'); await sleep(150);
+  const avisosRecusa = sent.filter((m) => m.to === 'ana@x.com' && m.subject.includes('Não conseguimos cobrar'));
+  ok(avisosRecusa.length === 1 && avisosRecusa[0].html.includes('/planos'), 'cartão recusado na renovação: e-mail para a pessoa (uma vez só)');
+  ok((await Transacao.findOne({ externalReference: 'cobranca:c10' })).status === 'rejected', 'cobrança recusada aparece em Pagamentos como "Recusado"');
+  cobrancas.c10 = { id: 'c10', preapproval_id: 'pre_ana', status: 'processed', transaction_amount: 120, payment: { status: 'approved' } };
+  await webhook('subscription_authorized_payment', 'c10'); await webhook('subscription_authorized_payment', 'c10');
+  const c10 = await Transacao.find({ externalReference: 'cobranca:c10' }).lean();
+  ok(c10.length === 1 && c10[0].status === 'approved' && c10[0].processadoEm, 'nova tentativa aprovada: a mesma cobrança vira "Pago" (sem duplicar)');
+
+  // O MP encerra a assinatura (sem a pessoa cancelar): ela fica sabendo até quando vale
+  sent.length = 0;
+  pre.pre_ana = { ...pre.pre_ana, status: 'cancelled' };
+  await webhook('subscription_preapproval', 'pre_ana'); await webhook('subscription_preapproval', 'pre_ana'); await sleep(150);
+  const encerrada = sent.filter((m) => m.to === 'ana@x.com' && m.subject.includes('encerrada'));
+  ok(encerrada.length === 1 && /continua valendo até <strong>\d{2}\/\d{2}\/\d{4}/.test(encerrada[0].html) && (await Usuario.findById(ana._id)).plano.status === 'cancelado', 'assinatura encerrada pelo MP: e-mail com a data até quando o Pro vale (uma vez)');
+
+  // Pix devolvido/contestado: tira os dias, abre tarefa e sai do total recebido
+  const antes = (await Usuario.findById(caio._id)).plano.validoAte.getTime();
+  pays['555'] = { id: 555, status: 'charged_back', transaction_amount: 20, external_reference: ref };
+  await webhook('payment', '555'); await webhook('payment', '555');
+  const caioDepois = await Usuario.findById(caio._id);
+  ok(Math.round((antes - caioDepois.plano.validoAte.getTime()) / DIA) === 30, 'Pix contestado: os 30 dias comprados são retirados (uma vez só)');
+  const tarefaPix = await TarefaAdmin.findOne({ chave: 'estorno:555' }).lean();
+  ok(tarefaPix?.prioridade === 'alta' && tarefaPix.titulo.includes('contestado') && tarefaPix.titulo.includes('caio@x.com'), 'Pix contestado: tarefa de prioridade alta no admin');
+  r = await call('GET', '/api/admin/pagamentos', ta);
+  ok(r.data.resumo.totalRecebido === 240 && r.data.pagamentos.find((x) => x.tipo === 'pix' && x.usuario?.nome === 'Caio')?.statusTexto === 'Contestado no banco', 'dinheiro devolvido sai do total recebido e aparece como "Contestado no banco"');
+
+  // Estorno de uma cobrança do cartão: tarefa para a dona conferir
+  pays['888'] = { id: 888, status: 'refunded', transaction_amount: 120, external_reference: `${ana._id}:assinatura:1` };
+  await webhook('payment', '888');
+  const tarefaCartao = await TarefaAdmin.findOne({ chave: 'estorno:888' }).lean();
+  ok(tarefaCartao?.titulo.includes('estornado') && tarefaCartao.titulo.includes('ana@x.com'), 'cartão estornado: tarefa no admin com o e-mail da pessoa');
+
   process.exit();
 })().catch(e => { console.error(e); process.exit(1); });

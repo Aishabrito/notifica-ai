@@ -6,11 +6,14 @@ const mp            = require('./mercadoPago');
 const { obterTipoPlanoEfetivo } = require('../config/planos');
 const { reativarAlertasPausadosPorPlano } = require('./planoService');
 const { emailPremium } = require('../utils/emailPremium');
+const { escaparHtml } = require('../utils/html');
 
 // Dias de tolerância após a data da próxima cobrança: o MP pode levar
 // alguns dias para cobrar (ou retentar um cartão recusado).
 const DIAS_TOLERANCIA = 3;
 const DIA_MS = 24 * 60 * 60 * 1000;
+// Status do MP para dinheiro devolvido (reembolso ou contestação no banco)
+const ESTORNOS = ['refunded', 'charged_back', 'cancelled'];
 
 const mesesDaAssinatura = (assinatura) => {
   const r = assinatura?.auto_recurring;
@@ -49,6 +52,41 @@ function enviarEmailBoasVindasPro(usuario) {
   }).catch((err) => console.error('[Assinatura] Falha ao enviar e-mail Premium:', err.message));
 }
 
+const urlPlanos = () => `${process.env.FRONTEND_URL || 'https://notifica.dev.br'}/planos`;
+const dataBR = (d) => new Date(d).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+
+function avisarPorEmail(usuario, assunto, paragrafos) {
+  return transportador.sendMail({
+    from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
+    to: usuario.email,
+    subject: assunto,
+    html: `
+      <div style="font-family: Arial, sans-serif; padding: 20px; max-width: 560px;">
+        <p>Oi, ${escaparHtml(String(usuario.nome ?? '').split(' ')[0] || 'tudo bem')}!</p>
+        ${paragrafos.map((p) => `<p>${p}</p>`).join('')}
+        <p><a href="${urlPlanos()}" style="display:inline-block;background:#10b981;color:#000;font-weight:bold;padding:10px 18px;border-radius:8px;text-decoration:none">Ver meu plano</a></p>
+        <p style="font-size:12px;color:#666">Dúvidas? É só responder pelo botão de feedback no site.</p>
+      </div>`,
+  }).catch((err) => console.error('[Assinatura] Falha ao enviar aviso:', err.message));
+}
+
+// Cartão recusado numa renovação: o MP tenta de novo, mas a pessoa precisa saber
+function avisarCobrancaRecusada(usuario) {
+  return avisarPorEmail(usuario, '⚠️ Não conseguimos cobrar seu cartão — Notifica.ai Pro', [
+    'A renovação do seu Pro foi <strong>recusada pelo cartão</strong> (limite, cartão vencido ou bloqueio do banco).',
+    'O Mercado Pago tenta de novo nos próximos dias. Para não perder os avisos rápidos, confira o cartão ou pague com Pix na página de planos.',
+  ]);
+}
+
+// A assinatura parou sem a pessoa cancelar (cobranças recusadas, cartão cancelado...)
+function avisarAssinaturaEncerrada(usuario) {
+  return avisarPorEmail(usuario, 'Sua assinatura do Notifica.ai Pro foi encerrada', [
+    'O Mercado Pago encerrou a renovação automática do seu Pro, normalmente porque o cartão foi recusado algumas vezes.',
+    `Seu Pro continua valendo até <strong>${dataBR(usuario.plano.validoAte)}</strong>. Depois disso a conta volta para o plano grátis e as páginas acima do limite ficam pausadas.`,
+    'Para continuar, assine de novo com outro cartão ou pague com Pix.',
+  ]);
+}
+
 // ============================================
 // 🔄 SINCRONIZA O PLANO COM A ASSINATURA NO MP
 // ============================================
@@ -56,7 +94,8 @@ function enviarEmailBoasVindasPro(usuario) {
 // então é idempotente: processar a mesma notificação 2x dá o mesmo resultado.
 // Estados do MP: pending → authorized → paused / cancelled (a API usa
 // "cancelled"; aceitamos também a grafia "canceled").
-async function sincronizarAssinatura(assinatura) {
+// pelaPessoa: a própria pessoa pausou/cancelou no site (não precisa do aviso)
+async function sincronizarAssinatura(assinatura, { pelaPessoa = false } = {}) {
   const usuarioId = usuarioDaReferencia(assinatura?.external_reference);
   if (!usuarioId) return 'ignorada:sem-usuario';
 
@@ -108,6 +147,9 @@ async function sincronizarAssinatura(assinatura) {
     usuario.plano.status = 'cancelado';
     if (!usuario.plano.validoAte) usuario.plano.validoAte = new Date();
     await usuario.save();
+    // Quem cancela pelo site já está com status "cancelado" (cai em 'ja-cancelada'
+    // acima); chegando aqui, foi o MP que encerrou: a pessoa precisa saber
+    if (!pelaPessoa) await avisarAssinaturaEncerrada(usuario);
     return 'cancelada';
   }
 
@@ -130,6 +172,30 @@ async function processarPagamentoPix(pagamento) {
   // Confere se o pagamento é mesmo o desta transação e no valor certo
   if (transacao.mpId && transacao.mpId !== String(pagamento.id)) return 'ignorada:pagamento-diferente';
   if (Number(pagamento.transaction_amount) + 0.001 < transacao.valor) return 'ignorada:valor-divergente';
+
+  // Pix já aprovado que foi devolvido ou contestado: tira os dias e avisa a dona
+  if (ESTORNOS.includes(pagamento.status) && transacao.processadoEm) {
+    const revertida = await Transacao.findOneAndUpdate(
+      { _id: transacao._id, status: 'approved' },
+      { status: pagamento.status },
+      { new: true }
+    );
+    if (!revertida) return 'ja-estornado';
+    const usuario = await Usuario.findById(transacao.usuario).select('-senha');
+    if (usuario?.plano?.validoAte && usuario.plano.origem !== 'mercadopago') {
+      const restante = new Date(usuario.plano.validoAte).getTime() - transacao.dias * DIA_MS;
+      usuario.plano.validoAte = new Date(Math.max(restante, Date.now())); // o job diário faz o downgrade
+      await usuario.save();
+    }
+    await require('./tarefasAdmin').abrirTarefa({
+      chave: `estorno:${pagamento.id}`, tipo: 'pagamento', prioridade: 'alta',
+      titulo: `Pix ${pagamento.status === 'charged_back' ? 'contestado' : 'devolvido'}: ${usuario?.email ?? 'conta excluída'}`,
+      descricao: `Pagamento ${pagamento.id} de R$ ${transacao.valor.toFixed(2)} (${transacao.oferta}) mudou para "${pagamento.status}". `
+        + `Os ${transacao.dias} dias de Pro foram retirados. Confira no Mercado Pago se precisa responder à contestação.`,
+      link: 'https://www.mercadopago.com.br/activities', usuario: usuario?._id ?? null,
+    });
+    return 'estornado';
+  }
 
   if (pagamento.status !== 'approved') {
     await Transacao.updateOne({ _id: transacao._id, processadoEm: null }, { status: pagamento.status });
@@ -179,6 +245,8 @@ async function processarPagamentoPix(pagamento) {
 }
 
 module.exports = {
+  ESTORNOS,
+  avisarCobrancaRecusada,
   sincronizarAssinatura,
   usuarioDaReferencia,
   processarPagamentoPix,

@@ -118,9 +118,12 @@ const DIA = 864e5;
   r = await call('POST', '/api/assinatura/subscriptions/pre_1/reactivate', tAna);
   uu = await Usuario.findById(ana._id);
   ok(r.status === 200 && chamadas.status.at(-1)[1] === 'authorized' && uu.plano.status === 'ativo', 'reativar → authorized, plano ativo de novo');
+  const enviadosAntesCancelar = sent.length;
   r = await call('POST', '/api/assinatura/subscriptions/pre_1/cancel', tAna);
   uu = await Usuario.findById(ana._id);
   ok(r.status === 200 && chamadas.status.at(-1)[1] === 'cancelled' && uu.plano.status === 'cancelado' && r.data.mensagem.includes('continua até'), 'cancelar → cancelled, mensagem com a data final');
+  await sleep(150);
+  ok(!sent.slice(enviadosAntesCancelar).some((m) => m.subject.includes('encerrada')), 'quem cancela pelo site não recebe o e-mail de "assinatura encerrada"');
 
   // ── PIX
   const { u: caio, t: tCaio } = await novoUsuario('caio@x.com');
