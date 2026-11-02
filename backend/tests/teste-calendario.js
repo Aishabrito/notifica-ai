@@ -54,11 +54,16 @@ const srv = http.createServer((req, res) => {
   ok(r.status === 429 && /crie sua conta/i.test(r.data.mensagem), 'limite por minuto: convida a criar conta');
 
   // ── Calendário (o servidor semeia ao conectar; aqui garantimos antes de olhar)
+  // As datas semeadas são reais e ficam no passado com o tempo: o teste não pode depender do relógio
   await cal.semearCalendario();
+  const enem = await cal.EventoCalendario.findOne({ chave: 'enem-2026-dia1' });
+  const sisu = await cal.EventoCalendario.findOne({ chave: 'sisu-2027-inscricoes' });
+  ok(enem?.data === '2026-11-08' && enem.publicado && !enem.previsao && sisu?.previsao === true, 'datas iniciais semeadas (ENEM confirmado, SISU como previsão)');
+  const em = (iso) => new Date(`${iso}T11:00:00Z`);
+  const titulos = async (iso) => (await cal.proximosEventos(em(iso))).map((e) => e.titulo);
+  ok((await titulos('2026-11-02')).includes(enem.titulo) && !(await titulos('2026-11-09')).includes(enem.titulo) && (await titulos('2026-11-09')).includes(sisu.titulo), 'próximas datas: só de hoje em diante');
   r = await call('GET', '/api/calendario');
-  const enem = r.data.eventos.find((e) => e.titulo.includes('ENEM 2026 — 1º dia'));
-  const sisu = r.data.eventos.find((e) => e.titulo.includes('SISU 2027'));
-  ok(r.status === 200 && enem?.data === '2026-11-08' && sisu?.previsao === true, 'datas iniciais publicadas (ENEM confirmado, SISU como previsão)');
+  ok(r.status === 200 && Array.isArray(r.data.eventos), 'calendário público responde');
 
   const u = await Usuario.create({ nome: 'Bia', email: 'bia@x.com', senha: '12345678', emailVerificado: true });
   const adm = await Usuario.create({ nome: 'Adm', email: 'adm@x.com', senha: '12345678', role: 'admin' });
@@ -100,7 +105,7 @@ const srv = http.createServer((req, res) => {
   // Ocultar: some do público e não volta quando o servidor reinicia
   await call('PATCH', `/api/calendario/admin/${sisu.id}`, ta, { publicado: false });
   await cal.semearCalendario();
-  ok(!(await call('GET', '/api/calendario')).data.eventos.some((e) => e.id === sisu.id), 'data oculta pela equipe não reaparece');
+  ok(!(await cal.proximosEventos(em('2026-11-02'))).some((e) => e.id === sisu.id), 'data oculta pela equipe não reaparece');
 
   r = await call('DELETE', `/api/calendario/${enem.id}/lembrar`, t);
   ok(r.status === 200 && !(await Prazo.exists({ chave: `calendario:${enem.id}` })), 'cancelar o aviso tira a data de Prazos');
