@@ -31,12 +31,14 @@ const SUITES = [
   'teste-calendario.js', // "teste agora" e calendário ENEM/SISU/concursos
   'teste-email.js',      // envio de e-mail: sem chave, novas tentativas
   'teste-admin.js',      // painel da dona: cadastros, uso, pagamentos, feedbacks
+  'teste-cobertura.js',  // Radar: capitais com diário recente
 ];
 
 let falhas = 0;
 let total = 0;
 for (const suite of SUITES) {
-  const r = spawnSync(process.execPath, [path.join(__dirname, suite)], { encoding: 'utf8', timeout: 5 * 60 * 1000 });
+  // NODE_ENV=test: o servidor não confere a cobertura do Radar na internet ao ligar
+  const r = spawnSync(process.execPath, [path.join(__dirname, suite)], { encoding: 'utf8', timeout: 5 * 60 * 1000, env: { ...process.env, NODE_ENV: 'test' } });
   const saida = `${r.stdout ?? ''}${r.stderr ?? ''}`;
   const oks = (saida.match(/^✅ /gm) ?? []).length;
   const erros = (saida.match(/^❌ /gm) ?? []).length;

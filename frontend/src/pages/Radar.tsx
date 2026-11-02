@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import SeletorCidades from "../components/SeletorCidades";
 import { Link } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext";
 import { Navbar } from "../components/navbar";
@@ -148,7 +149,7 @@ export default function Radar() {
             {!estado.ehPro && (
               <section className="border border-purple-500/30 bg-purple-500/5 rounded-2xl p-6 mb-8">
                 <h2 className="text-xl font-black mb-2">Exclusivo do plano Pro 💎</h2>
-                <p className="text-sm text-neutral-400 mb-4">Assine o Pro para monitorar seu nome em {estado.cidades.map((c) => c.nome).join(", ")}.</p>
+                <p className="text-sm text-neutral-400 mb-4">Assine o Pro para monitorar seu nome no Diário Oficial da União e em {estado.cidades.filter((c) => c.uf !== "BR").length} cidades{estado.cidades.length <= 8 ? ` (${estado.cidades.filter((c) => c.uf !== "BR").map((c) => c.nome).join(", ")})` : ""}.</p>
                 <Link to="/planos" className="inline-block font-mono text-xs bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-lg">Ver planos →</Link>
               </section>
             )}
@@ -211,14 +212,8 @@ export default function Radar() {
                 </div>
                 <fieldset>
                   <legend className="text-xs text-neutral-400 mb-2">Onde procurar (diários municipais e o Diário Oficial da União)</legend>
-                  <div className="flex flex-wrap gap-2">
-                    {estado.cidades.map((c) => (
-                      <button type="button" key={c.id} onClick={() => alternarCidade(c.id)} aria-pressed={form.cidades.includes(c.id)} className={`font-mono text-xs px-3 py-1.5 rounded-full border ${form.cidades.includes(c.id) ? "border-emerald-400 text-emerald-400 bg-emerald-400/10" : "border-neutral-800 text-neutral-500"}`}>
-                        {c.nome}
-                      </button>
-                    ))}
-                  </div>
-                  <p className="text-[11px] text-neutral-600 mt-2">Mais cidades em breve.</p>
+                  <SeletorCidades cidades={estado.cidades} escolhidas={form.cidades} alternar={alternarCidade} />
+                  <p className="text-[11px] text-neutral-600 mt-2">Só aparecem as cidades com diário oficial atualizado na nossa fonte. Sua cidade não está? Avise pelo botão de feedback.</p>
                 </fieldset>
                 <label className="flex gap-3 items-start text-xs text-neutral-400">
                   <input type="checkbox" checked={form.consentimento} onChange={(e) => setForm({ ...form, consentimento: e.target.checked })} className="mt-0.5" />

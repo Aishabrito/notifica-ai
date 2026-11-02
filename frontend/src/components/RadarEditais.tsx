@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
+import SeletorCidades from "./SeletorCidades";
 import { Link } from "react-router-dom";
 import api from "../services/Api";
 
-interface Cidade { id: string; nome: string }
+interface Cidade { id: string; nome: string; uf?: string; federal?: boolean }
 interface Interesse { id: string; termo: string; cidades: Cidade[]; ultimaBuscaEm: string | null }
 interface Encontrado { id: string; interesseId: string; diario: string; dataPublicacao: string; url: string; trechos: string[] }
 
@@ -87,14 +88,7 @@ export default function RadarEditais({ cidades, ehPro }: { cidades: Cidade[]; eh
               </div>
               <div>
                 <p className="font-mono text-[10px] text-neutral-500 uppercase tracking-widest mb-2">Onde procurar</p>
-                <div className="flex flex-wrap gap-2">
-                  {cidades.map((c) => (
-                    <button type="button" key={c.id} onClick={() => alternar(c.id)}
-                      className={`text-xs px-3 py-1.5 rounded-lg border ${escolhidas.includes(c.id) ? "border-emerald-400 text-emerald-400" : "border-neutral-800 text-neutral-500"}`}>
-                      {c.nome}
-                    </button>
-                  ))}
-                </div>
+                <SeletorCidades cidades={cidades} escolhidas={escolhidas} alternar={alternar} estilo="quadrado" />
               </div>
               <button disabled={enviando || !escolhidas.length} className="font-mono text-xs bg-emerald-400 text-black font-bold px-5 py-2.5 rounded-lg disabled:opacity-50">
                 {enviando ? "Procurando…" : "Acompanhar"}
