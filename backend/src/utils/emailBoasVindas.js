@@ -8,7 +8,7 @@ const emailBoasVindas = (nome, linkVerificacao = null) => `
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bem-vindo ao Notifica.ai</title>
+  <title>Boas-vindas ao Notifica.ai</title>
 </head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
@@ -29,7 +29,7 @@ const emailBoasVindas = (nome, linkVerificacao = null) => `
           <tr>
             <td style="background:linear-gradient(145deg,rgba(255,255,255,0.04),rgba(108,52,131,0.04));border:1px solid rgba(255,255,255,0.07);border-radius:16px;padding:40px;">
 
-              <p style="font-family:monospace;font-size:10px;color:#a855f7;text-transform:uppercase;letter-spacing:4px;margin:0 0 16px;">// bem-vinda</p>
+              <p style="font-family:monospace;font-size:10px;color:#a855f7;text-transform:uppercase;letter-spacing:4px;margin:0 0 16px;">// boas-vindas</p>
 
               <h1 style="font-size:28px;font-weight:900;color:#f5f2eb;margin:0 0 16px;letter-spacing:-1px;line-height:1.1;">
                 Olá, ${escaparHtml(nome)}.<br/>

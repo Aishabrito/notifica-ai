@@ -47,7 +47,7 @@ function enviarEmailBoasVindasPro(usuario) {
   transportador.sendMail({
     from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
     to: usuario.email,
-    subject: '🚀 Bem-vindo ao Notifica.ai Pro!',
+    subject: '🚀 Boas-vindas ao Notifica.ai Pro!',
     html: emailPremium(usuario.nome, usuario.plano.validoAte, { renovaSozinho: usuario.plano.origem === 'mercadopago' }),
   }).catch((err) => console.error('[Assinatura] Falha ao enviar e-mail Premium:', err.message));
 }

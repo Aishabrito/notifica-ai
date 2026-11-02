@@ -53,7 +53,7 @@ router.post('/cadastro', async (req, res) => {
     transportador.sendMail({
       from: `"Notifica.ai" <${process.env.EMAIL_REMETENTE}>`,
       to: email,
-      subject: '🎉 Bem-vinda ao Notifica.ai!',
+      subject: '🎉 Boas-vindas ao Notifica.ai!',
       html: emailBoasVindas(nome, gerarLinkVerificacao(usuario)),
     }).catch(err => console.error('[EMAIL BOAS-VINDAS]', err.message));
 

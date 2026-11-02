@@ -8,7 +8,7 @@ const emailPremium = (nome, validoAte, { renovaSozinho = true } = {}) => `
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Bem-vindo ao Notifica.ai Pro</title>
+  <title>Boas-vindas ao Notifica.ai Pro</title>
 </head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;">
   <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0a0a;padding:40px 20px;">
