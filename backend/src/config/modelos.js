@@ -28,6 +28,12 @@ const MODELOS = [
   { id: 'fgv', categoria: 'bancas', nome: 'FGV Conhecimento', descricao: 'Concursos organizados pela FGV', url: 'https://conhecimento.fgv.br/concursos' },
   { id: 'cesgranrio', categoria: 'bancas', nome: 'Cesgranrio', descricao: 'Concursos organizados pela Cesgranrio', url: 'https://www.cesgranrio.org.br/concursos' },
   { id: 'vunesp', categoria: 'bancas', nome: 'Vunesp', descricao: 'Concursos e vestibulares da Vunesp', url: 'https://www.vunesp.com.br/' },
+  { id: 'fcc', categoria: 'bancas', nome: 'FCC', descricao: 'Concursos da Fundação Carlos Chagas (tribunais, fiscos)', url: 'https://www.concursosfcc.com.br/' },
+  { id: 'ibfc', categoria: 'bancas', nome: 'IBFC', descricao: 'Concursos organizados pelo IBFC', url: 'https://www.ibfc.org.br/' },
+  { id: 'quadrix', categoria: 'bancas', nome: 'Quadrix', descricao: 'Concursos de conselhos profissionais e órgãos', url: 'https://www.quadrix.org.br/' },
+  { id: 'aocp', categoria: 'bancas', nome: 'Instituto AOCP', descricao: 'Concursos organizados pelo Instituto AOCP', url: 'https://www.institutoaocp.org.br/' },
+  { id: 'idecan', categoria: 'bancas', nome: 'IDECAN', descricao: 'Concursos organizados pelo IDECAN', url: 'https://www.idecan.org.br/' },
+  { id: 'fundatec', categoria: 'bancas', nome: 'Fundatec', descricao: 'Concursos no Sul e em todo o país', url: 'https://www.fundatec.org.br/' },
 
   { id: 'ibge', categoria: 'orgaos', nome: 'IBGE — trabalhe conosco', descricao: 'Concursos e processos seletivos do IBGE', url: 'https://www.ibge.gov.br/acesso-informacao/trabalhe-conosco.html' },
   { id: 'cefet-rj', categoria: 'orgaos', nome: 'CEFET/RJ', descricao: 'Avisos, concursos e processos seletivos', url: 'https://www.cefet-rj.br/' },
