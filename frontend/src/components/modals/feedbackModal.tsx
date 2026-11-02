@@ -1,6 +1,14 @@
 import { useState } from "react";
 import { useAuth } from "../../contexts/AuthContext";
-const API = "https://notifica-ai.onrender.com";
+import api from "../../services/Api";
+
+const TIPOS = [
+  { id: "reclamacao", rotulo: "😠 Reclamação" },
+  { id: "sugestao", rotulo: "💡 Sugestão" },
+  { id: "duvida", rotulo: "❓ Dúvida" },
+  { id: "elogio", rotulo: "💚 Elogio" },
+] as const;
+type Tipo = (typeof TIPOS)[number]["id"];
 
 type Status = "idle" | "loading" | "success" | "error";
 
@@ -9,6 +17,7 @@ export default function FeedbackModal() {
 
   const [aberto, setAberto]     = useState<boolean>(false);
   const [mensagem, setMensagem] = useState<string>("");
+  const [tipo, setTipo]         = useState<Tipo | null>(null);
   const [emailManual, setEmail] = useState<string>("");
   const [status, setStatus]     = useState<Status>("idle");
   const [erro, setErro]         = useState<string>("");
@@ -18,6 +27,7 @@ export default function FeedbackModal() {
 
   const resetar = (): void => {
     setMensagem("");
+    setTipo(null);
     setEmail("");
     setStatus("idle");
     setErro("");
@@ -38,22 +48,10 @@ export default function FeedbackModal() {
     setErro("");
 
     try {
-      const r = await fetch(`${API}/api/feedbacks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ email: emailFinal, mensagem }),
-      });
-
-      const d = await r.json();
-
-      if (d.sucesso) {
-        setStatus("success");
-      } else {
-        throw new Error(d.mensagem ?? "Erro ao enviar.");
-      }
+      await api.post("/api/feedbacks", { email: emailFinal, mensagem, tipo: tipo ?? "outro", pagina: window.location.pathname });
+      setStatus("success");
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Erro ao enviar. Tente novamente.";
+      const msg = (e as { response?: { data?: { mensagem?: string } } })?.response?.data?.mensagem ?? "Erro ao enviar. Tente novamente.";
       setErro(msg);
       setStatus("error");
     }
@@ -122,7 +120,7 @@ export default function FeedbackModal() {
                   </div>
                   <p className="font-bold tracking-tight text-white">Feedback enviado!</p>
                   <p className="font-mono text-[11px] text-neutral-600 mt-1">
-                    Obrigado. Vamos analisar sua mensagem.
+                    Obrigado! A gente lê tudo e responde no seu e-mail.
                   </p>
                   <button
                     onClick={fechar}
@@ -156,6 +154,26 @@ export default function FeedbackModal() {
                     </div>
                   )}
 
+                  {/* Tipo */}
+                  <div>
+                    <p className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">É sobre</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {TIPOS.map((t) => (
+                        <button
+                          key={t.id}
+                          type="button"
+                          onClick={() => setTipo(t.id)}
+                          aria-pressed={tipo === t.id}
+                          className={`text-xs px-3 py-1.5 rounded-lg border transition-all ${
+                            tipo === t.id ? "border-emerald-400 bg-emerald-400/10 text-emerald-300" : "border-neutral-800 text-neutral-400 hover:border-neutral-600"
+                          }`}
+                        >
+                          {t.rotulo}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   {/* Mensagem */}
                   <div>
                     <label className="block font-mono text-[9px] uppercase tracking-widest text-neutral-600 mb-1.5">
@@ -163,7 +181,8 @@ export default function FeedbackModal() {
                     </label>
                     <textarea
                       rows={4}
-                      placeholder="Conte o que achou, sugira algo ou reporte um problema..."
+                      maxLength={2000}
+                      placeholder={tipo === "reclamacao" ? "O que aconteceu? Se puder, diga a página ou o link." : "Conte o que achou, sugira algo ou reporte um problema..."}
                       value={mensagem}
                       onChange={(e) => setMensagem(e.target.value)}
                       className="

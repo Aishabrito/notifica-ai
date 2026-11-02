@@ -340,7 +340,17 @@ webhookRouter.post('/mercadopago', async (req, res) => {
       // Primeira cobrança aprovada no cartão: vale a recompensa de quem indicou
       const aprovada = cobranca?.payment?.status === 'approved' || cobranca?.status === 'processed';
       const pagante = assinaturaCobrada && usuarioDaReferencia(assinaturaCobrada.external_reference);
-      if (aprovada && pagante) await require('../service/indicacao').recompensarIndicacao(pagante);
+      if (aprovada && pagante) {
+        // Fica registrada para a aba Pagamentos do admin (uma vez por cobrança)
+        const adesao = await Transacao.findOne({ tipo: 'assinatura', mpId: String(assinaturaCobrada.id) }).select('oferta').lean();
+        const valor = Number(cobranca.transaction_amount ?? assinaturaCobrada.auto_recurring?.transaction_amount) || 0;
+        await Transacao.updateOne(
+          { externalReference: `cobranca:${dataId}` },
+          { $setOnInsert: { tipo: 'cobranca', usuario: pagante, externalReference: `cobranca:${dataId}`, oferta: adesao?.oferta ?? 'assinatura', valor, mpId: String(dataId), status: 'approved', processadoEm: new Date() } },
+          { upsert: true }
+        ).catch((err) => { if (err.code !== 11000) throw err; });
+        await require('../service/indicacao').recompensarIndicacao(pagante);
+      }
     } else if (tipo === 'payment') {
       // Pix avulso (cobranças das assinaturas também chegam aqui e são ignoradas)
       resultado = await processarPagamentoPix(await mp.buscarPagamento(String(dataId)));

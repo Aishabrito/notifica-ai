@@ -30,6 +30,7 @@ const SUITES = [
   'teste-nomeacao.js',   // nomeação, posse e validade do concurso
   'teste-calendario.js', // "teste agora" e calendário ENEM/SISU/concursos
   'teste-email.js',      // envio de e-mail: sem chave, novas tentativas
+  'teste-admin.js',      // painel da dona: cadastros, uso, pagamentos, feedbacks
 ];
 
 let falhas = 0;

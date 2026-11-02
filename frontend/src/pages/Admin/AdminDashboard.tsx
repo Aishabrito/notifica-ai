@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks, CalendarDays } from "lucide-react";
+import { Activity, Users, Bell, BellOff, MessageSquare, LogOut, ArrowLeft, RefreshCw, AlertCircle, Wallet, TrendingUp, Gem, Newspaper, ListChecks, CalendarDays, UserPlus, MousePointerClick, MailCheck, CircleDollarSign } from "lucide-react";
 import { useAuth } from "../../contexts/AuthContext";
 import api from "../../services/Api";
 import { DashboardDados } from "./components/types"; 
@@ -16,8 +16,9 @@ import GerenciarCalendario from "./components/GerenciarCalendario";
 import TabelaUsuarios from "./components/TabelaUsuarios";
 import TabelaAlertas from "./components/TabelaAlertas";
 import TabelaFeedbacks from "./components/TabelaFeedbacks";
+import TabelaPagamentos from "./components/TabelaPagamentos";
 
-type Tab = "tarefas" | "visao-geral" | "usuarios" | "alertas" | "feedbacks" | "calendario";
+type Tab = "tarefas" | "visao-geral" | "usuarios" | "pagamentos" | "alertas" | "feedbacks" | "calendario";
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
@@ -62,8 +63,9 @@ export default function AdminDashboard() {
     { id: "tarefas",     label: `Tarefas${(tarefasAbertas ?? dados?.tarefasAbertas) ? ` (${tarefasAbertas ?? dados?.tarefasAbertas})` : ""}`, icon: ListChecks },
     { id: "visao-geral", label: "Visão geral", icon: Activity },
     { id: "usuarios",    label: "Usuários",    icon: Users },
+    { id: "pagamentos",  label: "Pagamentos",  icon: CircleDollarSign },
+    { id: "feedbacks",   label: `Reclamações e sugestões${dados?.crescimento?.feedbacksNovos ? ` (${dados.crescimento.feedbacksNovos})` : ""}`, icon: MessageSquare },
     { id: "alertas",     label: "Alertas",     icon: Bell },
-    { id: "feedbacks",   label: "Feedbacks",   icon: MessageSquare },
     { id: "calendario",  label: "Calendário",  icon: CalendarDays },
   ];
 
@@ -72,7 +74,7 @@ export default function AdminDashboard() {
       
       {/* ── Header ── */}
       <header className="sticky top-0 z-30 bg-white border-b border-slate-200 shadow-sm">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 px-4 sm:px-6 py-3">
           <div className="flex items-center gap-3">
             <div className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
               <span className="text-white text-xs font-black">N</span>
@@ -80,35 +82,35 @@ export default function AdminDashboard() {
             <span className="font-bold text-slate-800 tracking-tight">
               Notifica<span className="text-indigo-600">.ai</span>
             </span>
-            <span className="text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
+            <span className="hidden sm:inline text-[11px] font-semibold text-indigo-600 bg-indigo-50 border border-indigo-100 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
               Admin
             </span>
           </div>
 
           <div className="flex items-center gap-2">
             <button 
-              onClick={() => navigate("/dashboard")} 
+              onClick={() => navigate("/dashboard")} aria-label="Voltar ao app" 
               className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all"
             >
-              <ArrowLeft size={13} /> Voltar ao app
+              <ArrowLeft size={13} /> <span className="hidden sm:inline">Voltar ao app</span>
             </button>
             <button 
-              onClick={fetchDados} 
+              onClick={fetchDados} aria-label="Atualizar"
               className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-800 px-3 py-2 rounded-lg hover:bg-slate-100 transition-all"
             >
-              <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> Atualizar
+              <RefreshCw size={13} className={loading ? "animate-spin" : ""} /> <span className="hidden sm:inline">Atualizar</span>
             </button>
             <button 
-              onClick={handleLogout} 
+              onClick={handleLogout} aria-label="Sair" 
               className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-rose-600 border border-slate-200 hover:border-rose-200 hover:bg-rose-50 px-3 py-2 rounded-lg transition-all"
             >
-              <LogOut size={13} /> Sair
+              <LogOut size={13} /> <span className="hidden sm:inline">Sair</span>
             </button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-6 py-8">
+      <main className="mx-auto max-w-7xl px-4 sm:px-6 py-6 sm:py-8">
         
         {/* ── Título ── */}
         <div className="mb-6">
@@ -151,7 +153,7 @@ export default function AdminDashboard() {
               <StatCard 
                 icon={Users} label="Usuários" value={dados?.totalUsers} 
                 accent="text-indigo-700" iconBg="bg-indigo-50 text-indigo-500" 
-                sub={`${dados?.users?.filter(u => u.role === "admin").length ?? 0} admins`} 
+                sub={dados?.crescimento ? `+${dados.crescimento.cadastrosHoje} hoje · +${dados.crescimento.cadastros7d} em 7 dias` : `${dados?.users?.filter(u => u.role === "admin").length ?? 0} admins`} 
               />
               <StatCard 
                 icon={Bell} label="Alertas ativos" value={dados?.totalAlerts} 
@@ -164,13 +166,39 @@ export default function AdminDashboard() {
                 sub={`${dados?.alertasComErro ?? 0} com erro`} 
               />
               <StatCard 
-                icon={MessageSquare} label="Feedbacks" value={dados?.feedbacks?.length ?? 0} 
+                icon={MessageSquare} label="Mensagens novas" value={dados?.crescimento?.feedbacksNovos ?? dados?.feedbacks?.filter(f => !f.lido).length ?? 0} 
                 accent="text-violet-700" iconBg="bg-violet-50 text-violet-500" 
-                sub={`${dados?.feedbacks?.filter(f => !f.lido).length ?? 0} não lidos`} 
+                sub={`${dados?.crescimento?.reclamacoesAbertas ?? 0} reclamação(ões) em aberto`} 
               />
             </>
           )}
         </div>
+
+        {/* ── Cadastros e uso ── */}
+        {dados?.crescimento && (
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+            <StatCard
+              icon={UserPlus} label="Contas novas (30 dias)" value={dados.crescimento.cadastros30d}
+              accent="text-indigo-700" iconBg="bg-indigo-50 text-indigo-500"
+              sub={`${dados.crescimento.cadastros7d} nos últimos 7 dias`}
+            />
+            <StatCard
+              icon={MousePointerClick} label="Usaram (7 dias)" value={dados.crescimento.ativos7d}
+              accent="text-emerald-700" iconBg="bg-emerald-50 text-emerald-500"
+              sub={`${dados.crescimento.ativos30d} nos últimos 30 dias`}
+            />
+            <StatCard
+              icon={MailCheck} label="E-mail confirmado" value={dados.crescimento.emailsConfirmados}
+              accent="text-sky-700" iconBg="bg-sky-50 text-sky-500"
+              sub={`de ${dados.totalUsers} conta(s)`}
+            />
+            <StatCard
+              icon={CircleDollarSign} label="Já pagaram" value={dados.users.filter((u) => (u.totalPago ?? 0) > 0).length}
+              accent="text-emerald-700" iconBg="bg-emerald-50 text-emerald-500"
+              sub="pessoas · detalhes em Pagamentos"
+            />
+          </div>
+        )}
 
         {/* ── Receita e Pro ── */}
         {dados?.receita && (
@@ -199,12 +227,12 @@ export default function AdminDashboard() {
         )}
 
         {/* ── Seleção de Abas ── */}
-        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 w-fit mb-6 shadow-sm">
+        <div className="flex gap-1 bg-white border border-slate-200 rounded-xl p-1 max-w-full w-fit overflow-x-auto mb-6 shadow-sm">
           {TABS.map(t => (
             <button 
               key={t.id} 
               onClick={() => setTab(t.id)} 
-              className={`flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 text-xs font-medium px-3.5 py-2 rounded-lg transition-all whitespace-nowrap shrink-0 ${
                 tab === t.id ? "bg-indigo-600 text-white shadow-sm" : "text-slate-500 hover:text-slate-700 hover:bg-slate-100"
               }`}
             >
@@ -216,6 +244,7 @@ export default function AdminDashboard() {
         {/* ── Conteúdo das Abas com Proteção de Dados ── */}
         {tab === "tarefas" && <ChecklistTarefas onMudou={setTarefasAbertas} />}
         {tab === "calendario" && <GerenciarCalendario />}
+        {tab === "pagamentos" && <TabelaPagamentos />}
 
         {tab === "visao-geral" && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">

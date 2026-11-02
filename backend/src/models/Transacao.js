@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 // processadoEm garante que um Pix aprovado só estenda o plano uma vez,
 // mesmo com notificações repetidas.
 const transacaoSchema = new mongoose.Schema({
-  tipo:              { type: String, enum: ['assinatura', 'pix'], required: true },
+  // assinatura = adesão ao cartão; cobranca = cada cobrança aprovada do cartão; pix = Pix avulso
+  tipo:              { type: String, enum: ['assinatura', 'cobranca', 'pix'], required: true },
   usuario:           { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true, index: true },
   externalReference: { type: String, required: true, unique: true },
   oferta:            { type: String, required: true },

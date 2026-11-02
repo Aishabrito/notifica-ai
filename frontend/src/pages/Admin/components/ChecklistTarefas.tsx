@@ -96,11 +96,11 @@ export default function ChecklistTarefas({ onMudou }: { onMudou?: (abertas: numb
       </div>
 
       {status === "aberta" && (
-        <div className="flex gap-2 p-4 border-b border-slate-100">
+        <div className="flex flex-wrap sm:flex-nowrap gap-2 p-4 border-b border-slate-100">
           <input value={novo} onChange={(e) => setNovo(e.target.value)} onKeyDown={(e) => e.key === "Enter" && criar()}
             placeholder="Adicionar lembrete (ex.: conferir edital do IBGE na sexta)"
-            className="flex-1 text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-400" />
-          <button onClick={criar} className="flex items-center gap-1 text-xs font-medium bg-indigo-600 text-white px-3 rounded-lg hover:bg-indigo-700">
+            className="flex-1 min-w-0 basis-full sm:basis-auto text-sm border border-slate-200 rounded-lg px-3 py-2 outline-none focus:border-indigo-400" />
+          <button onClick={criar} className="flex items-center justify-center py-2 gap-1 text-xs font-medium bg-indigo-600 text-white px-3 rounded-lg hover:bg-indigo-700">
             <Plus size={13} /> Adicionar
           </button>
         </div>
