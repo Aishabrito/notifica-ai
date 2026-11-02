@@ -42,6 +42,10 @@ const SEMENTES = [
     descricao: 'Linguagens, Ciências Humanas e redação. Portões fecham às 13h (horário de Brasília).', link: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem' },
   { chave: 'enem-2026-dia2', titulo: 'ENEM 2026 — 2º dia de prova', publico: 'vestibulando', data: '2026-11-15',
     descricao: 'Matemática e Ciências da Natureza.', link: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem' },
+  { chave: 'enem-2026-gabarito', titulo: 'ENEM 2026 — gabarito oficial', publico: 'vestibulando', data: '2026-11-30', previsao: true,
+    descricao: 'O edital prevê o gabarito até o 10º dia útil depois do 2º dia de prova (até 30/11). Confira a data exata no admin quando o Inep anunciar.', link: 'https://www.gov.br/inep/pt-br/areas-de-atuacao/avaliacao-e-exames-educacionais/enem' },
+  { chave: 'enem-2026-resultado', titulo: 'ENEM 2026 — resultado (notas)', publico: 'vestibulando', data: '2027-01-15', previsao: true,
+    descricao: 'O Inep ainda não marcou a data. A nota do ENEM 2025 saiu em 16/01/2026. Consulta na Página do Participante, com login gov.br.', link: 'https://enem.inep.gov.br/participante' },
   { chave: 'sisu-2027-inscricoes', titulo: 'SISU 2027 — inscrições', publico: 'vestibulando', data: '2027-01-15', previsao: true,
     descricao: 'O MEC ainda não publicou o edital. Ative o aviso e mandamos a data assim que sair.', link: 'https://acessounico.mec.gov.br/sisu' },
 ];
