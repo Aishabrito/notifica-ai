@@ -26,9 +26,11 @@ const EMAIL_REGEX = /^[^\s@]+@[^@.\s]+(?:\.[^@.\s]+)+$/;
 
 // ─── CADASTRO ──────────────────────────────────────
 router.post('/cadastro', async (req, res) => {
-  console.log('📬 Recebi tentativa de cadastro:', req.body.email);
+  console.log('📬 Recebi tentativa de cadastro');
   try {
-    const { nome, email, senha } = req.body;
+    const { nome, senha } = req.body;
+    // Sempre texto em minúsculas: o celular costuma pôr a 1ª letra em maiúscula
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
 
     if (!nome || !email || !senha)
       return res.status(400).json({ sucesso: false, mensagem: 'Preencha todos os campos.' });
@@ -71,9 +73,11 @@ router.post('/cadastro', async (req, res) => {
 
 // ─── LOGIN ─────────────────────────────────────────
 router.post('/login', async (req, res) => {
-  console.log('🔑 Tentativa de login:', req.body.email);
+  
   try {
-    const { email, senha } = req.body;
+    const { senha } = req.body;
+    const email = typeof req.body.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    if (!email || typeof senha !== 'string') return res.status(401).json({ sucesso: false, mensagem: 'E-mail ou senha incorretos.' });
     let usuario = await Usuario.findOne({ email });
 
     if (!usuario || !(await usuario.verificarSenha(senha))) {
@@ -84,6 +88,7 @@ router.post('/login', async (req, res) => {
       usuario = await Usuario.findById(usuario._id);
     }
 
+    Usuario.updateOne({ _id: usuario._id }, { ultimoAcessoEm: new Date() }).catch(() => {});
     const token = gerarToken(usuario._id);
     res.cookie('token', token, COOKIE_OPTS);
     res.json({
