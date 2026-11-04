@@ -8,6 +8,7 @@ import TesteAgora from '../components/landing/TesteAgora';
 import ProximasDatas from '../components/landing/ProximasDatas';
 import Comparacao from '../components/landing/Comparacao';
 import CompartilharTurma from '../components/landing/CompartilharTurma';
+import VideoMotion from '../components/landing/VideoMotion';
 
 // ─── Navbar ──────────────────────────────────────────────────────────────────
 function Navbar() {
@@ -218,6 +219,8 @@ export default function LandingPage({ publicoInicial = 'vestibulando' }: { publi
 
           <Celular />
         </section>
+
+        <VideoMotion />
 
         <TesteAgora publico={publico} />
 
