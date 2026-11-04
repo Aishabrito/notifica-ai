@@ -220,7 +220,7 @@ export default function LandingPage({ publicoInicial = 'vestibulando' }: { publi
           <Celular />
         </section>
 
-        <VideoMotion />
+        <VideoMotion publico={publico} onTrocar={setPublico} />
 
         <TesteAgora publico={publico} />
 
